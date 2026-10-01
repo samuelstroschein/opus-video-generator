@@ -36,6 +36,8 @@ export function useAttachments(onError: (m: string) => void) {
     /** Remove one loose file, or a whole folder. */
     remove: (key: string) => setFiles((fs) => fs.filter((f) => (folderOf(f) ?? `file:${fs.indexOf(f)}`) !== key)),
     clear: () => setFiles([]),
+    /** Replace the files that match (e.g. a previous reference pack) with new ones, keeping everything else. */
+    swap: (match: (f: File) => boolean, next: File[]) => setFiles((fs) => [...fs.filter((f) => !match(f)), ...next]),
     // Spread onto the box that should accept drops and pasted files.
     dropProps: {
       onDragOver: (e: DragEvent) => {

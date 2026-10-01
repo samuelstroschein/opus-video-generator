@@ -8,6 +8,7 @@ import { createProject, listProjects, projectTitle, readMeta, workspaceDir } fro
 import { enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
 import { saveUploads } from "./uploads.js";
 import { DRAFT_FIT, getDraft } from "./drafts.js";
+import { examplePack, listExamples } from "./examples.js";
 import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
@@ -49,6 +50,18 @@ const MIME: Record<string, string> = {
 mountMcp(app);
 
 app.get("/api/projects", (c) => c.json(listProjects()));
+
+// Landing-page examples and their reference packs (a zip the "Use" button attaches).
+app.get("/api/examples", (c) => c.json(listExamples()));
+app.get("/api/examples/:id/pack", async (c) => {
+  try {
+    const pack = await examplePack(c.req.param("id"));
+    if (!pack) return c.text("not found", 404);
+    return new Response(Buffer.from(pack.data), { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename="${pack.name}"`, "cache-control": "public, max-age=3600" } });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 502);
+  }
+});
 
 /** A JSON body, or multipart form data (text, scope, files) when the user attached files. */
 async function readMessage(c: Context): Promise<{ text: string; scope?: Scope; files: { name: string; data: Buffer }[] }> {

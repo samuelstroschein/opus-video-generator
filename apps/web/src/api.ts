@@ -36,6 +36,8 @@ export type ProjectState = {
   renders: string[];
 };
 
+export type Example = { id: string; by: string; title: string; style: string; likes: string; img: string; url: string; pack: string; prompt: string };
+
 export type ProjectSummary = { id: string; title: string; createdAt: string; turns: number };
 
 async function json<T>(res: Response): Promise<T> {
@@ -56,6 +58,13 @@ function message(body: { text: string; scope?: Scope }, files: File[]): RequestI
 
 export const api = {
   list: () => fetch("/api/projects").then((r) => json<ProjectSummary[]>(r)),
+  examples: () => fetch("/api/examples").then((r) => json<Example[]>(r)),
+  /** An example's reference pack (thumbnail + BRIEF.md) as a File, ready to attach. */
+  examplePack: async (x: Example) => {
+    const res = await fetch(`/api/examples/${x.id}/pack`);
+    if (!res.ok) throw new Error(`Could not load the reference pack (${res.status})`);
+    return new File([await res.blob()], x.pack, { type: "application/zip" });
+  },
   create: (prompt: string, files: File[] = []) =>
     fetch("/api/projects", message({ text: prompt }, files)).then((r) => json<{ id: string }>(r)),
   get: (id: string) => fetch(`/api/projects/${id}`).then((r) => json<ProjectState>(r)),

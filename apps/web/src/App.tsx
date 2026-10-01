@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type ProjectSummary } from "./api";
+import { api, type Example, type ProjectSummary } from "./api";
 import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
 
@@ -21,38 +21,38 @@ export function App() {
 
 // ───────────────────────── Home ─────────────────────────
 
-// The most-liked Opus 5.5 videos from athemeroy/awesome-opus-5-5-videos, one per visual style (likes as of 2026-09-27).
-// Thumbnails stay the creators' material: shown from that repo, credited, and linked to the original post.
-const THUMBS = "https://raw.githubusercontent.com/athemeroy/awesome-opus-5-5-videos/main/assets/case-thumbnails";
-const EXAMPLES = [
-  { id: "2103315922098470926", by: "stephanlivera", title: "Motion-design showreel", style: "Motion graphics", likes: "16k", look: "kinetic type, shapes that morph into each other, fast cuts on the beat" },
-  { id: "2102591147927654847", by: "RyanSael", title: "Interactive lens lab", style: "3D render", likes: "15.5k", look: "a clean 3D scene, physical camera moves, labels that track objects" },
-  { id: "2102436464323661880", by: "devteamdrew", title: "Journey through the cosmos", style: "Flat vector", likes: "9.6k", look: "bold flat vector shapes, a deep night palette, glowing accents" },
-  { id: "2102801274173587569", by: "donaldjewkes", title: "p(doom), the music video", style: "Anime", likes: "8.9k", look: "anime characters, big expressive poses, punchy title cards" },
-  { id: "2102437977435893771", by: "kevin_t_ngo", title: "What Claude loves", style: "Hand-drawn", likes: "6k", look: "a cozy hand-drawn storybook look, paper textures, a small character" },
-  { id: "2102495989194236158", by: "shfred0", title: "Claude's life, in ink", style: "Woodcut ink", likes: "4.2k", look: "black-and-white woodcut ink, hand-lettered captions, stark contrast" },
-  { id: "2102893186330841502", by: "JustinPerea", title: "Procedural demoscene", style: "Generative", likes: "1.6k", look: "a neon demoscene: procedural tunnels, light trails, glitchy type" },
-  { id: "2102463796149440888", by: "superalesha", title: "A history of Claude models", style: "Paper cutout", likes: "1.2k", look: "layered paper cutouts, a retro sunburst, collage textures" },
-].map((x) => ({
-  ...x,
-  img: `${THUMBS}/${x.id}.webp`,
-  url: `https://x.com/${x.by}/status/${x.id}`,
-  prompt: `Make a 30-second launch video for [your product URL] in a ${x.style.toLowerCase()} style, like @${x.by}'s "${x.title}": ${x.look}.`,
-}));
+// Blanks in an example prompt, like "[product URL]". Tab jumps between them; Generate waits until they are filled.
+const BLANK = /\[[^\]\n]{2,40}\]/g;
+function blankAt(text: string, from: number): [number, number] | null {
+  const all = [...text.matchAll(BLANK)].map((m) => [m.index!, m.index! + m[0].length] as [number, number]);
+  return all.find(([s]) => s >= from) ?? all[0] ?? null;
+}
 
 function Home() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [examples, setExamples] = useState<Example[]>([]);
+  const [using, setUsing] = useState<string | null>(null);
   const att = useAttachments(setError);
   const box = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     api.list().then(setProjects).catch(() => {});
+    api.examples().then(setExamples).catch(() => {});
   }, []);
+
+  const select = (range: [number, number] | null) => {
+    const el = box.current;
+    if (!el || !range) return;
+    el.focus();
+    el.setSelectionRange(range[0], range[1]);
+  };
+  const blanksLeft = !!prompt.match(BLANK);
 
   async function start() {
     if ((!prompt.trim() && !att.files.length) || busy) return;
+    if (blanksLeft) return select(blankAt(prompt, 0)); // fill in the blanks first
     setBusy(true);
     setError("");
     try {
@@ -64,16 +64,21 @@ function Home() {
     }
   }
 
-  const use = (text: string) => {
-    setPrompt(text);
+  /** "Use": attach the example's reference pack (swapping out any earlier one) and write the prompt with blanks to fill. */
+  const use = async (x: Example) => {
+    setError("");
+    setUsing(x.id);
+    setPrompt(x.prompt);
     scrollTo({ top: 0, behavior: "smooth" });
-    // Select the placeholder so typing replaces it with the user's product.
-    setTimeout(() => {
-      const el = box.current;
-      const at = text.indexOf("[your product URL]");
-      el?.focus();
-      if (el && at >= 0) el.setSelectionRange(at, at + "[your product URL]".length);
-    }, 250);
+    setTimeout(() => select(blankAt(x.prompt, 0)), 250);
+    try {
+      const pack = await api.examplePack(x);
+      att.swap((f) => f.name.endsWith("-reference.zip"), [pack]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUsing(null);
+    }
   };
   const [allProjects, setAllProjects] = useState(false);
 
@@ -101,13 +106,19 @@ function Home() {
                 e.preventDefault();
                 void start();
               }
+              // Tab jumps to the next blank while there are any.
+              if (e.key === "Tab" && !e.shiftKey && blanksLeft) {
+                e.preventDefault();
+                select(blankAt(prompt, e.currentTarget.selectionEnd));
+              }
             }}
             rows={3}
             placeholder={att.dragging ? "Drop files to attach" : "Describe the video you want…"}
             className="resize-none bg-transparent text-[17px] leading-normal placeholder:text-faint"
           />
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <AttachButton onPick={att.add} size="lg" />
+            {blanksLeft && <span className="flex-1 text-right text-[13px] text-faint">Fill in the [blanks] · Tab jumps to the next</span>}
             <button onClick={start} disabled={(!prompt.trim() && !att.files.length) || busy} className="rounded-[10px] bg-ink px-[18px] py-2.5 text-sm font-medium text-white disabled:opacity-35">
               {busy ? "Starting…" : "Generate"}
             </button>
@@ -145,7 +156,7 @@ function Home() {
             </a>
           </div>
           <div className="grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
-            {EXAMPLES.map((x) => (
+            {examples.map((x) => (
               <div key={x.id} className="group flex flex-col gap-3">
                 <a href={x.url} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-[10px] bg-line" title={`Watch on X: @${x.by}`}>
                   <img src={x.img} alt={x.title} loading="lazy" className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -158,8 +169,8 @@ function Home() {
                       @{x.by} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
                     </div>
                   </div>
-                  <button onClick={() => use(x.prompt)} title="Start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
-                    Use
+                  <button onClick={() => void use(x)} disabled={using === x.id} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
+                    {using === x.id ? "…" : "Use"}
                   </button>
                 </div>
               </div>
