@@ -35,6 +35,7 @@ function Home() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [examples, setExamples] = useState<Example[]>([]);
   const [using, setUsing] = useState<string | null>(null);
+  const [playing, setPlaying] = useState<Example | null>(null);
   const att = useAttachments(setError);
   const box = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -157,26 +158,100 @@ function Home() {
           </div>
           <div className="grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {examples.map((x) => (
-              <div key={x.id} className="group flex flex-col gap-3">
-                <a href={x.url} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-[10px] bg-line" title={`Watch on X: @${x.by}`}>
-                  <img src={x.img} alt={x.title} loading="lazy" className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                  <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
-                </a>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <div className="truncate text-[15px] font-semibold">{x.title}</div>
-                    <div className="truncate text-[13px] text-mute">
-                      @{x.by} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
-                    </div>
-                  </div>
-                  <button onClick={() => void use(x)} disabled={using === x.id} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
-                    {using === x.id ? "…" : "Use"}
-                  </button>
-                </div>
-              </div>
+              <ExampleCard key={x.id} x={x} using={using === x.id} onOpen={() => setPlaying(x)} onUse={() => void use(x)} />
             ))}
           </div>
         </section>
+      </div>
+      {playing && (
+        <Player
+          x={playing}
+          onClose={() => setPlaying(null)}
+          onUse={() => {
+            void use(playing);
+            setPlaying(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** An example: the poster, a muted preview while hovered, a click opens the player. */
+function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; onOpen: () => void; onUse: () => void }) {
+  const video = useRef<HTMLVideoElement>(null);
+  // Start a third in, where the poster frame is (most videos open on an empty title card).
+  const play = () => {
+    const v = video.current;
+    if (!v) return;
+    if (v.currentTime === 0 && v.duration) v.currentTime = v.duration * 0.35;
+    void v.play().catch(() => {});
+  };
+  const stop = () => {
+    const v = video.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  };
+  return (
+    <div className="group flex flex-col gap-3">
+      <button onClick={onOpen} onMouseEnter={play} onMouseLeave={stop} onFocus={play} onBlur={stop} className="relative block overflow-hidden rounded-[10px] bg-line text-left" title="Play">
+        <video
+          ref={video}
+          src={x.preview}
+          poster={x.poster}
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onError={(e) => (e.currentTarget.poster = x.img)}
+          className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        />
+        <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
+        <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-80 backdrop-blur-sm transition-opacity group-hover:opacity-0">
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0v12l10-6z" /></svg>
+        </span>
+      </button>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="truncate text-[15px] font-semibold">{x.title}</div>
+          <div className="truncate text-[13px] text-mute">
+            @{x.by} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
+          </div>
+        </div>
+        <button onClick={onUse} disabled={using} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
+          {using ? "…" : "Use"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The full video in place, with credit, a link to the post and "Use this style". Esc or a click outside closes it. */
+function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse: () => void }) {
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    addEventListener("keydown", on);
+    return () => removeEventListener("keydown", on);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
+      <div onClick={(e) => e.stopPropagation()} className="flex w-full max-w-[min(1100px,calc((100vh-160px)*16/9))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <video src={x.video} poster={x.poster} controls autoPlay playsInline className="block max-h-[calc(100vh-180px)] w-full bg-black" />
+        <div className="flex items-center gap-4 px-5 py-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <div className="truncate text-base font-semibold">{x.title}</div>
+            <div className="truncate text-[13px] text-mute">
+              @{x.by} · {x.style} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
+            </div>
+          </div>
+          <a href={x.url} target="_blank" rel="noreferrer" className="flex-none rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
+            Watch on X ↗
+          </a>
+          <button onClick={onUse} className="flex-none rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">
+            Use this style
+          </button>
+        </div>
       </div>
     </div>
   );

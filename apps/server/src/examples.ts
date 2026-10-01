@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import { zipSync, strToU8 } from "fflate";
+import { REPO_ROOT } from "./projects.js";
 
 // Landing-page examples: the most-liked Opus 5.5 video per visual style in athemeroy/awesome-opus-5-5-videos
 // (likes as of 2026-09-27). "Use" attaches a reference pack (this module builds it) and a prompt with blanks.
@@ -61,6 +65,75 @@ const EXAMPLES: Example[] = [
   },
 ];
 
+// Each example's video is pulled once from X's public embed data into a LOCAL cache (data/ is git-ignored) and served
+// from our own API: fast, works offline, and no hotlinking. It is not committed: the videos belong to their creators.
+const CACHE = path.join(REPO_ROOT, "data", "examples");
+export const MEDIA = ["poster.jpg", "preview.mp4", "video.mp4"] as const;
+type Media = (typeof MEDIA)[number];
+const pending = new Map<string, Promise<void>>();
+
+async function download(url: string, file: string) {
+  if (fs.existsSync(file)) return; // already cached
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`${res.status} for ${url}`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file + ".part", Buffer.from(await res.arrayBuffer()));
+  fs.renameSync(file + ".part", file);
+}
+
+/** Make sure poster.jpg, preview.mp4 (small, for hover) and video.mp4 (720p, for the player) are cached. */
+function ensureMedia(id: string): Promise<void> {
+  const dir = path.join(CACHE, id);
+  if (MEDIA.every((m) => fs.existsSync(path.join(dir, m)))) return Promise.resolve();
+  if (!pending.has(id)) {
+    const job = (async () => {
+      const res = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=a`, { headers: { "user-agent": "Mozilla/5.0" } });
+      if (!res.ok) throw new Error(`X embed data: ${res.status}`);
+      const data = (await res.json()) as { mediaDetails?: { type: string; media_url_https: string; video_info?: { variants: { content_type: string; url: string }[] } }[] };
+      const media = data.mediaDetails?.find((m) => m.type === "video");
+      if (!media) throw new Error("no video in the post");
+      // Variants come smallest to largest; the size is in the path (…/vid/avc1/1280x720/…).
+      const mp4 = (media.video_info?.variants ?? []).filter((v) => v.content_type === "video/mp4");
+      const height = (u: string) => Math.min(...(u.match(/\/(\d+)x(\d+)\//)?.slice(1).map(Number) ?? [0]));
+      const pick = (target: number) => mp4.reduce((best, v) => (Math.abs(height(v.url) - target) < Math.abs(height(best.url) - target) ? v : best), mp4[0]);
+      if (!mp4.length) throw new Error("no mp4 variants");
+      await download(pick(360).url, path.join(dir, "preview.mp4"));
+      await download(pick(720).url, path.join(dir, "video.mp4"));
+      // Many videos open on an empty title card, so the poster is a frame from about a third in (X's first frame as a fallback).
+      try {
+        posterFrom(path.join(dir, "video.mp4"), path.join(dir, "poster.jpg"));
+      } catch {
+        await download(media.media_url_https, path.join(dir, "poster.jpg"));
+      }
+    })().finally(() => pending.delete(id));
+    pending.set(id, job);
+  }
+  return pending.get(id)!;
+}
+
+/** A cached media file for an example, fetching it first if needed. Null for unknown ids or files. */
+export async function exampleMedia(id: string, file: string): Promise<string | null> {
+  if (!EXAMPLES.some((e) => e.id === id) || !MEDIA.includes(file as Media)) return null;
+  await ensureMedia(id);
+  return path.join(CACHE, id, file);
+}
+
+/** Pull every example's media in the background so the landing page is instant. */
+export function warmExamples() {
+  void (async () => {
+    for (const x of EXAMPLES) await ensureMedia(x.id).catch((e) => console.warn(`example ${x.by}: ${e instanceof Error ? e.message : e}`));
+  })();
+}
+
+/** Where previews and posters start: about a third in, past most intros. Shared with the page (preview start). */
+export const POSTER_AT = 0.35;
+
+function posterFrom(video: string, out: string) {
+  const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video]).toString().trim());
+  if (!(dur > 0)) throw new Error("no duration");
+  execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(dur * POSTER_AT), "-i", video, "-frames:v", "1", "-q:v", "3", out]);
+}
+
 const postUrl = (x: Example) => `https://x.com/${x.by}/status/${x.id}`;
 const packName = (x: Example) => `${x.by}-reference.zip`;
 
@@ -69,6 +142,9 @@ export function listExamples() {
   return EXAMPLES.map((x) => ({
     id: x.id, by: x.by, title: x.title, style: x.style, likes: x.likes,
     img: `${THUMBS}/${x.id}.webp`,
+    poster: `/api/examples/${x.id}/media/poster.jpg`,
+    preview: `/api/examples/${x.id}/media/preview.mp4`,
+    video: `/api/examples/${x.id}/media/video.mp4`,
     url: postUrl(x),
     pack: packName(x),
     prompt: `Make a 30-second launch video for [product URL]. We're launching [what's new], for [audience]. Use the attached reference pack for the look: ${x.style.toLowerCase()}, like @${x.by}'s "${x.title}".`,

@@ -8,7 +8,8 @@ import { createProject, listProjects, projectTitle, readMeta, workspaceDir } fro
 import { enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
 import { saveUploads } from "./uploads.js";
 import { DRAFT_FIT, getDraft } from "./drafts.js";
-import { examplePack, listExamples } from "./examples.js";
+import { exampleMedia, examplePack, listExamples, warmExamples } from "./examples.js";
+import { Readable } from "node:stream";
 import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
@@ -53,6 +54,28 @@ app.get("/api/projects", (c) => c.json(listProjects()));
 
 // Landing-page examples and their reference packs (a zip the "Use" button attaches).
 app.get("/api/examples", (c) => c.json(listExamples()));
+// Example media from the local cache, with Range support so the browser can stream and seek.
+app.get("/api/examples/:id/media/:file", async (c) => {
+  let file: string | null;
+  try {
+    file = await exampleMedia(c.req.param("id"), c.req.param("file"));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 502);
+  }
+  if (!file) return c.text("not found", 404);
+  const size = fs.statSync(file).size;
+  const type = file.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
+  const headers = { "content-type": type, "accept-ranges": "bytes", "cache-control": "public, max-age=86400" };
+  const range = c.req.header("range")?.match(/bytes=(\d*)-(\d*)/);
+  if (range) {
+    const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    const body = fs.createReadStream(file, { start, end });
+    return new Response(Readable.toWeb(body) as ReadableStream, { status: 206, headers: { ...headers, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
+  }
+  return new Response(Readable.toWeb(fs.createReadStream(file)) as ReadableStream, { headers: { ...headers, "content-length": String(size) } });
+});
+
 app.get("/api/examples/:id/pack", async (c) => {
   try {
     const pack = await examplePack(c.req.param("id"));
@@ -216,4 +239,5 @@ artifacts.get("/p/:id/*", (c) => {
 const port = Number(process.env.PORT ?? 8787);
 const artifactPort = Number(process.env.ARTIFACT_PORT ?? 8788);
 serve({ fetch: app.fetch, port }, () => console.log(`api on http://localhost:${port}`));
+warmExamples();
 serve({ fetch: artifacts.fetch, port: artifactPort }, () => console.log(`artifacts on http://localhost:${artifactPort}`));

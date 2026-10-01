@@ -36,7 +36,7 @@ export type ProjectState = {
   renders: string[];
 };
 
-export type Example = { id: string; by: string; title: string; style: string; likes: string; img: string; url: string; pack: string; prompt: string };
+export type Example = { id: string; by: string; title: string; style: string; likes: string; img: string; poster: string; preview: string; video: string; url: string; pack: string; prompt: string };
 
 export type ProjectSummary = { id: string; title: string; createdAt: string; turns: number };
 
