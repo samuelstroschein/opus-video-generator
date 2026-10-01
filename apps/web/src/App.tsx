@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, type Example, type ProjectSummary } from "./api";
 import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
+import { SpaceBackground } from "./SpaceBackground";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -85,9 +86,10 @@ function Home() {
   const [allProjects, setAllProjects] = useState(false);
 
   return (
-    <div className="min-h-full bg-paper">
+    <div className="relative isolate min-h-full bg-[#05060c] text-white">
+      <SpaceBackground />
       <div className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[120px] max-sm:pt-16">
-        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] max-sm:text-4xl">
+        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#f5f3ef] max-sm:text-4xl">
           Generate videos with
           <img src="/claude-icon.png" alt="Claude" className="ml-[14px] mr-[10px] inline-block h-[46px] w-[46px] object-contain align-[-4px] max-sm:h-[28px] max-sm:w-[28px] max-sm:align-[-3px]" />
           Opus 5.5
@@ -96,7 +98,7 @@ function Home() {
         <div
           {...att.dropProps}
           className={[
-            "flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]",
+            "flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white p-4 text-ink shadow-[0_8px_40px_rgba(0,0,0,.35)]",
             att.dragging ? "border-ink" : "border-line-2",
           ].join(" ")}
         >
@@ -145,24 +147,24 @@ function Home() {
             </button>
           </div>
         </div>
-        {error && <p className="-mt-6 text-sm text-red-600">{error}</p>}
+        {error && <p className="-mt-6 text-sm text-red-300">{error}</p>}
 
         {projects.length > 0 && (
           <section className="mt-6 flex w-full flex-col gap-3">
-            <div className="text-[13px] font-medium text-mute">Your projects</div>
-            <div className="flex flex-col divide-y divide-line overflow-hidden rounded-xl border border-line-2 bg-white">
+            <div className="text-[13px] font-medium text-white/55">Your projects</div>
+            <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md">
               {projects.slice(0, allProjects ? undefined : 5).map((p) => (
-                <a key={p.id} href={`#/p/${p.id}`} className="group flex items-center gap-4 px-4 py-3 hover:bg-paper">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.title}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-faint">
+                <a key={p.id} href={`#/p/${p.id}`} className="group flex items-center gap-4 px-4 py-3 hover:bg-white/[0.06]">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/90">{p.title}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-white/40">
                     {new Date(p.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {p.turns} turn{p.turns === 1 ? "" : "s"}
                   </span>
-                  <span className="text-faint group-hover:text-ink">→</span>
+                  <span className="text-white/40 group-hover:text-white">→</span>
                 </a>
               ))}
             </div>
             {projects.length > 5 && (
-              <button onClick={() => setAllProjects((a) => !a)} className="self-start rounded-lg px-2 py-1 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
+              <button onClick={() => setAllProjects((a) => !a)} className="self-start rounded-lg px-2 py-1 text-[13px] font-medium text-white/55 hover:bg-white/10 hover:text-white">
                 {allProjects ? "Show less" : `Show ${projects.length - 5} more`}
               </button>
             )}
@@ -171,8 +173,8 @@ function Home() {
 
         <section className="mt-6 flex w-full flex-col gap-4">
           <div className="flex items-baseline justify-between gap-4">
-            <div className="text-[13px] font-medium text-mute">Examples</div>
-            <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-faint hover:text-ink">
+            <div className="text-[13px] font-medium text-white/55">Examples</div>
+            <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-white/40 hover:text-white">
               Most-liked Opus 5.5 videos, via awesome-opus-5-5-videos ↗
             </a>
           </div>
@@ -215,7 +217,7 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
   };
   return (
     <div className="group flex flex-col gap-3">
-      <button onClick={onOpen} onMouseEnter={play} onMouseLeave={stop} onFocus={play} onBlur={stop} className="relative block overflow-hidden rounded-[10px] bg-line text-left" title="Play">
+      <button onClick={onOpen} onMouseEnter={play} onMouseLeave={stop} onFocus={play} onBlur={stop} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
         <video
           ref={video}
           src={x.preview}
@@ -234,12 +236,12 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
       </button>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="truncate text-[15px] font-semibold">{x.title}</div>
-          <div className="truncate text-[13px] text-mute">
-            @{x.by} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
+          <div className="truncate text-[15px] font-semibold text-white/95">{x.title}</div>
+          <div className="truncate text-[13px] text-white/55">
+            @{x.by} · <span className="font-mono text-[11px] text-white/40">{x.likes} likes</span>
           </div>
         </div>
-        <button onClick={onUse} disabled={using} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
+        <button onClick={onUse} disabled={using} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-white/20 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-white/10">
           {using ? "…" : "Use"}
         </button>
       </div>
@@ -256,7 +258,7 @@ function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse:
   }, [onClose]);
   return (
     <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div onClick={(e) => e.stopPropagation()} className="flex w-full max-w-[min(1100px,calc((100vh-160px)*16/9))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div onClick={(e) => e.stopPropagation()} className="flex w-full max-w-[min(1100px,calc((100vh-160px)*16/9))] flex-col overflow-hidden rounded-2xl bg-white text-ink shadow-2xl">
         <video src={x.video} poster={x.poster} controls autoPlay playsInline className="block max-h-[calc(100vh-180px)] w-full bg-black" />
         <div className="flex items-center gap-4 px-5 py-4">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
