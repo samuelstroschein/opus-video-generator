@@ -76,11 +76,14 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
     if (!open) return;
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const blur = () => setOpen(false); // a click into an iframe blurs the window
     addEventListener("mousedown", on);
     addEventListener("keydown", key);
+    addEventListener("blur", blur);
     return () => {
       removeEventListener("mousedown", on);
       removeEventListener("keydown", key);
+      removeEventListener("blur", blur);
     };
   }, [open]);
   const pick = (input: HTMLInputElement | null) => {

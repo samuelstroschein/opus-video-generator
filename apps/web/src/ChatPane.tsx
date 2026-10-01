@@ -58,10 +58,38 @@ export function ChatPane(props: {
   const { id, chat, title, scope, clearScope, error, setError } = props;
   const [text, setText] = useState("");
   const att = useAttachments(setError);
-  const bottom = useRef<HTMLDivElement>(null);
+  // Stay pinned to the newest message, but only while the user is at the bottom: anyone scrolled up to read is left
+  // alone. Re-pin whenever the content or the composer changes size (streaming text, fonts loading, the step card,
+  // a question, attachments), not just when a message arrives.
+  const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const pinned = useRef(true);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "end" });
-  }, [chat.items, chat.running, chat.queued]);
+    const el = scroller.current;
+    if (!el) return;
+    // Only the user unpins (scrolling up by wheel, touch or keys); reaching the bottom again re-pins. Scroll events
+    // caused by layout (history replaying, content resizing) never unpin.
+    const atBottom = () => el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+    const onScroll = () => atBottom() && (pinned.current = true);
+    const unpin = () => requestAnimationFrame(() => !atBottom() && (pinned.current = false));
+    const pin = () => pinned.current && (el.scrollTop = el.scrollHeight);
+    el.addEventListener("scroll", onScroll);
+    el.addEventListener("wheel", unpin, { passive: true });
+    el.addEventListener("touchmove", unpin, { passive: true });
+    el.addEventListener("keydown", unpin);
+    const ro = new ResizeObserver(pin);
+    ro.observe(el);
+    if (content.current) ro.observe(content.current);
+    pin();
+    void document.fonts?.ready.then(pin);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener("wheel", unpin);
+      el.removeEventListener("touchmove", unpin);
+      el.removeEventListener("keydown", unpin);
+      ro.disconnect();
+    };
+  }, []);
 
   async function send(message = text, files = att.files, sc = scope ?? undefined) {
     if (!message.trim() && !files.length) return;
@@ -82,6 +110,12 @@ export function ChatPane(props: {
   const [skipped, setSkipped] = useState<object | null>(null);
   const [sel, setSel] = useState(0);
   useEffect(() => setSel(0), [chat.question]);
+  // The answers' shortcuts (1–4, arrows, Enter) work right away: focus the box when a question arrives.
+  const input = useRef<HTMLTextAreaElement>(null);
+  const questionOpen = !chat.running && !scope && !!chat.question && skipped !== chat.question;
+  useEffect(() => {
+    if (questionOpen) input.current?.focus();
+  }, [questionOpen]);
   const asking = !chat.running && !scope && chat.question && skipped !== chat.question ? chat.question : null;
   const canSend = !!text.trim() || att.files.length > 0;
   const placeholder = att.dragging
@@ -117,8 +151,8 @@ export function ChatPane(props: {
   return (
     <section className="flex min-h-0 flex-1 flex-col border-r border-line bg-white">
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
-        <div className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
+      <div ref={scroller} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
+        <div ref={content} className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
           {groupRows(chat.items).map((row, i, all) =>
             row.kind === "tools" ? (
               <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />
@@ -129,7 +163,6 @@ export function ChatPane(props: {
           {chat.queued.map((q, i) => (
             <QueuedNote key={q.qid ?? `q${i}`} id={id} note={q} onError={setError} />
           ))}
-          <div ref={bottom} />
         </div>
       </div>
 
@@ -147,7 +180,7 @@ export function ChatPane(props: {
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
                 {scopeLabel(scope)}
-                <button onClick={clearScope} className="ml-0.5 opacity-70 hover:opacity-100" aria-label="Clear scope">
+                <button onClick={clearScope} className="-my-1 -mr-1.5 ml-0.5 flex h-6 w-6 items-center justify-center rounded-full opacity-70 hover:bg-accent/10 hover:opacity-100" aria-label="Clear scope">
                   ×
                 </button>
               </span>
@@ -173,11 +206,11 @@ export function ChatPane(props: {
                     key={r}
                     onMouseEnter={() => setSel(i)}
                     onClick={() => void send(r, [])}
-                    className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm", i === sel ? "bg-bubble" : ""].join(" ")}
+                    className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
                   >
                     <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line-3 bg-white font-mono text-xs text-mute">{i + 1}</span>
                     <span className="flex-1">{r}</span>
-                    <span className={["text-mute", i === sel ? "opacity-100" : "opacity-0"].join(" ")}>→</span>
+                    <span className={["text-mute", i === sel && !text ? "opacity-100" : "opacity-0 group-hover:opacity-100"].join(" ")}>→</span>
                   </button>
                 ))}
               </div>
@@ -191,7 +224,7 @@ export function ChatPane(props: {
               </svg>
             )}
             <textarea
-              autoFocus={!!asking}
+              ref={input}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKey}
@@ -344,7 +377,7 @@ function AgentText({ text }: { text: string }) {
             </div>
           ) : (
             <p key={i} className="m-0 whitespace-pre-wrap">
-              {r.lines.join("\n")}
+              <Inline text={r.lines.join("\n")} />
             </p>
           ),
         )}
@@ -352,15 +385,34 @@ function AgentText({ text }: { text: string }) {
   );
 }
 
-/** "Side-view pour. The v1 story…" → the first sentence bold, like a label. */
+/** `code` in the agent's text as code, not literal backticks. */
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(`[^`\n]+`)/).map((part, i) =>
+        i % 2 ? (
+          <code key={i} className="rounded bg-bubble px-1 py-px font-mono text-[12.5px]">
+            {part.slice(1, -1)}
+          </code>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+/** "Side-view pour. The v1 story…" → a short label-like lead in bold. Only a real label: words, then the colon or period. */
 function Lead({ text }: { text: string }) {
-  const m = text.match(/^([^.:]{2,40}[.:])\s+(.*)$/);
+  const m = text.match(/^([A-Za-z][^.:"`]{1,38}\w[.:])\s+(.*)$/);
   return m ? (
     <span>
-      <b className="font-semibold">{m[1]}</b> {m[2]}
+      <b className="font-semibold">{m[1]}</b> <Inline text={m[2]} />
     </span>
   ) : (
-    <span>{text}</span>
+    <span>
+      <Inline text={text} />
+    </span>
   );
 }
 

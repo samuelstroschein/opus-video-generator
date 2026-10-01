@@ -52,7 +52,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
   const step = tickStep(duration, trackW);
   const pxPerSec = trackW / duration;
   // Drop the last tick if it would run into the end label.
-  const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => (duration - t) * pxPerSec > 52);
+  const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => (duration - t) * pxPerSec > 64);
   const pct = (t: number) => `${(t / duration) * 100}%`;
 
   return (
@@ -80,7 +80,30 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           <span className="ml-2 w-14 font-mono text-sm tabular-nums text-neutral-200">{fmt(v?.time ?? 0)}</span>
         </div>
 
-        <div ref={track} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} className="relative min-w-0 flex-1 cursor-pointer touch-none">
+        <div
+          ref={track}
+          role="slider"
+          tabIndex={0}
+          aria-label="Timeline"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration * 10) / 10}
+          aria-valuenow={Math.round((v?.time ?? 0) * 10) / 10}
+          aria-valuetext={fmt(v?.time ?? 0)}
+          onKeyDown={(e) => {
+            // Arrow keys scrub by a second (Shift: five), Home and End jump to the ends.
+            if (!v) return;
+            const by = e.shiftKey ? 5 : 1;
+            const to = e.key === "ArrowRight" ? v.time + by : e.key === "ArrowLeft" ? v.time - by : e.key === "Home" ? 0 : e.key === "End" ? v.duration : null;
+            if (to === null) return;
+            e.preventDefault();
+            cmd({ action: "seek", time: Math.max(0, Math.min(v.duration, to)) });
+          }}
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          className="relative min-w-0 flex-1 cursor-pointer touch-none rounded focus-visible:outline-white/60"
+        >
           {/* ruler */}
           <div className="relative h-5 text-[10px] text-neutral-400">
             {ticks.map((t) => (

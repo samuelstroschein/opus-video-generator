@@ -64,7 +64,15 @@ export function briefProduct(id: string): string | null {
   return m ? m[1] : null;
 }
 
-export const projectTitle = (id: string) => briefProduct(id) ?? readMeta(id).prompt.slice(0, 48);
+export const projectTitle = (id: string) => briefProduct(id) ?? shorten(readMeta(id).prompt, 48);
+
+/** Cut at a word boundary and say so, instead of mid-word with a trailing space. */
+function shorten(text: string, max: number) {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max).replace(/\s+\S*$/, "").replace(/[,.;:–—-]+$/, "");
+  return `${cut}…`;
+}
 
 /** Commit whatever the agent changed this turn and tag it as the next version. */
 export function commitTurn(id: string, turn: number, prompt: string): string | null {

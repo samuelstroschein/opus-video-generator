@@ -22,17 +22,25 @@ function useStars(): number | null {
   const [stars, setStars] = useState<number | null>(() => {
     try {
       const v = sessionStorage.getItem(`stars:${GITHUB_REPO}`);
-      return v === null ? null : Number(v);
+      return v === null || v === "none" ? null : Number(v);
     } catch {
       return null;
     }
   });
   useEffect(() => {
     if (stars !== null) return;
+    try {
+      if (sessionStorage.getItem(`stars:${GITHUB_REPO}`) === "none") return; // looked up already: not public yet
+    } catch {}
     fetch(`https://api.github.com/repos/${GITHUB_REPO}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { stargazers_count?: number } | null) => {
-        if (typeof d?.stargazers_count !== "number") return;
+        if (typeof d?.stargazers_count !== "number") {
+          try {
+            sessionStorage.setItem(`stars:${GITHUB_REPO}`, "none");
+          } catch {}
+          return;
+        }
         setStars(d.stargazers_count);
         try {
           sessionStorage.setItem(`stars:${GITHUB_REPO}`, String(d.stargazers_count));
