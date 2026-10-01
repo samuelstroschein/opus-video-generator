@@ -82,6 +82,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
           {live && <div className="pl-5"><Bar percent={pace.progress?.percent} /></div>}
         </div>
       ) : (
+        now && (
         <div className="-mt-1 flex flex-col gap-1.5 pb-2.5 pl-9 pr-3">
           {now && (
             <div className="flex items-baseline gap-2 text-xs text-mute">
@@ -96,6 +97,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
             </div>
           )}
         </div>
+        )
       )}
     </div>
   );
