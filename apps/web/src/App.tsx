@@ -21,37 +21,24 @@ export function App() {
 
 // ───────────────────────── Home ─────────────────────────
 
-// Mock examples for now: stills from videos this app made, each with the prompt that would start one like it.
+// The most-liked Opus 5.5 videos from athemeroy/awesome-opus-5-5-videos, one per visual style (likes as of 2026-09-27).
+// Thumbnails stay the creators' material: shown from that repo, credited, and linked to the original post.
+const THUMBS = "https://raw.githubusercontent.com/athemeroy/awesome-opus-5-5-videos/main/assets/case-thumbnails";
 const EXAMPLES = [
-  {
-    name: "Linear Agents launch",
-    desc: "16:9 launch film, drawn from the real app",
-    img: "/examples/linear-agents.jpg",
-    prompt: "https://linear.app — we are launching Linear Agents that triage and fix issues. Audience: engineering leads. 30 seconds, 16:9.",
-  },
-  {
-    name: "Flashtype launch",
-    desc: "Light and minimal, every edit shown as a diff",
-    img: "/examples/flashtype.jpg",
-    prompt: "Make a 30s, 16:9, light and minimal launch video for https://flashtype.ai, the markdown editor for Claude Code and Codex. The single AHA moment: every agent edit shows up as a diff you accept or reject.",
-  },
-  {
-    name: "Negroni recipe",
-    desc: "1:1 how-to with a step rail and measures",
-    img: "/examples/negroni-illustrated.jpg",
-    position: "50% 0%",
-    prompt:
-      "Create a 30-second, square recipe animation for a Negroni. Start with an empty glass. Show a one-to-one-to-one mix of gin, Campari, and sweet vermouth, with each ingredient and its measurement appearing as it pours. Add ice, stir, then finish with an orange peel. End on a polished shot of the finished cocktail.",
-  },
-  {
-    name: "Negroni, dark bar",
-    desc: "Same recipe, spotlit bar-top and serif type",
-    img: "/examples/negroni-dark.jpg",
-    position: "50% 10%",
-    prompt:
-      "Create a 30-second, square recipe animation for a Negroni on a dark, spotlit bar-top with gold serif type. Gin, Campari and sweet vermouth, one ounce each, with ounce markers on the glass. Add ice, stir, finish with an orange peel.",
-  },
-];
+  { id: "2103315922098470926", by: "stephanlivera", title: "Motion-design showreel", style: "Motion graphics", likes: "16k", look: "kinetic type, shapes that morph into each other, fast cuts on the beat" },
+  { id: "2102591147927654847", by: "RyanSael", title: "Interactive lens lab", style: "3D render", likes: "15.5k", look: "a clean 3D scene, physical camera moves, labels that track objects" },
+  { id: "2102436464323661880", by: "devteamdrew", title: "Journey through the cosmos", style: "Flat vector", likes: "9.6k", look: "bold flat vector shapes, a deep night palette, glowing accents" },
+  { id: "2102801274173587569", by: "donaldjewkes", title: "p(doom), the music video", style: "Anime", likes: "8.9k", look: "anime characters, big expressive poses, punchy title cards" },
+  { id: "2102437977435893771", by: "kevin_t_ngo", title: "What Claude loves", style: "Hand-drawn", likes: "6k", look: "a cozy hand-drawn storybook look, paper textures, a small character" },
+  { id: "2102495989194236158", by: "shfred0", title: "Claude's life, in ink", style: "Woodcut ink", likes: "4.2k", look: "black-and-white woodcut ink, hand-lettered captions, stark contrast" },
+  { id: "2102893186330841502", by: "JustinPerea", title: "Procedural demoscene", style: "Generative", likes: "1.6k", look: "a neon demoscene: procedural tunnels, light trails, glitchy type" },
+  { id: "2102463796149440888", by: "superalesha", title: "A history of Claude models", style: "Paper cutout", likes: "1.2k", look: "layered paper cutouts, a retro sunburst, collage textures" },
+].map((x) => ({
+  ...x,
+  img: `${THUMBS}/${x.id}.webp`,
+  url: `https://x.com/${x.by}/status/${x.id}`,
+  prompt: `Make a 30-second launch video for [your product URL] in a ${x.style.toLowerCase()} style, like @${x.by}'s "${x.title}": ${x.look}.`,
+}));
 
 function Home() {
   const [prompt, setPrompt] = useState("");
@@ -80,8 +67,15 @@ function Home() {
   const use = (text: string) => {
     setPrompt(text);
     scrollTo({ top: 0, behavior: "smooth" });
-    setTimeout(() => box.current?.focus(), 250);
+    // Select the placeholder so typing replaces it with the user's product.
+    setTimeout(() => {
+      const el = box.current;
+      const at = text.indexOf("[your product URL]");
+      el?.focus();
+      if (el && at >= 0) el.setSelectionRange(at, at + "[your product URL]".length);
+    }, 250);
   };
+  const [allProjects, setAllProjects] = useState(false);
 
   return (
     <div className="min-h-full bg-paper">
@@ -121,20 +115,50 @@ function Home() {
         </div>
         {error && <p className="-mt-6 text-sm text-red-600">{error}</p>}
 
-        <section className="mt-10 flex w-full flex-col gap-4">
-          <div className="text-[13px] font-medium text-mute">Examples</div>
+        {projects.length > 0 && (
+          <section className="mt-6 flex w-full flex-col gap-3">
+            <div className="text-[13px] font-medium text-mute">Your projects</div>
+            <div className="flex flex-col divide-y divide-line overflow-hidden rounded-xl border border-line-2 bg-white">
+              {projects.slice(0, allProjects ? undefined : 5).map((p) => (
+                <a key={p.id} href={`#/p/${p.id}`} className="group flex items-center gap-4 px-4 py-3 hover:bg-paper">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.title}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-faint">
+                    {new Date(p.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {p.turns} turn{p.turns === 1 ? "" : "s"}
+                  </span>
+                  <span className="text-faint group-hover:text-ink">→</span>
+                </a>
+              ))}
+            </div>
+            {projects.length > 5 && (
+              <button onClick={() => setAllProjects((a) => !a)} className="self-start rounded-lg px-2 py-1 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
+                {allProjects ? "Show less" : `Show ${projects.length - 5} more`}
+              </button>
+            )}
+          </section>
+        )}
+
+        <section className="mt-6 flex w-full flex-col gap-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <div className="text-[13px] font-medium text-mute">Examples</div>
+            <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-faint hover:text-ink">
+              Most-liked Opus 5.5 videos, via awesome-opus-5-5-videos ↗
+            </a>
+          </div>
           <div className="grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {EXAMPLES.map((x) => (
-              <div key={x.name} className="group flex flex-col gap-3">
-                <button onClick={() => use(x.prompt)} className="block overflow-hidden rounded-[10px] bg-line" title="Use this prompt">
-                  <img src={x.img} alt={x.name} className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" style={{ objectPosition: x.position ?? "50% 50%" }} />
-                </button>
+              <div key={x.id} className="group flex flex-col gap-3">
+                <a href={x.url} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-[10px] bg-line" title={`Watch on X: @${x.by}`}>
+                  <img src={x.img} alt={x.title} loading="lazy" className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                  <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
+                </a>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <div className="text-[15px] font-semibold">{x.name}</div>
-                    <div className="text-[13px] leading-snug text-mute">{x.desc}</div>
+                    <div className="truncate text-[15px] font-semibold">{x.title}</div>
+                    <div className="truncate text-[13px] text-mute">
+                      @{x.by} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
+                    </div>
                   </div>
-                  <button onClick={() => use(x.prompt)} className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
+                  <button onClick={() => use(x.prompt)} title="Start a prompt in this style" className="flex-none rounded-lg border border-line-3 px-3 py-1.5 text-[13px] font-medium hover:bg-bubble">
                     Use
                   </button>
                 </div>
@@ -142,22 +166,6 @@ function Home() {
             ))}
           </div>
         </section>
-
-        {projects.length > 0 && (
-          <section className="flex w-full flex-col gap-4">
-            <div className="text-[13px] font-medium text-mute">Your projects</div>
-            <div className="grid grid-cols-3 gap-3 max-lg:grid-cols-2 max-sm:grid-cols-1">
-              {projects.slice(0, 9).map((p) => (
-                <a key={p.id} href={`#/p/${p.id}`} className="flex flex-col gap-1 rounded-xl border border-line-2 bg-white px-4 py-3 hover:border-line-3 hover:shadow-[0_1px_2px_rgba(0,0,0,.04),0_6px_16px_rgba(0,0,0,.04)]">
-                  <span className="truncate text-sm font-medium">{p.title}</span>
-                  <span className="font-mono text-[11px] text-faint">
-                    {new Date(p.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {p.turns} turn{p.turns === 1 ? "" : "s"}
-                  </span>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );

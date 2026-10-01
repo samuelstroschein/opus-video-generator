@@ -94,11 +94,6 @@ export function ChatPane(props: {
           ←
         </a>
         <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{title ?? "…"}</h1>
-        {chat.costUsd > 0 && (
-          <span className="font-mono text-[11px] text-faint" title="Estimated API-price cost of this project's agent turns. Not billed on a subscription.">
-            ${chat.costUsd.toFixed(2)}
-          </span>
-        )}
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
