@@ -98,7 +98,7 @@ function Home() {
         <div
           {...att.dropProps}
           className={[
-            "flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white/[0.08] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_48px_rgba(0,0,0,.35)] backdrop-blur-xl backdrop-saturate-150",
+            "relative z-20 flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white/[0.08] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_48px_rgba(0,0,0,.35)] backdrop-blur-xl backdrop-saturate-150",
             att.dragging ? "border-white/60" : "border-white/15 focus-within:border-white/30",
           ].join(" ")}
         >
