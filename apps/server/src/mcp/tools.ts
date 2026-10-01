@@ -5,14 +5,14 @@ import { screenshotPage, screenshotUrl } from "../export.js";
 import { runJudge } from "../judge.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
 import { listSkills, loadSkill } from "../skills.js";
-import { listRepoFiles, parseRepo, readRepoFile } from "../github.js";
+import { listRepoFiles, listRepoImages, parseRepo, readRepoFile, relatedRepos } from "../github.js";
 import { readMeta } from "../projects.js";
 import { listPages } from "../pages.js";
 
 export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "judge" };
 
 // A judge sub-agent gets only the tools it needs to look: it can read and screenshot, never write or ask.
-const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url", "github_files", "github_read"]);
+const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url", "github_files", "github_read", "github_related", "github_screenshots"]);
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], isError });
 const fmt = (r: WriteResult, ok: string) => (r.ok ? text(r.warnings.length ? `${ok}\nWarnings (fix these):\n- ${r.warnings.join("\n- ")}` : ok) : text(r.error, true));
@@ -152,6 +152,26 @@ export function buildServer(ctx: ToolContext): McpServer {
       inputSchema: { repo: z.string().describe("owner/name or a github.com URL"), query: z.string().optional() },
     },
     async ({ repo, query }) => text(await listRepoFiles(repo, authed(repo), query)),
+  );
+
+  reg(
+    "github_screenshots",
+    {
+      description:
+        "List every screenshot/raster image in a GitHub repo, grouped by folder. App screenshots are rarely named 'screenshot': they live in artifacts/, docs/, e2e/ or QA folders. Call it on the app repo AND on every sibling repo from github_related, then open four to six that show the real UI with github_read. Prefer the app's own working screenshots over marketing images (website/, hero, og images), which are staged and can differ from the real app.",
+      inputSchema: { repo: z.string().describe("owner/name or a github.com URL") },
+    },
+    async ({ repo }) => text(await listRepoImages(repo, authed(repo))),
+  );
+
+  reg(
+    "github_related",
+    {
+      description:
+        "Find the other repos a product's UI lives in. A product's shell, layout, panels and design system are often a sibling package (workspace:* or the same npm scope), not in the app repo itself. Call this on the app repo first, then read each repo it returns.",
+      inputSchema: { repo: z.string().describe("owner/name or a github.com URL") },
+    },
+    async ({ repo }) => text(await relatedRepos(repo, authed(repo))),
   );
 
   reg(

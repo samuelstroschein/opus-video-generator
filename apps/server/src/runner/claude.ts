@@ -129,6 +129,10 @@ function summarize(name: string, input: Json = {}): string {
       }
     case "github_files":
       return `Searching ${input.repo ?? "repo"}${input.query ? ` for ${input.query}` : ""}`;
+    case "github_screenshots":
+      return `Listing screenshots in ${input.repo ?? "repo"}`;
+    case "github_related":
+      return `Finding sibling repos of ${input.repo ?? "repo"}`;
     case "github_read":
       return `Reading ${input.repo ?? ""}/${input.path ?? ""}`;
     case "review_page":

@@ -78,3 +78,69 @@ export async function readRepoFile(repoInput: string, path: string, authed: bool
   }
   return { kind: "text", text: text.length > 40_000 ? text.slice(0, 40_000) + `\n… (truncated at 40,000 characters; pass start_line and end_line to read the rest)` : text };
 }
+
+/**
+ * A product's UI is often split across repos: a shell or design system in a sibling package (`workspace:*`, same npm scope as the
+ * org). This reads package.json and returns the sibling repos the UI probably lives in, so the agent can read those too.
+ */
+export async function relatedRepos(repoInput: string, authed: boolean): Promise<string> {
+  const repo = parseRepo(repoInput);
+  if (!repo) return `Not a GitHub repo: ${repoInput}`;
+  const owner = repo.split("/")[0];
+  const res = await api(repo, "/contents/package.json", "application/vnd.github.raw+json", authed);
+  if (!res.ok) return `${repo} has no readable package.json (status ${res.status}). Look for the UI in this repo's own files.`;
+  const pkg = JSON.parse(await res.text()) as Record<string, Record<string, string> | string>;
+  const deps = { ...(pkg.dependencies as object), ...(pkg.devDependencies as object), ...(pkg.peerDependencies as object) } as Record<string, string>;
+  const lines: string[] = [];
+  for (const [name, version] of Object.entries(deps)) {
+    const sibling = /^(workspace|file|link):/.test(version) || name.startsWith(`@${owner}/`);
+    if (!sibling) continue;
+    let found: string | null = null;
+    for (const cand of [`${owner}/${name.replace(/^@[^/]+\//, "")}`]) {
+      const r = await api(cand, "", "application/vnd.github+json", authed);
+      if (r.ok) found = `${cand} (${(await r.json() as { private: boolean }).private ? "private" : "public"})`;
+    }
+    if (!found) {
+      try {
+        const npm = await fetch(`https://registry.npmjs.org/${name.replace("/", "%2f")}`);
+        const url = ((await npm.json()) as { repository?: { url?: string } | string }).repository;
+        const parsed = parseRepo(typeof url === "string" ? url.replace(/^git\+/, "") : (url?.url ?? "").replace(/^git\+/, ""));
+        if (parsed) found = `${parsed} (from npm)`;
+      } catch {}
+    }
+    lines.push(`${name} (${version}) -> ${found ?? "repo not found"}`);
+  }
+  return lines.length
+    ? `Sibling packages of ${repo} that probably hold shared UI. Read them the same way (github_files, github_read), especially for the shell, layout, panels, theme and screenshots:\n${lines.join("\n")}`
+    : `${repo} has no sibling packages in package.json; its UI should be in this repo.`;
+}
+
+const IMG = /\.(png|jpe?g|webp|gif)$/i;
+const NOT_UI = /(^|\/)(favicon|apple-touch|safari-pinned|og-image|logo)[^/]*$|(^|\/)(icons?|build|\.github\/pr-assets\/dev-icon)\//i;
+/**
+ * All raster images in a repo grouped by folder. App screenshots are rarely named "screenshot": they sit in artifacts/, docs/,
+ * e2e/ or qa folders with names like history-layout/sidebar.png. This makes them discoverable without guessing words.
+ */
+export async function listRepoImages(repoInput: string, authed: boolean): Promise<string> {
+  const listing = await listRepoFiles(repoInput, authed, "");
+  if (listing.startsWith("Not a GitHub repo") || listing.includes("was not found") || listing.startsWith("GitHub error")) return listing;
+  const repo = parseRepo(repoInput)!;
+  const files = treeCache.get(repo)?.files.filter((f) => IMG.test(f.path) && !NOT_UI.test(f.path)) ?? [];
+  if (!files.length) return `${repo} has no screenshots or raster images.`;
+  const byDir = new Map<string, { path: string; size: number }[]>();
+  for (const f of files) {
+    const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/")) : ".";
+    byDir.set(dir, [...(byDir.get(dir) ?? []), f]);
+  }
+  const out: string[] = [];
+  for (const [dir, list] of [...byDir.entries()].sort()) {
+    out.push(`${dir}/ (${list.length})`);
+    for (const f of list.slice(0, 5)) out.push(`  ${f.path} (${Math.round(f.size / 1024)} KB)`);
+    if (list.length > 5) out.push(`  … ${list.length - 5} more in this folder`);
+    if (out.length > 90) {
+      out.push("… more folders not shown; narrow with github_files");
+      break;
+    }
+  }
+  return `${repo}: ${files.length} image(s) in ${byDir.size} folder(s). The app's own screenshots (QA, e2e, docs, artifacts folders) show the real UI; marketing images (website/, og, hero) are staged and can differ from the app. Open several with github_read.\n${out.join("\n")}`;
+}
