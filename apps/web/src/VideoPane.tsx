@@ -1,58 +1,111 @@
-import { forwardRef } from "react";
-import { fmtTime } from "./api";
+import { forwardRef, useRef, type PointerEvent, type ReactNode } from "react";
 
 export type VideoState = { time: number; duration: number; playing: boolean; scenes: { name: string; dur: number; start: number; desc: string }[] };
+type Cmd = { action: "play" | "pause" | "seek"; time?: number };
 
-/** The video page in an iframe (the engine owns the clock) plus host-owned transport and section bar. */
-export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: VideoState | null; cmd: (c: { action: "play" | "pause" | "seek"; time?: number }) => void }>(
-  function VideoPane({ src, video, cmd }, ref) {
-    const v = video;
-    const current = v?.scenes.find((s) => v.time >= s.start && v.time < s.start + s.dur) ?? v?.scenes.at(-1);
-    return (
-      <div className="flex h-full flex-col bg-black">
-        <iframe ref={ref} title="video" sandbox="allow-scripts allow-same-origin" src={src} className="min-h-0 flex-1 border-0" />
-        <div className="flex flex-col gap-2 border-t border-neutral-800 bg-neutral-950 px-4 py-3 text-neutral-200">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => cmd({ action: v?.playing ? "pause" : "play" })}
-              disabled={!v}
-              className="w-14 rounded-md bg-neutral-800 px-2 py-1 text-sm hover:bg-neutral-700 disabled:opacity-40"
-            >
-              {v?.playing ? "Pause" : "Play"}
-            </button>
-            <span className="w-24 font-mono text-xs text-neutral-400">
-              {fmtTime(v?.time ?? 0)} / {fmtTime(v?.duration ?? 0)}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={v?.duration ?? 0}
-              step={0.01}
-              value={v?.time ?? 0}
-              disabled={!v}
-              onChange={(e) => cmd({ action: "seek", time: Number(e.target.value) })}
-              className="flex-1 accent-[oklch(0.65_0.17_35)]"
-            />
+const fmt = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+
+/** Ruler step that keeps roughly 4 to 10 labelled ticks. */
+function tickStep(duration: number) {
+  for (const s of [1, 2, 5, 10, 15, 30, 60]) if (duration / s <= 10) return s;
+  return 60;
+}
+
+function IconButton({ onClick, disabled, label, children }: { onClick: () => void; disabled?: boolean; label: string; children: ReactNode }) {
+  return (
+    <button onClick={onClick} disabled={disabled} aria-label={label} title={label} className="flex h-8 w-8 items-center justify-center rounded-md text-neutral-300 hover:bg-white/10 hover:text-white disabled:opacity-40">
+      {children}
+    </button>
+  );
+}
+
+/** The video page in an iframe (the engine owns the clock) plus a host-owned timeline. */
+export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: VideoState | null; cmd: (c: Cmd) => void }>(function VideoPane({ src, video, cmd }, ref) {
+  const v = video;
+  const track = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const duration = v?.duration || 1;
+  const current = v?.scenes.find((s) => v.time >= s.start && v.time < s.start + s.dur) ?? v?.scenes.at(-1);
+
+  const seekTo = (clientX: number) => {
+    const r = track.current?.getBoundingClientRect();
+    if (!r || !v) return;
+    cmd({ action: "seek", time: Math.max(0, Math.min(v.duration, ((clientX - r.left) / r.width) * v.duration)) });
+  };
+  const down = (e: PointerEvent) => {
+    dragging.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    seekTo(e.clientX);
+  };
+  const move = (e: PointerEvent) => dragging.current && seekTo(e.clientX);
+  const up = () => (dragging.current = false);
+
+  const step = tickStep(duration);
+  const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => t < duration - step * 0.4);
+  const pct = (t: number) => `${(t / duration) * 100}%`;
+
+  return (
+    <div className="flex h-full flex-col bg-black">
+      <iframe ref={ref} title="video" sandbox="allow-scripts allow-same-origin" src={src} className="min-h-0 flex-1 border-0" />
+      <div className="flex items-stretch gap-4 border-t border-white/10 bg-[#232323] px-4 py-3 text-neutral-300 select-none">
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton label="Back to start" disabled={!v} onClick={() => cmd({ action: "seek", time: 0 })}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 3.5 7.5 8l5.5 4.5zM7.5 3.5 2 8l5.5 4.5z" />
+            </svg>
+          </IconButton>
+          <IconButton label={v?.playing ? "Pause" : "Play"} disabled={!v} onClick={() => cmd({ action: v?.playing ? "pause" : "play" })}>
+            {v?.playing ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <rect x="3.5" y="3" width="3" height="10" rx="0.8" />
+                <rect x="9.5" y="3" width="3" height="10" rx="0.8" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+                <path d="M4.5 3v10l8-5z" />
+              </svg>
+            )}
+          </IconButton>
+          <span className="ml-2 w-14 font-mono text-sm tabular-nums text-neutral-200">{fmt(v?.time ?? 0)}</span>
+        </div>
+
+        <div ref={track} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} className="relative min-w-0 flex-1 cursor-pointer touch-none">
+          {/* ruler */}
+          <div className="relative h-5 text-[10px] text-neutral-400">
+            {ticks.map((t) => (
+              <div key={t} className="absolute top-0 h-full" style={{ left: pct(t) }}>
+                <span className="absolute left-1 top-0 whitespace-nowrap">{t}s</span>
+                <span className="absolute bottom-0 left-0 h-1.5 w-px bg-neutral-500" />
+              </div>
+            ))}
+            <span className="absolute right-0 top-0 whitespace-nowrap">{fmt(duration)}</span>
           </div>
-          <div className="flex gap-1">
+          {/* sections */}
+          <div className="relative h-9">
             {v?.scenes.map((s) => (
-              <button
+              <div
                 key={s.name}
                 title={s.desc}
-                onClick={() => cmd({ action: "seek", time: s.start })}
-                style={{ flex: s.dur }}
-                className={[
-                  "truncate rounded border px-2 py-1 text-left text-[11px]",
-                  current?.name === s.name ? "border-accent bg-neutral-800 text-white" : "border-neutral-700 text-neutral-400 hover:border-neutral-500",
-                ].join(" ")}
+                style={{ left: pct(s.start), width: pct(s.dur) }}
+                className="absolute inset-y-0 p-px"
               >
-                {s.name} · {s.dur}s
-              </button>
+                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current?.name === s.name ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-400"].join(" ")}>
+                  <span className="truncate">
+                    {s.name} <span className="text-neutral-500">· {s.dur}s</span>
+                  </span>
+                </div>
+              </div>
             ))}
           </div>
-          <p className="text-[11px] text-neutral-500">Pause, then click the frame to drop a pin and leave a note on exactly that moment.</p>
+          {/* playhead */}
+          {v && (
+            <div className="pointer-events-none absolute inset-y-0" style={{ left: pct(v.time) }}>
+              <div className="absolute -left-[5px] top-0 h-2.5 w-2.5 rounded-full bg-white shadow" />
+              <div className="absolute -left-px top-1 bottom-0 w-0.5 bg-white" />
+            </div>
+          )}
         </div>
       </div>
-    );
-  },
-);
+    </div>
+  );
+});
