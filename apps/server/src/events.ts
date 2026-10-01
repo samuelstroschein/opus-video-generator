@@ -2,6 +2,18 @@ import fs from "node:fs";
 import type { AgentEvent } from "./runner/types.js";
 import { eventsPath } from "./projects.js";
 
+// A form the agent put on the canvas (the ask_questions tool). Answers come back as the next chat message.
+export type AskQuestion = {
+  id: string;
+  label: string;
+  hint?: string;
+  type: "single" | "multi" | "text";
+  options?: { value: string; label: string; note?: string }[];
+  default?: string | string[];
+  allowOther?: boolean;
+};
+export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
+
 // What a note targets. A document scene (storyboard/still): board? + scene + title. A point in the video: kind "video".
 export type Scope =
   | { kind?: "scene"; board?: string; scene: number; title?: string }
@@ -13,6 +25,7 @@ export type StoredEvent =
   | { type: "user"; text: string; scope?: Scope }
   | { type: "turn.start" }
   | { type: "version"; tag: string }
+  | { type: "ask"; form: AskForm }
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };

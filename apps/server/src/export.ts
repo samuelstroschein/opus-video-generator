@@ -85,3 +85,24 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
     await browser.close();
   }
 }
+
+/** One screenshot of a page (or of the video at time t), for the agent to look at. Returns a JPEG buffer. */
+export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; time?: number }): Promise<Buffer> {
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
+  try {
+    const isVideo = opts.page === "video.html";
+    const page = await browser.newPage({ viewport: isVideo ? { width: 1920, height: 1080 } : { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    await page.goto(`${artifactOrigin}/p/${id}/${opts.page}${isVideo ? "?export=1" : ""}`, { waitUntil: "load" });
+    if (isVideo) {
+      await page.waitForFunction(() => (window as any).__lva?.ready, undefined, { timeout: 30_000 });
+      const info = await page.evaluate(() => ({ w: (window as any).__lva.width as number, h: (window as any).__lva.height as number }));
+      await page.setViewportSize({ width: info.w, height: info.h });
+      await page.evaluate((t) => (window as any).__lva.seekSync(t), opts.time ?? 0);
+    } else {
+      await page.waitForTimeout(600); // let the page's own script render
+    }
+    return await page.screenshot({ type: "jpeg", quality: 80, fullPage: !isVideo });
+  } finally {
+    await browser.close();
+  }
+}

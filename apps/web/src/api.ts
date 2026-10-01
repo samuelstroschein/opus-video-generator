@@ -7,6 +7,17 @@ export const scopeLabel = (s: Scope) =>
 
 export const fmtTime = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
+export type AskQuestion = {
+  id: string;
+  label: string;
+  hint?: string;
+  type: "single" | "multi" | "text";
+  options?: { value: string; label: string; note?: string }[];
+  default?: string | string[];
+  allowOther?: boolean;
+};
+export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
+
 export const STAGES = ["brief", "storyboards", "stills", "video", "export"] as const;
 export type Stage = (typeof STAGES)[number];
 

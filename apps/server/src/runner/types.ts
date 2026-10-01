@@ -9,10 +9,13 @@ export type AgentEvent =
   | { type: "error"; message: string };
 
 export type RunOptions = {
+  /** Scratch folder. The agent has no file tools; this only anchors the CLI's session storage. */
   cwd: string;
+  /** The control plane's MCP endpoint and this turn's bearer token. All project access goes through it. */
+  mcp: { url: string; token: string };
   prompt: string;
   sessionId?: string;
-  /** Appended to the agent's system prompt: current stage, what's missing. */
+  /** The agent's instructions plus the current stage state, appended to the system prompt. */
   context: string;
   signal: AbortSignal;
 };

@@ -1,16 +1,15 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import path from "node:path";
 import type { AgentEvent, AgentRunner, RunOptions } from "./types.js";
 
-// Tools the storyboard stage needs. No Bash yet: the prototype agent only reads the
-// web and writes files in its workspace.
-const TOOLS = "Read,Write,Edit,Glob,Grep,WebFetch,WebSearch";
+// The agent gets NO local file or shell tools. It can read the web, and it reaches the project only through
+// our MCP server (list_files, read_file, write_file, edit_file, ask_questions, view_page).
+const TOOLS = "WebFetch,WebSearch";
 
 type Json = Record<string, any>;
 
 export class ClaudeCliRunner implements AgentRunner {
-  async *run({ cwd, prompt, sessionId, context, signal }: RunOptions): AsyncIterable<AgentEvent> {
+  async *run({ cwd, mcp, prompt, sessionId, context, signal }: RunOptions): AsyncIterable<AgentEvent> {
     const args = [
       "-p",
       "--output-format", "stream-json",
@@ -18,10 +17,11 @@ export class ClaudeCliRunner implements AgentRunner {
       "--include-partial-messages",
       "--permission-mode", "acceptEdits",
       "--tools", TOOLS,
-      // acceptEdits only auto-approves file edits; headless mode has no one to approve web access.
-      "--allowedTools", "WebFetch,WebSearch",
+      // Headless mode has no one to approve tool use, so allow the web tools and every tool of our MCP server.
+      "--allowedTools", "WebFetch,WebSearch,mcp__lva",
       // Isolate from the developer's global skills, MCP servers and user settings.
       "--strict-mcp-config",
+      "--mcp-config", JSON.stringify({ mcpServers: { lva: { type: "http", url: mcp.url, headers: { Authorization: `Bearer ${mcp.token}` } } } }),
       "--disable-slash-commands",
       "--setting-sources", "project",
       "--append-system-prompt", context,
@@ -70,7 +70,7 @@ export class ClaudeCliRunner implements AgentRunner {
             for (const block of e.message?.content ?? []) {
               if (block.type === "tool_use" && !seenTools.has(block.id)) {
                 seenTools.add(block.id);
-                yield { type: "tool.start", id: block.id, name: block.name, summary: summarize(block.name, block.input, cwd) };
+                yield { type: "tool.start", id: block.id, name: block.name, summary: summarize(block.name, block.input) };
               }
             }
             break;
@@ -100,9 +100,9 @@ export class ClaudeCliRunner implements AgentRunner {
   }
 }
 
-function summarize(name: string, input: Json = {}, cwd: string): string {
-  const rel = (p?: string) => (p ? path.relative(cwd, p) || p : "");
-  switch (name) {
+function summarize(name: string, input: Json = {}): string {
+  const short = name.replace(/^mcp__lva__/, "");
+  switch (short) {
     case "WebFetch":
       try {
         return `Fetching ${new URL(input.url).host}`;
@@ -111,13 +111,19 @@ function summarize(name: string, input: Json = {}, cwd: string): string {
       }
     case "WebSearch":
       return `Searching: ${input.query ?? ""}`;
-    case "Write":
-      return `Writing ${rel(input.file_path)}`;
-    case "Edit":
-      return `Editing ${rel(input.file_path)}`;
-    case "Read":
-      return `Reading ${rel(input.file_path)}`;
+    case "write_file":
+      return `Writing ${input.path ?? ""}`;
+    case "edit_file":
+      return `Editing ${input.path ?? ""}`;
+    case "read_file":
+      return `Reading ${input.path ?? ""}`;
+    case "list_files":
+      return "Listing files";
+    case "ask_questions":
+      return "Asking questions";
+    case "view_page":
+      return `Looking at ${input.page ?? "page"}${input.time !== undefined ? ` @ ${input.time}s` : ""}`;
     default:
-      return name;
+      return short;
   }
 }

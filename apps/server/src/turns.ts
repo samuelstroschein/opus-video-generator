@@ -2,7 +2,8 @@ import fs from "node:fs";
 import { log, type Scope } from "./events.js";
 import { ClaudeCliRunner } from "./runner/claude.js";
 import type { AgentRunner } from "./runner/types.js";
-import { commitTurn, readMeta, workspaceDir, writeMeta } from "./projects.js";
+import { agentDir, commitTurn, DIRECTOR_PROMPT, readMeta, workspaceDir, writeMeta } from "./projects.js";
+import { issueToken, revokeToken } from "./mcp/http.js";
 import { stageContext } from "./stage.js";
 
 const runner: AgentRunner = new ClaudeCliRunner();
@@ -30,12 +31,16 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   const prompt = scope ? `${scopePrefix(scope)}\n\n${text}` : text;
 
   const watcher = watchWorkspace(id);
+  const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });
   try {
+    // Instructions are served from the control plane (not a file in the project), so updating them applies to every project.
+    const instructions = fs.readFileSync(DIRECTOR_PROMPT, "utf8");
     for await (const e of runner.run({
-      cwd: workspaceDir(id),
+      cwd: agentDir(id),
+      mcp: { url: `http://localhost:${process.env.PORT ?? 8787}/mcp`, token },
       prompt,
       sessionId: meta.sessionId,
-      context: stageContext(id),
+      context: `${instructions}\n\n${stageContext(id)}`,
       signal: ac.signal,
     })) {
       if (e.type === "session" && e.sessionId !== meta.sessionId) {
@@ -47,6 +52,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   } catch (err) {
     l.emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
   } finally {
+    revokeToken(token);
     watcher.close();
     active.delete(id);
     meta.turns = turn;

@@ -2,9 +2,11 @@
 
 Browser app that turns a real product (URL, brand, screenshots, reference videos) into a launch video through a guided agent harness: Brief → 3 storyboards → scene stills → video with scoped notes → export.
 
-**Status:** prototype 2. All five stages work end to end, and every stage is an HTML page the agent writes: paste a product URL and prompt → brief → three storyboards → pick a board → stills (frozen frames of the real video) → approve → video (play, scrub, pin a note on a frame) → Export a 1080p MP4. A page dropdown switches between the pages that exist; Export is a regular toolbar button. Not built yet: screenshot/reference-video uploads, the agent looking at its own frames, section trim/speed write-back, the clarifying-questions form, Codex.
+**Status:** prototype 2. All five stages work end to end, and every stage is an HTML page the agent writes: paste a product URL and prompt → brief → three storyboards → pick a board → stills (frozen frames of the real video) → approve → video (play, scrub, pin a note on a frame) → Export a 1080p MP4. A page dropdown switches between the pages that exist; Export is a regular toolbar button. The agent asks a short pre-filled direction form (after researching your site) and checks its own frames with screenshots. Not built yet: screenshot/reference-video uploads, section trim/speed write-back, the style reference shelf, Codex.
 
 ## Run it
+
+The agent has no filesystem: it connects over MCP to a tool server in the API (list/read/write/edit files, ask a form, screenshot a page), which is also how the cloud version will work.
 
 Requires Node 22+, pnpm, ffmpeg, Google Chrome (used headless for export; set `LVA_CHROME` to use another binary), and a logged-in `claude` CLI (uses your subscription; `ANTHROPIC_API_KEY` is deliberately ignored).
 

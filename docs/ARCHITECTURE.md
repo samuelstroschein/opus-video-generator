@@ -18,33 +18,35 @@ Why this shape (from the X cluster): one-prompt output is mediocre. What makes t
 
 ## Core idea
 
-> **The agent is a CLI process working inside a per-project workspace directory. The web app is a control plane that spawns it, streams its events to the browser, enforces the stage gates, and renders what the agent writes.**
+> **The agent has no filesystem. It is a CLI process (later: any hosted agent) that connects over MCP to a tool server inside our control plane. The control plane owns all project state, validates every write, enforces the stage gates, and renders what the agent writes.**
 
-Locally, "spawn a CLI in a folder" is a child process. In the cloud, it is the same CLI (or Agent SDK) in a sandbox container with a volume. Same contract, different `AgentRunner`.
+The agent can read the web and call our tools: `list_files`, `read_file`, `write_file`, `edit_file`, `ask_questions`, `view_page` (a real screenshot, so it can check its own work). Locally the CLI is a child process and the tool server is an HTTP endpoint on localhost. In the cloud it is the same MCP endpoint behind a real credential, with the agent running anywhere (a sandbox, the Agent SDK, a hosted agent API). The agent runner changes; the tool surface and the state do not.
 
 ```
 Browser (React SPA)
-  chat pane  ·  stage rail  ·  stage viewer  ·  <hyperframes-player>
+  chat pane  ·  page dropdown  ·  page / video iframe  ·  ask form  ·  Export menu
         │ REST (actions)            ▲ SSE (agent + job events)
         ▼                           │
-Control plane (Node/TS, Hono)  ──────────────────────────────┐
-  projects · stage/gate engine · event log · scope injection │
-  │            │                │                            │
-  │ AgentRunner│ RenderQueue    │ WorkspaceStore / AssetStore│ Ingest
-  ▼            ▼                ▼                            ▼
- claude / codex   HyperFrames     project dir (git repo)     Playwright (brand + site shots)
- CLI subprocess   render (Chrome  brief.json, storyboards/,  ffmpeg (reference-video analysis)
- cwd = workspace  + ffmpeg)       scenes/, assets/, renders/
+Control plane (Node/TS, Hono)  ───────────────────────────────────┐
+  projects · stage state · event log · scope · per-turn tokens     │
+  MCP server  ◄── Streamable HTTP ──  claude / codex CLI           │
+  (the tools)         (bearer token per turn, no local file tools) │
+  │                 │                   │                          │
+  │ Project store   │ Renderer          │ Artifact origin          │ Ingest (later)
+  ▼                 ▼                   ▼                          ▼
+ folder + git       Playwright seeks    separate origin serves     site screenshots,
+ (per-turn commit)  frames → ffmpeg     agent HTML safely          reference analysis
 ```
 
 ### Seams (interfaces), local impl → cloud impl
 
 | Seam | Prototype | Cloud later |
 |---|---|---|
-| `AgentRunner` | spawn `claude -p` / `codex exec` locally | same CLI or Agent SDK in a per-project sandbox (E2B / Fly Machines / Modal / CF Sandbox) |
-| `WorkspaceStore` | folder under `data/projects/<id>` | volume in the sandbox, snapshotted to object storage |
-| `AssetStore` | local folder, served by the API | S3/R2 with signed URLs |
-| `RenderQueue` | in-process worker, 1–2 concurrent | HyperFrames Lambda or container workers |
+| `AgentRunner` | spawn `claude -p` with an HTTP `--mcp-config` (Codex via the same MCP endpoint) | Agent SDK or a hosted agent that is given the MCP URL and a token |
+| Tool server (MCP) | Streamable HTTP route on the API server | same, behind real auth and per-project quotas |
+| Project store | folder under `data/projects/<id>` with a git commit per turn, never visible to the agent | database + object storage; versions as snapshots |
+| Artifact serving | second port (separate origin) | dedicated artifacts domain |
+| `RenderQueue` | in-process Playwright + ffmpeg | container or Lambda workers, split by frame range |
 | `Auth/Billing` | none (single user) | accounts + API-key-based usage metering |
 
 ## Decisions
@@ -78,7 +80,7 @@ projects/<id>/
   .git                    # every agent turn = one commit
 ```
 - **One file per scene** means a note scoped to "scene 3" lets the harness check that the diff touched only `scenes/03-*`. The "change receipt" with exact values is a git diff. "Compare · undo" is `git diff` / `git revert`. Version history (v1…v4) is tags. No custom versioning system.
-- The filesystem is the source of truth, because the agent reads and writes files natively. SQLite (Drizzle) only indexes projects, sessions, the event log and jobs.
+- The project store is the source of truth (a folder locally). The agent reaches it only through MCP tools, which present it as a virtual file tree. SQLite (Drizzle) would only index projects, sessions, the event log and jobs.
 
 ### 4. Stills: frozen frames of the same scene code  (decided)
 A still is the composition rendered at a chosen `T` inside the scene (the hero frame). Cheap, uses the real screenshots and brand, no image-generation API, and what you approve is exactly what gets animated. `stills.html` shows one frozen frame per scene using the same components the video page uses.
@@ -90,8 +92,14 @@ A still is the composition rendered at a chosen `T` inside the scene (the hero f
 - **Host ↔ page bridge** (`_lva/bridge.js`): scene clicks become scoped notes; pins on a still or paused frame will use the same channel.
 - **Clarifying questions are a tool, not chat:** Claude Design opens a form on the canvas (options, "decide for me", "ask me follow-ups") and continues when answered. We want the equivalent: an `lva ask` command the agent calls, the app renders the form, and the answer returns as the tool result.
 
-### 6. Tool surface for the agent
-Keep it small. Most of the work is "edit files". For deterministic actions (render scene N, render still N, pull brand from URL, analyze reference video) the agent calls a tiny workspace CLI, `lva`, which POSTs to the local control plane. It is documented in the workspace's `CLAUDE.md` / `AGENTS.md` (same file, symlinked). It works identically for Claude and Codex with zero MCP config. In the cloud the same handlers can be exposed as an MCP server.
+### 6. Tool surface: MCP, no agent filesystem  (decided, implemented)
+The agent runs with `--tools "WebFetch,WebSearch"` plus our MCP server; its working directory is an empty scratch folder. Consequences that pay off immediately:
+- **Validation on write.** JSX is compiled when written; a syntax error is rejected with the message, so a broken scene never reaches the user. Page contract problems (missing boards, bad `LVA_SCENES` JSON, missing engine script) come back as warnings the agent fixes. Writes are limited to `brief|storyboards|stills|video.html`, `scenes/*.jsx`, `assets/*`; `_lva/` is read-only.
+- **The agent can see.** `view_page` returns a screenshot of a page or of the video at a given time. In practice it now checks its frames, finds real problems (a zoom cropping a header, a still taken before a menu appeared) and fixes them before replying.
+- **Forms without blocking.** `ask_questions` puts a typed form on the canvas and returns immediately; the agent ends its turn and the answers arrive as the next message. Survives reloads and restarts, and is the same in the cloud.
+- **Instructions are server-side** (`templates/director.md`), so a prompt change applies to every project, and nothing about the agent depends on a file in its folder.
+- **Harness-agnostic.** Any MCP-capable agent (Codex, a hosted agent) gets the same tools.
+- **Future:** per-turn scope can be enforced at the tool (reject writes outside the scene the note targets), plus `capture_site`, `analyze_reference`, `render_frame` as further tools.
 
 ### 7. Gates and scope live in the harness, not the prompt
 - The server derives stage state from workspace files (what exists, what's approved) and **injects it into every turn**: current stage, what's missing, and the scope (`scene 4 @ 0:14, pin (x,y)`, from the clicked still or paused frame).

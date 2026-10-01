@@ -7,6 +7,7 @@ import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
 import { stageState } from "./stage.js";
 import { isRunning, startTurn, stopTurn } from "./turns.js";
+import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
 import { listRenders, rendersDir } from "./stage.js";
@@ -24,6 +25,8 @@ const MIME: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".mp4": "video/mp4",
 };
+
+mountMcp(app);
 
 app.get("/api/projects", (c) => c.json(listProjects()));
 

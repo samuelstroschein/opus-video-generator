@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { api, type ProjectState, type Scope } from "./api";
+import { api, type AskForm, type ProjectState, type Scope } from "./api";
 
 export type Item =
   | { kind: "user"; text: string; scope?: Scope }
@@ -9,10 +9,10 @@ export type Item =
   | { kind: "version"; tag: string }
   | { kind: "export"; file: string; seconds: number };
 
-type ChatState = { items: Item[]; running: boolean; costUsd: number; exporting: { frame: number; total: number } | null };
+type ChatState = { items: Item[]; running: boolean; costUsd: number; ask: AskForm | null; exporting: { frame: number; total: number } | null };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, exporting: null };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, exporting: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -21,7 +21,9 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return initial;
     case "user":
       items.push({ kind: "user", text: e.text, scope: e.scope });
-      return { ...state, items };
+      return { ...state, items, ask: null }; // any reply answers the open form
+    case "ask":
+      return { ...state, ask: e.form };
     case "turn.start":
       return { ...state, running: true };
     case "text.delta": {

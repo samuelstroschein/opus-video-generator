@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Scope, type Stage } from "./api";
 import { ExportMenu, PageMenu, type PageItem } from "./Toolbar";
+import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { useProject } from "./useProject";
 import { VideoPane, type VideoState } from "./VideoPane";
@@ -88,7 +89,9 @@ export function ProjectView({ id }: { id: string }) {
           </div>
         </nav>
         <div className="relative min-h-0 flex-1 bg-paper">
-          {page && ready ? (
+          {chat.ask ? (
+            <AskForm key={JSON.stringify(chat.ask).length} form={chat.ask} busy={chat.running} onSubmit={(t) => void send(t)} />
+          ) : page && ready ? (
             tab === "video" ? (
               <VideoPane ref={iframe} src={api.fileUrl(id, page, tick)} video={video} cmd={cmd} />
             ) : (

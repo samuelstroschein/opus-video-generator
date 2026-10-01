@@ -14,6 +14,13 @@ export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; t
 
 export const projectDir = (id: string) => path.join(DATA_DIR, safeId(id));
 export const workspaceDir = (id: string) => path.join(projectDir(id), "workspace");
+/** Empty scratch folder used as the agent CLI's cwd. The agent has no file tools, so it never sees the workspace. */
+export const agentDir = (id: string) => {
+  const d = path.join(projectDir(id), "agent");
+  fs.mkdirSync(d, { recursive: true });
+  return d;
+};
+export const DIRECTOR_PROMPT = path.join(REPO_ROOT, "templates", "director.md");
 const metaPath = (id: string) => path.join(projectDir(id), "meta.json");
 export const eventsPath = (id: string) => path.join(projectDir(id), "events.jsonl");
 
@@ -27,8 +34,6 @@ export function createProject(prompt: string): ProjectMeta {
   const meta: ProjectMeta = { id, createdAt: new Date().toISOString(), turns: 0, prompt };
   fs.mkdirSync(workspaceDir(id), { recursive: true });
   fs.cpSync(TEMPLATE_DIR, workspaceDir(id), { recursive: true });
-  // AGENTS.md is the Codex equivalent of CLAUDE.md; keep one source of truth.
-  fs.symlinkSync("CLAUDE.md", path.join(workspaceDir(id), "AGENTS.md"));
   git(id, "init", "-q", "-b", "main");
   git(id, "add", "-A");
   git(id, "commit", "-q", "-m", "Project created");
