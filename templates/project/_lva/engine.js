@@ -4,7 +4,7 @@
 //
 // THE MODEL: the whole video is ONE React tree rendered as a PURE FUNCTION OF ONE TIME VALUE, T (seconds).
 // Nothing mounts or unmounts at scene boundaries. Every scene component renders ALL the time and decides what
-// to show from T. That is what makes the video seekable, so the host can scrub it, freeze it into stills,
+// to show from T. That is what makes the video seekable, so the host can scrub it, freeze it into storyboard frames,
 // and export any frame range by seeking to a time and taking a screenshot.
 //
 // API
@@ -44,7 +44,7 @@
 //
 // MODES (query string, the engine handles them; never implement them yourself)
 //   (none)     interactive: the host app shows play/pause and a scrubber; the engine loops.
-//   ?still=T   frozen at T seconds, no interaction. Used by stills.html to show a frame of the real video.
+//   ?still=T   frozen at T seconds, no interaction. Used by storyboard.html to show a frame of the real video.
 //   ?export=1  unscaled at 0,0, paused, driven by window.__lva.seekSync(t). Used by the exporter.
 //
 // HOST PROTOCOL (the host owns playback chrome; the engine owns the clock)

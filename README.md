@@ -2,7 +2,7 @@
 
 Browser app that turns a real product (URL, brand, screenshots, reference videos) into a launch video through a guided agent harness: Brief → 3 storyboards → scene stills → video with scoped notes → export.
 
-**Status:** prototype 2. All five stages work end to end, and every stage is an HTML page the agent writes: paste a product URL and prompt → brief → three storyboards → pick a board → stills (frozen frames of the real video) → approve → video (play, scrub, pin a note on a frame) → Export a 1080p MP4. A page dropdown switches between the pages that exist; Export is a regular toolbar button. The agent asks a short pre-filled direction form (after researching your site) and checks its own frames with screenshots. Not built yet: screenshot/reference-video uploads, section trim/speed write-back, the style reference shelf, Codex.
+**Status:** prototype 3. The flow: prompt → a short pre-filled form (after the agent researches your site) → **Directions** (three visual hero frames, pick one) → **Storyboard** (a filmstrip of real frames from the video; click a frame and use one-click chips like "Bigger text" or "Show real UI") → approve → **Video** (play, scrub, pin a note on a frame) → Export a 1080p MP4. Every page is HTML the agent writes, and the agent checks its own frames with screenshots. Not built yet: screenshot/reference-video uploads, section trim/speed write-back, a style reference shelf, scope enforcement at the tool, Codex.
 
 ## Run it
 

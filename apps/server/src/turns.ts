@@ -24,6 +24,10 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   const l = log(id);
   const meta = readMeta(id);
   const turn = meta.turns + 1;
+  // The page buttons send fixed phrases; they are the gates between stages.
+  if (/^Go with direction|^None of these fit/i.test(text)) meta.storyboardApproved = false;
+  if (/^Storyboard approved/i.test(text)) meta.storyboardApproved = true;
+  writeMeta(meta);
   l.emit({ type: "user", text, scope });
   l.emit({ type: "turn.start" });
 

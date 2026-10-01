@@ -10,7 +10,7 @@ const TEMPLATE_DIR = path.join(REPO_ROOT, "templates", "project");
 
 // Layout: <DATA_DIR>/<id>/{meta.json, events.jsonl, workspace/}
 // The workspace is the agent's cwd and its own git repo (one commit per turn = a version).
-export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string };
+export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string; storyboardApproved?: boolean };
 
 export const projectDir = (id: string) => path.join(DATA_DIR, safeId(id));
 export const workspaceDir = (id: string) => path.join(projectDir(id), "workspace");

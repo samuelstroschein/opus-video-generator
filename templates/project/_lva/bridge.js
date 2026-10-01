@@ -1,4 +1,4 @@
-// Host bridge for the document pages (brief, storyboards, stills). Include with <script src="_lva/bridge.js"></script>.
+// Host bridge for the document pages (brief, directions, storyboard). Include with <script src="_lva/bridge.js"></script>.
 //   [data-lva-scene] (optionally inside [data-lva-board]) : click -> scoped note target (highlighted with .lva-selected)
 //   [data-lva-send="text"]                                 : click -> the host sends that text as a chat message
 // The video page does not use this file; engine.js speaks the host protocol itself.

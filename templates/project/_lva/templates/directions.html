@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Directions</title>
+<!--
+  STARTING POINT, not a final page. Copy to directions.html and replace the sample content.
+  Three visual directions, one hero frame each. This page must be LOOKED AT, not read: almost no text.
+  Each hero frame is a self-contained 16:9 mock of the video's most characteristic moment, drawn in that
+  direction's own style (colors, type, layout), inline HTML/CSS/SVG only, sized in cqw units so it scales.
+  Per card allow only: a 2-4 word name, ONE line (max 10 words) stating the bet, and a meta line.
+  The app depends on this contract, keep it:
+    - exactly three  data-lva-direction="A|B|C"  elements
+    - in each: a Pick button  <button class="pick" data-lva-send="Go with direction B. Build the storyboard.">
+    - one "none fit" button  <button data-lva-send="None of these fit. Ask me what is off and show three new directions.">
+    - <script src="_lva/bridge.js"></script> at the end of <body>
+-->
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e4e1da; --bg:#faf9f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font:14px/1.35 system-ui,-apple-system,sans-serif; }
+  h1 { margin:0 0 16px; font-size:18px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; }
+  .dir { background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:10px; transition:border-color .15s, box-shadow .15s; }
+  .dir:hover { border-color:var(--ink); box-shadow:0 4px 18px rgba(0,0,0,.08); }
+  .hero { container-type:inline-size; aspect-ratio:16/9; border-radius:8px; overflow:hidden; position:relative; background:#0b0c0f; color:#eceef2; }
+  /* inside .hero size everything with cqw, e.g. font-size:7cqw */
+  .hero .sample { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:8cqw; font-weight:600; letter-spacing:-.04em; }
+  .meta { padding:0 4px; }
+  .meta .name { font-weight:600; font-size:15px; display:flex; align-items:baseline; gap:8px; }
+  .meta .id { font:700 11px ui-monospace,monospace; background:var(--ink); color:#fff; border-radius:4px; padding:1px 6px; }
+  .meta .bet { margin:3px 0 0; color:#444; } .meta .facts { margin:3px 0 0; color:var(--mute); font-size:12px; }
+  .pick { margin:2px 4px 4px; font:600 13px system-ui; background:var(--ink); color:#fff; border:0; border-radius:8px; padding:9px 12px; cursor:pointer; }
+  .none { margin-top:18px; font:500 13px system-ui; color:var(--mute); background:none; border:0; text-decoration:underline; cursor:pointer; padding:0; }
+</style>
+</head>
+<body>
+<h1>Pick a direction</h1>
+<div class="grid">
+  <article class="dir" data-lva-direction="A">
+    <div class="hero"><div class="sample">Hero frame A</div></div>
+    <div class="meta">
+      <div class="name"><span class="id">A</span>Fast cuts</div>
+      <p class="bet">One line, max ten words, naming the bet.</p>
+      <p class="facts">24s · 6 scenes · kinetic type</p>
+    </div>
+    <button class="pick" data-lva-send="Go with direction A. Build the storyboard.">Pick A</button>
+  </article>
+  <article class="dir" data-lva-direction="B"><!-- same structure --></article>
+  <article class="dir" data-lva-direction="C"><!-- same structure --></article>
+</div>
+<button class="none" data-lva-send="None of these fit. Ask me what is off and show three new directions.">None of these fit</button>
+<script src="_lva/bridge.js"></script>
+</body>
+</html>

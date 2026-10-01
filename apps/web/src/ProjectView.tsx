@@ -8,8 +8,8 @@ import { VideoPane, type VideoState } from "./VideoPane";
 
 const PAGES: (PageItem & { stage: Stage })[] = [
   { id: "brief", stage: "brief", label: "Brief", file: "brief.html" },
-  { id: "storyboards", stage: "storyboards", label: "Storyboards", file: "storyboards.html" },
-  { id: "stills", stage: "stills", label: "Stills", file: "stills.html" },
+  { id: "directions", stage: "directions", label: "Directions", file: "directions.html" },
+  { id: "storyboard", stage: "storyboard", label: "Storyboard", file: "storyboard.html" },
   { id: "video", stage: "video", label: "Video", file: "video.html" },
 ];
 
@@ -65,10 +65,10 @@ export function ProjectView({ id }: { id: string }) {
 
   const cmd = (c: { action: "play" | "pause" | "seek"; time?: number }) => iframe.current?.contentWindow?.postMessage({ type: "lva.cmd", ...c }, "*");
 
-  // Don't reload the (heavy) video or stills pages while the agent is mid-write; they settle when the turn ends.
+  // Don't reload the (heavy) video or storyboard pages while the agent is mid-write; they settle when the turn ends.
   const idleTick = useRef(0);
   if (!chat.running) idleTick.current = fileTick;
-  const tick = (chat.running && (tab === "video" || tab === "stills") ? idleTick.current : fileTick) + reloads * 1000;
+  const tick = (chat.running && (tab === "video" || tab === "storyboard") ? idleTick.current : fileTick) + reloads * 1000;
 
   const current = PAGES.find((p) => p.stage === tab);
   const page = current?.file;

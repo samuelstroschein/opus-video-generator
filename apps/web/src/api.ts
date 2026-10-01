@@ -18,7 +18,7 @@ export type AskQuestion = {
 };
 export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
 
-export const STAGES = ["brief", "storyboards", "stills", "video", "export"] as const;
+export const STAGES = ["brief", "directions", "storyboard", "video", "export"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export type ProjectState = {

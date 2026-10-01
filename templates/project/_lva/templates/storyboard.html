@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storyboard</title>
+<!--
+  STARTING POINT, not a final page. Copy to storyboard.html and adapt. READ IT AS A FILMSTRIP, NOT A DOCUMENT.
+  One frame per scene of the chosen direction. Each frame is a FROZEN FRAME OF THE REAL VIDEO PAGE: an iframe of
+  video.html?still=<seconds>. Choose the moment where each scene looks best (usually late in its entrance).
+  Caption per frame: the scene number + title and, at most, the on-screen words. No descriptions, no paragraphs.
+  Restyle freely. The app depends on this contract, keep it:
+    - one  data-lva-frame  figure per scene, also carrying  data-lva-scene="<n>" data-lva-title="<title>"
+      (clicking a figure makes it the target of the next note)
+    - the iframe inside has pointer-events:none so the click reaches the figure
+    - the button  <button data-lva-send="Storyboard approved. Build the video.">
+    - <script src="_lva/bridge.js"></script> at the end of <body>, and a .lva-selected style
+-->
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e4e1da; --bg:#faf9f6; --accent:#c2552b; --accent-soft:#fbeee8; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font:14px/1.35 system-ui,-apple-system,sans-serif; }
+  .top { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .top h1 { margin:0; font-size:18px; font-weight:600; } .top p { margin:0; color:var(--mute); font-size:12.5px; }
+  .approve { margin-left:auto; font:600 13px system-ui; background:var(--ink); color:#fff; border:0; border-radius:8px; padding:9px 16px; cursor:pointer; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+  figure { margin:0; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px; cursor:pointer; transition:border-color .15s; }
+  figure:hover { border-color:var(--ink); }
+  figure.lva-selected { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .frame { aspect-ratio:16/9; border-radius:7px; overflow:hidden; background:#000; }
+  .frame iframe { width:100%; height:100%; border:0; pointer-events:none; }
+  figcaption { margin:8px 4px 2px; display:flex; gap:8px; align-items:baseline; font-weight:600; font-size:13px; }
+  figcaption .n { font:600 11px ui-monospace,monospace; color:var(--mute); }
+  figcaption .t { margin-left:auto; font:400 11px ui-monospace,monospace; color:var(--mute); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Storyboard</h1><p>Click a frame to change it.</p>
+  <button class="approve" data-lva-send="Storyboard approved. Build the video.">Approve → build video</button>
+</div>
+<div class="grid">
+  <figure data-lva-frame data-lva-scene="1" data-lva-title="Hook">
+    <div class="frame"><iframe src="video.html?still=1.8" title="Hook"></iframe></div>
+    <figcaption><span class="n">1</span>Hook<span class="t">0–3s</span></figcaption>
+  </figure>
+  <!-- one figure per scene -->
+</div>
+<script src="_lva/bridge.js"></script>
+</body>
+</html>

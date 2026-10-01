@@ -47,7 +47,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     "write_file",
     {
       description:
-        "Create or overwrite a file. Writable: brief.html, storyboards.html, stills.html, video.html, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; page contract problems come back as warnings.",
+        "Create or overwrite a file. Writable: brief.html, directions.html, storyboard.html, video.html, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; page contract problems come back as warnings.",
       inputSchema: { path: z.string(), content: z.string() },
     },
     async ({ path, content }) => fmt(writeFile(id, path, content), `Saved ${path}.`),
@@ -79,8 +79,8 @@ export function buildServer(ctx: ToolContext): McpServer {
     "view_page",
     {
       description:
-        "Take a screenshot to check your own work. page is one of brief.html, storyboards.html, stills.html, video.html. For video.html pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
-      inputSchema: { page: z.enum(["brief.html", "storyboards.html", "stills.html", "video.html"]), time: z.number().optional() },
+        "Take a screenshot to check your own work. page is one of brief.html, directions.html, storyboard.html, video.html. For video.html pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
+      inputSchema: { page: z.enum(["brief.html", "directions.html", "storyboard.html", "video.html"]), time: z.number().optional() },
     },
     async ({ page, time }) => {
       try {

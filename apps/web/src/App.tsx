@@ -47,7 +47,7 @@ function Home() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Launch video from your product</h1>
         <p className="mt-2 text-neutral-600">
-          Paste your product URL and say what you're launching. The agent reads your site, writes a brief, and proposes three storyboards.
+          Paste your product URL and say what you're launching. The agent reads your site, writes a brief, and shows you three directions to pick from.
         </p>
       </div>
       <div className="rounded-xl border-[1.5px] border-line bg-white p-3 shadow-sm">
@@ -66,7 +66,7 @@ function Home() {
             disabled={!prompt.trim() || busy}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
-            {busy ? "Starting…" : "Create storyboards"}
+            {busy ? "Starting…" : "Start"}
           </button>
         </div>
       </div>
