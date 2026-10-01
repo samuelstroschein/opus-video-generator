@@ -38,6 +38,7 @@ function Home() {
   const [playing, setPlaying] = useState<Example | null>(null);
   const att = useAttachments(setError);
   const box = useRef<HTMLTextAreaElement>(null);
+  const mirror = useRef<HTMLDivElement>(null);
   useEffect(() => {
     api.list().then(setProjects).catch(() => {});
     api.examples().then(setExamples).catch(() => {});
@@ -96,8 +97,23 @@ function Home() {
           ].join(" ")}
         >
           <PendingFiles files={att.files} remove={att.remove} />
+          <div className="relative">
+          {/* The blanks stay highlighted: a mirror of the text sits behind the (transparent) textarea, with each [blank] marked. */}
+          <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
+            {prompt.split(/(\[[^\]\n]{2,40}\])/).map((part, i) =>
+              i % 2 ? (
+                <mark key={i} className="rounded-[4px] bg-accent-soft text-transparent shadow-[0_0_0_2px_var(--color-accent-soft)]">
+                  {part}
+                </mark>
+              ) : (
+                part
+              ),
+            )}
+            {"\u200b"}
+          </div>
           <textarea
             ref={box}
+            onScroll={(e) => mirror.current && (mirror.current.scrollTop = e.currentTarget.scrollTop)}
             autoFocus
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -115,11 +131,11 @@ function Home() {
             }}
             rows={3}
             placeholder={att.dragging ? "Drop files to attach" : "Describe the video you want…"}
-            className="resize-none bg-transparent text-[17px] leading-normal placeholder:text-faint"
+            className="relative block w-full resize-none bg-transparent text-[17px] leading-normal placeholder:text-faint"
           />
+          </div>
           <div className="flex items-center justify-between gap-3">
             <AttachButton onPick={att.add} size="lg" />
-            {blanksLeft && <span className="flex-1 text-right text-[13px] text-faint">Fill in the [blanks] · Tab jumps to the next</span>}
             <button onClick={start} disabled={(!prompt.trim() && !att.files.length) || busy} className="rounded-[10px] bg-ink px-[18px] py-2.5 text-sm font-medium text-white disabled:opacity-35">
               {busy ? "Starting…" : "Generate"}
             </button>
