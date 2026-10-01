@@ -87,7 +87,11 @@ function Home() {
   return (
     <div className="min-h-full bg-paper">
       <div className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[120px] max-sm:pt-16">
-        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] max-sm:text-4xl">Generate videos with Opus 5.5</h1>
+        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] max-sm:text-4xl">
+          Generate videos with
+          <img src="/claude-icon.png" alt="Claude" className="ml-[14px] mr-[10px] inline-block h-[46px] w-[46px] object-contain align-[-4px] max-sm:h-[28px] max-sm:w-[28px] max-sm:align-[-3px]" />
+          Opus 5.5
+        </h1>
 
         <div
           {...att.dropProps}
