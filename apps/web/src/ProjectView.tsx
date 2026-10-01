@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, STAGES, type Scope, type Stage } from "./api";
+import { api, type Scope, type Stage } from "./api";
+import { ExportMenu, PageMenu, type PageItem } from "./Toolbar";
 import { ChatPane } from "./ChatPane";
-import { ExportPanel } from "./ExportPanel";
 import { useProject } from "./useProject";
 import { VideoPane, type VideoState } from "./VideoPane";
 
-const PAGE: Partial<Record<Stage, string>> = { brief: "brief.html", storyboards: "storyboards.html", stills: "stills.html", video: "video.html" };
-const LABEL: Record<Stage, string> = { brief: "Brief", storyboards: "Storyboards", stills: "Stills", video: "Video", export: "Export" };
+const PAGES: (PageItem & { stage: Stage })[] = [
+  { id: "brief", stage: "brief", label: "Brief", file: "brief.html" },
+  { id: "storyboards", stage: "storyboards", label: "Storyboards", file: "storyboards.html" },
+  { id: "stills", stage: "stills", label: "Stills", file: "stills.html" },
+  { id: "video", stage: "video", label: "Video", file: "video.html" },
+];
 
 export function ProjectView({ id }: { id: string }) {
   const { chat, state, fileTick } = useProject(id);
   const [tab, setTab] = useState<Stage>("brief");
+  const [reloads, setReloads] = useState(0);
   const [scope, setScope] = useState<Scope | null>(null);
   const [error, setError] = useState("");
   const [video, setVideo] = useState<VideoState | null>(null);
@@ -19,7 +24,7 @@ export function ProjectView({ id }: { id: string }) {
 
   // Follow the latest FINISHED stage as it advances (an unfinished stage has nothing to show, and the
   // previous page is where the user's next action, like picking a board, happens).
-  const latestReady = state ? ([...STAGES].reverse().find((s) => state.ready[s]) ?? "brief") : null;
+  const latestReady = state ? ([...PAGES].reverse().find((p) => state.ready[p.stage])?.stage ?? "brief") : null;
   useEffect(() => {
     if (latestReady && lastStage.current !== latestReady) {
       lastStage.current = latestReady;
@@ -62,38 +67,28 @@ export function ProjectView({ id }: { id: string }) {
   // Don't reload the (heavy) video or stills pages while the agent is mid-write; they settle when the turn ends.
   const idleTick = useRef(0);
   if (!chat.running) idleTick.current = fileTick;
-  const tick = chat.running && (tab === "video" || tab === "stills") ? idleTick.current : fileTick;
+  const tick = (chat.running && (tab === "video" || tab === "stills") ? idleTick.current : fileTick) + reloads * 1000;
 
-  const page = PAGE[tab];
+  const current = PAGES.find((p) => p.stage === tab);
+  const page = current?.file;
   const ready = state?.ready[tab];
+  const available = PAGES.filter((p) => state?.ready[p.stage]);
 
   return (
     <div className="grid h-full grid-cols-[400px_1fr]">
       <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
       <section className="flex min-h-0 flex-col border-l border-line">
-        <nav className="flex items-center gap-1 border-b border-line bg-white px-4 py-2 text-sm">
-          {STAGES.map((st, i) => {
-            const clickable = !!state && (state.ready[st] || st === state.stage);
-            return (
-              <div key={st} className="flex items-center gap-1">
-                {i > 0 && <span className="text-neutral-300">›</span>}
-                <button
-                  disabled={!clickable}
-                  onClick={() => setTab(st)}
-                  className={["rounded-md px-2 py-1", tab === st ? "bg-neutral-900 text-white" : clickable ? "hover:bg-paper" : "text-neutral-400"].join(" ")}
-                >
-                  {state?.ready[st] && <span className={tab === st ? "" : "text-green-700"}>✓ </span>}
-                  {i + 1} {LABEL[st]}
-                </button>
-              </div>
-            );
-          })}
-          <span className="ml-auto font-mono text-xs text-neutral-400">{page ?? ""}</span>
+        <nav className="flex items-center gap-2 border-b border-line bg-white px-3 py-2">
+          <button onClick={() => setReloads((n) => n + 1)} title="Reload" className="rounded-md px-2 py-1.5 text-neutral-500 hover:bg-paper hover:text-neutral-900">
+            ↻
+          </button>
+          <PageMenu pages={available} current={current} onPick={(id) => setTab(id as Stage)} />
+          <div className="ml-auto">
+            <ExportMenu id={id} canExport={!!state?.ready.video} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
+          </div>
         </nav>
         <div className="relative min-h-0 flex-1 bg-paper">
-          {tab === "export" ? (
-            <ExportPanel id={id} canExport={!!state?.ready.video} exporting={chat.exporting} renders={state?.renders ?? []} />
-          ) : page && ready ? (
+          {page && ready ? (
             tab === "video" ? (
               <VideoPane ref={iframe} src={api.fileUrl(id, page, tick)} video={video} cmd={cmd} />
             ) : (
