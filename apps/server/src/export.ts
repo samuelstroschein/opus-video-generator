@@ -15,7 +15,7 @@ import { readMeta } from "./projects.js";
 const running = new Set<string>();
 export const isExporting = (id: string) => running.has(id);
 
-function chromePath(): string {
+export function chromePath(): string {
   const candidates = [
     process.env.LVA_CHROME,
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -88,14 +88,43 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
   }
 }
 
-/** One screenshot of a page (or of the video at time t), for the agent to look at. Returns a JPEG buffer. */
-export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; video: boolean; time?: number }): Promise<Buffer> {
+/**
+ * Opens a storyboard-style canvas page with its pan/zoom transform removed and the viewport grown to the whole
+ * world, so every frame is on screen at scale 1 (unscaled CSS pixels, which is what measuring and zooming need).
+ */
+export async function openCanvasUnscaled(browser: import("playwright-core").Browser, url: string) {
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 2 });
+  await page.goto(url, { waitUntil: "load" });
+  await page.waitForTimeout(700);
+  const size = await page.evaluate(() => {
+    const w = document.getElementById("versions");
+    return w ? { w: w.scrollWidth, h: w.scrollHeight } : null;
+  });
+  if (size) {
+    await page.setViewportSize({ width: Math.min(Math.max(size.w + 40, 1400), 6000), height: Math.min(Math.max(size.h + 40, 900), 5000) });
+    await page.waitForTimeout(250); // the page refits on resize; wait, then clear the transform
+    await page.evaluate(() => {
+      const w = document.getElementById("versions");
+      if (w) w.style.transform = "none";
+    });
+  }
+  return page;
+}
+
+/** One screenshot of a page, of the video at time t, or (scene given) of one storyboard frame at full size. Returns a JPEG. */
+export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; video: boolean; time?: number; scene?: number }): Promise<Buffer> {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
   try {
-    const isVideo = opts.video;
-    const page = await browser.newPage({ viewport: isVideo ? { width: 1920, height: 1080 } : { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-    await page.goto(`${artifactOrigin}/p/${id}/${opts.page}${isVideo ? "?export=1" : ""}`, { waitUntil: "load" });
-    if (isVideo) {
+    const url = `${artifactOrigin}/p/${id}/${opts.page}${opts.video ? "?export=1" : ""}`;
+    if (opts.scene !== undefined && !opts.video) {
+      const page = await openCanvasUnscaled(browser, url);
+      const frame = page.locator(`.version >> nth=0`).locator(`[data-lva-beat][data-lva-scene="${opts.scene}"] .wf`).first();
+      if (!(await frame.count())) throw new Error(`No frame with scene ${opts.scene} in the newest version.`);
+      return await frame.screenshot({ type: "jpeg", quality: 85 });
+    }
+    const page = await browser.newPage({ viewport: opts.video ? { width: 1920, height: 1080 } : { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    await page.goto(url, { waitUntil: "load" });
+    if (opts.video) {
       await page.waitForFunction(() => (window as any).__lva?.ready, undefined, { timeout: 30_000 });
       const info = await page.evaluate(() => ({ w: (window as any).__lva.width as number, h: (window as any).__lva.height as number }));
       await page.setViewportSize({ width: info.w, height: info.h });
@@ -103,7 +132,7 @@ export async function screenshotPage(id: string, artifactOrigin: string, opts: {
     } else {
       await page.waitForTimeout(600); // let the page's own script render
     }
-    return await page.screenshot({ type: "jpeg", quality: 80, fullPage: !isVideo });
+    return await page.screenshot({ type: "jpeg", quality: 80, fullPage: !opts.video });
   } finally {
     await browser.close();
   }

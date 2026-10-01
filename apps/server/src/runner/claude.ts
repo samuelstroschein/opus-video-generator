@@ -9,16 +9,16 @@ const TOOLS = "WebFetch,WebSearch";
 type Json = Record<string, any>;
 
 export class ClaudeCliRunner implements AgentRunner {
-  async *run({ cwd, mcp, prompt, sessionId, context, signal }: RunOptions): AsyncIterable<AgentEvent> {
+  async *run({ cwd, mcp, prompt, sessionId, context, signal, webTools = true }: RunOptions): AsyncIterable<AgentEvent> {
     const args = [
       "-p",
       "--output-format", "stream-json",
       "--verbose",
       "--include-partial-messages",
       "--permission-mode", "acceptEdits",
-      "--tools", TOOLS,
+      "--tools", webTools ? TOOLS : "",
       // Headless mode has no one to approve tool use, so allow the web tools and every tool of our MCP server.
-      "--allowedTools", "WebFetch,WebSearch,mcp__lva",
+      "--allowedTools", webTools ? "WebFetch,WebSearch,mcp__lva" : "mcp__lva",
       // Isolate from the developer's global skills, MCP servers and user settings.
       "--strict-mcp-config",
       "--mcp-config", JSON.stringify({ mcpServers: { lva: { type: "http", url: mcp.url, headers: { Authorization: `Bearer ${mcp.token}` } } } }),
@@ -127,8 +127,10 @@ function summarize(name: string, input: Json = {}): string {
       } catch {
         return "Looking at page";
       }
+    case "review_page":
+      return `Reviewing ${input.page ?? "page"} with a judge`;
     case "view_page":
-      return `Looking at ${input.page ?? "page"}${input.time !== undefined ? ` @ ${input.time}s` : ""}`;
+      return `Looking at ${input.page ?? "page"}${input.time !== undefined ? ` @ ${input.time}s` : ""}${input.scene !== undefined ? ` frame ${input.scene}` : ""}`;
     default:
       return short;
   }

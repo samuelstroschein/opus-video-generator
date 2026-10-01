@@ -11,12 +11,28 @@
 
   AN INFINITE WHITE CANVAS holding every VERSION of the story, newest on top. Pan (scroll or drag) and zoom (pinch or
   ctrl+scroll) are built in (the script at the bottom; do not rewrite it); double-click empty space to fit the newest
-  version. The user reviews the STORY (hook, order, payoff), at MID FIDELITY: the product must be RECOGNIZABLE in every
-  frame (its real layout, labels and copy, its own theme and a few of its real colors used flat, its real icons), but
-  simplified: few elements, flat fills, no shadows or gradients, no pixel polish. Placeholders only for imagery, video
-  and art. The words in a frame are the words that will appear on screen, never bracketed descriptions. A normal
-  sans-serif font; no handwriting fonts. No buttons or controls: the user answers in chat and you guide the next step
-  there. Open _lva/references/storyboard-example.html to see the bar.
+  version. No buttons or controls: the user answers in chat and you guide the next step there.
+
+  FRAME CRAFT (standard storyboard practice). The user reviews the STORY, at mid fidelity: the product must be
+  recognizable, but each frame is about ONE thing.
+    1. ONE SUBJECT per frame: the single thing the viewer must notice. Mark it class="subject". Make it the largest
+       thing in the frame (at least a tenth of the frame, usually half), full contrast, centered or on a third.
+    2. THE PRODUCT IS THE FRAME. In every beat that shows the product, draw the product's REAL UI inside <div class="ui">
+       with its real arrangement (sidebar, document, side panel, list, menu), its real colors and at least 3 of its real
+       labels (file names, tabs, buttons). Fade everything that is not the subject with class="ctx". The SUBJECT is a
+       real component OF that UI, in the place it lives (the diff inside the document, "Restore" inside the history
+       list), NEVER a floating card laid over grey bars. Crop to the moment by scaling .ui:
+       style="transform:scale(1.6);--ox:70%;--oy:45%" (origin = the subject). Leave out window chrome, title bars,
+       traffic lights, metadata (ids, timestamps, counts) and secondary lists (3 rows max). Hook and call-to-action
+       beats can be type-only. At least 40% of frames must have a .ui.
+    3. WORDS are the words that will appear on screen or that carry the beat's meaning. At most 8 text elements per
+       frame. No bracketed descriptions like [Logo]; draw the real wordmark as text in the brand's style.
+    4. TYPE: use ONLY .t-hero .t-xl .t-lg .t-md .t-sm (they scale with the frame). Never hand-set px font sizes.
+    5. Placeholders only for imagery, video and art (class="ph" with a short lowercase label).
+    6. Use .stage to center content; no top-anchored windows with a blank bottom half.
+    7. THE 1-SECOND TEST: could someone tell what to look at in one second? If not, remove things.
+  After writing, call review_page("storyboard", "storyboard.html"): a judge agent compares your frames with the real
+  product and tells you what to fix. Open _lva/references/storyboard-example.html to see the fidelity bar.
 
   VERSIONS. The first story is v1. Every revision (a user note, a chip, your own improvement) becomes a NEW version:
   insert a new <section class="version"> directly below the VERSIONS marker comment (newest on top), as a full copy
@@ -31,9 +47,13 @@
   CONTRACT, keep it:
     - <section class="version" data-lva-version="vN"> per version
     - <figure class="card" data-lva-beat data-lva-scene="<n>" data-lva-title="<title>"> per beat inside it
-    - the hidden plan  <script type="application/json" id="lva-plan">  (per beat: title, start, end, on-screen text,
-      what is on screen, motion). You build the video from it; it is never shown.
-    - <script src="_lva/bridge.js"></script> at the end of <body>
+    - the hidden plan  <script type="application/json" id="lva-plan">
+{ "beats": [
+  { "title": "Hook", "start": 0, "end": 3, "subject": "The headline claim", "omit": ["logo", "nav"], "labels": ["Your tickets, handled before you open them."], "onScreenText": "…", "onScreen": "…", "motion": "…" },
+  { "title": "Product", "start": 3, "end": 7, "subject": "The issue row being picked up by the agent", "omit": ["sidebar", "window chrome", "timestamps"], "labels": ["Checkout fails on expired coupon", "Agent working"], "onScreenText": "…", "onScreen": "…", "motion": "…" },
+  { "title": "Call to action", "start": 7, "end": 9, "subject": "The wordmark and URL", "omit": ["tagline"], "labels": ["Acme", "acme.com"], "onScreenText": "…", "onScreen": "…", "motion": "…" }
+] }
+</script> at the end of <body>
 -->
 <style>
   :root { --fw:400px; --fh:225px; --cols:4; --ink:#1c1b19; --mute:#6b6963; --g1:#f4f3ef; --g2:#e5e3dd; --g3:#d2cfc7; --g4:#b4b0a6; }
@@ -64,9 +84,21 @@
   .card.lva-selected .wf { outline:3px solid var(--ink); outline-offset:3px; }
   .card.changed .wf::after { content:""; position:absolute; top:9px; right:9px; width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 3px var(--g1); }
 
-  /* the frame sheet. Fill it with a simplified mock of the PRODUCT (see the sample frames and the reference example) */
-  .wf { position:relative; width:var(--fw); height:var(--fh); background:var(--g1); border:1px solid var(--g3); border-radius:10px; overflow:hidden; font-size:11px; color:#5d5a53; }
-  .ph { background:repeating-linear-gradient(45deg,var(--g2) 0 7px,var(--g1) 7px 14px); color:#6b6963; display:flex; align-items:center; justify-content:center; text-align:center; }   /* imagery / video / art placeholder only */
+  /* the frame sheet: a container, so cqw units scale everything with the frame */
+  .wf { position:relative; width:var(--fw); height:var(--fh); container-type:inline-size; background:#fbfaf7; border:1px solid var(--g3); border-radius:10px; overflow:hidden; color:#1c1b19;
+        --pad:5cqw; --gap:2.6cqw; --r:1.6cqw; --t-hero:13cqw; --t-xl:7cqw; --t-lg:4.6cqw; --t-md:3.3cqw; --t-sm:2.6cqw; }
+  .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--gap); padding:var(--pad); }
+  .t-hero { font-size:var(--t-hero); font-weight:700; letter-spacing:-.03em; line-height:1; }   /* a wordmark or one huge word */
+  .t-xl { font-size:var(--t-xl); font-weight:700; letter-spacing:-.02em; line-height:1.1; }
+  .t-lg { font-size:var(--t-lg); font-weight:600; line-height:1.2; }
+  .t-md { font-size:var(--t-md); line-height:1.3; }
+  .t-sm { font-size:var(--t-sm); line-height:1.3; color:#6b6963; }
+  .ctx { opacity:.42; }                                     /* faded context: orients the viewer, never competes */
+  .ui { position:absolute; inset:0; display:flex; transform-origin:var(--ox,50%) var(--oy,50%); }   /* the product's real UI; scale it to crop to the moment */
+  .pane { display:flex; flex-direction:column; gap:var(--gap); padding:var(--pad); min-width:0; }
+  .ph { background:repeating-linear-gradient(45deg,var(--g2) 0 7px,var(--g1) 7px 14px); color:#6b6963; display:flex; align-items:center; justify-content:center; text-align:center; }   /* imagery / video / art only */
+  .row { display:flex; gap:var(--gap); align-items:center; padding:2.4cqw 3cqw; border-radius:var(--r); background:#fff; border:1px solid #e5e2da; width:100%; }
+  .tag { margin-left:auto; padding:.6cqw 2cqw; border-radius:99cqw; background:#1c1b19; color:#fff; font-size:var(--t-sm); }
 
   .questions { max-width:900px; border:1px dashed var(--g4); border-radius:10px; padding:14px 18px; background:var(--g1); }
   .questions h3 { margin:0 0 6px; font:600 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
@@ -85,34 +117,31 @@
     </div>
     <div class="frames">
       <figure class="card" data-lva-beat data-lva-scene="1" data-lva-title="Hook">
-        <div class="wf" style="background:#fbfaf7;display:flex;align-items:center;justify-content:center;padding:0 9%">
-          <div style="font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1;color:#1c1b19">Your tickets, handled before you open them.</div>
-        </div>
+        <div class="wf"><div class="stage"><div class="t-xl subject" style="text-align:center">Your tickets, handled before you open them.</div></div></div>
         <div class="cap"><span class="num">01</span><span class="time">0.0–3.0s</span></div>
-        <p><b>Hook.</b> The sharpest claim, as the headline, in the product's own theme and type.</p>
+        <p><b>Hook.</b> The sharpest claim as the headline, in the product's own theme and type.</p>
       </figure>
       <figure class="card" data-lva-beat data-lva-scene="2" data-lva-title="Product">
-        <div class="wf" style="background:#fbfaf7;display:grid;grid-template-columns:30% 1fr">
-          <div style="background:#f1efe9;border-right:1px solid #e3e0d8;padding:10px 9px;display:flex;flex-direction:column;gap:5px;font-size:9px;color:#5d5a53">
-            <div style="font-weight:700;color:#1c1b19;font-size:10px">◆ Acme</div><div>Inbox</div><div style="background:#e5e2da;border-radius:4px;padding:2px 4px;color:#1c1b19">My issues</div><div>Cycles</div><div>Projects</div>
-          </div>
-          <div style="padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:9px;color:#1c1b19">
-            <div style="font-weight:700;font-size:11px;margin-bottom:2px">My issues</div>
-            <div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #eceae3;padding:3px 0"><span style="color:#d98a2b">●</span>Checkout fails on expired coupon<span style="margin-left:auto;color:#8a867d">ACM-241</span></div>
-            <div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #eceae3;padding:3px 0"><span style="color:#8a867d">○</span>Migrate auth to new session store<span style="margin-left:auto;color:#8a867d">ACM-238</span></div>
-            <div style="display:flex;gap:6px;align-items:center;padding:3px 0"><span style="color:#2f8f5b">✓</span>Fix flaky e2e test in CI<span style="margin-left:auto;color:#8a867d">ACM-233</span></div>
+        <div class="wf" style="background:#f7f5f0">
+          <div class="ui" style="transform:scale(1.25);--ox:100%;--oy:50%">
+            <div class="pane ctx t-sm" style="width:27%;background:#efece5;border-right:1px solid #e2dfd6"><b class="t-md">◆ Acme</b><span>Inbox</span><span>My issues</span></div>
+            <div class="pane" style="flex:1;background:#fff;justify-content:center">
+              <div class="row ctx t-sm">Migrate auth to the new session store</div>
+              <div class="row subject t-md"><i style="width:2.2cqw;height:2.2cqw;border-radius:50%;background:#d98a2b;flex:none"></i>Checkout fails on expired coupon<span class="tag">Agent working</span></div>
+              <div class="row ctx t-sm">Fix flaky end-to-end test</div>
+            </div>
           </div>
         </div>
         <div class="cap"><span class="num">02</span><span class="time">3.0–7.0s</span></div>
-        <p><b>Product.</b> The real screen, simplified: its sidebar, its list, its labels. The one thing the video is about happens here.</p>
+        <p><b>Product.</b> The real screen, cropped to the moment. The subject is a row of the list, where it lives.</p>
       </figure>
       <figure class="card" data-lva-beat data-lva-scene="3" data-lva-title="Call to action">
-        <div class="wf" style="background:#1c1b19;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
-          <div style="font-size:28px;font-weight:700;color:#fbfaf7;letter-spacing:-.02em">◆ Acme</div>
-          <div style="font-size:12px;color:#d98a2b">acme.com</div>
-        </div>
+        <div class="wf" style="background:#1c1b19"><div class="stage">
+          <div class="t-hero subject" style="color:#fbfaf7">◆ Acme</div>
+          <div class="t-lg" style="color:#d98a2b">acme.com</div>
+        </div></div>
         <div class="cap"><span class="num">03</span><span class="time">7.0–9.0s</span></div>
-        <p><b>Call to action.</b> The real wordmark, drawn as text in the brand's style, and the URL, held long enough to read.</p>
+        <p><b>Call to action.</b> The real wordmark drawn as text, and the URL, held long enough to read.</p>
       </figure>
     </div>
     <aside class="questions"><h3>Open questions</h3><p>Optional, newest version only: up to three real story decisions for the user.</p></aside>

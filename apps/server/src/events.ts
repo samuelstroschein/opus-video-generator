@@ -31,6 +31,7 @@ export type StoredEvent =
   | { type: "ask"; form: AskForm }
   | { type: "canvas"; page: string }
   | { type: "steps"; steps: Step[] }
+  | { type: "review"; judge: string; page: string; verdict: string }
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };

@@ -2,11 +2,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
+import { runJudge } from "../judge.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
 import { listSkills, loadSkill } from "../harness.js";
 import { listPages } from "../pages.js";
 
-export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string };
+export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "judge" };
+
+// A judge sub-agent gets only the tools it needs to look: it can read and screenshot, never write or ask.
+const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url"]);
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], isError });
 const fmt = (r: WriteResult, ok: string) => (r.ok ? text(r.warnings.length ? `${ok}\nWarnings (fix these):\n- ${r.warnings.join("\n- ")}` : ok) : text(r.error, true));
@@ -26,8 +30,12 @@ const Question = z.object({
 export function buildServer(ctx: ToolContext): McpServer {
   const server = new McpServer({ name: "lva", version: "0.1.0" });
   const id = ctx.projectId;
+  const reg = ((name: string, ...rest: unknown[]) => {
+    if (ctx.role === "judge" && !JUDGE_TOOLS.has(name)) return undefined;
+    return (server.registerTool as (...a: unknown[]) => unknown).call(server, name, ...rest);
+  }) as unknown as McpServer["registerTool"];
 
-  server.registerTool(
+  reg(
     "load_skill",
     {
       description:
@@ -40,7 +48,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
     "set_steps",
     {
       description:
@@ -65,7 +73,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
     "show_page",
     {
       description: "Switch the user's canvas to one of the project's pages (a top-level .html file). Call it whenever the user should look at something: after a form is answered and a page is ready, after you finish a page, or to go back to an earlier one.",
@@ -78,13 +86,13 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
     "list_files",
     { description: "List the project's files (paths relative to the project root). Includes the read-only _lva/ folder with the engine and templates.", inputSchema: { dir: z.string().optional().describe("Limit to a folder, e.g. scenes") } },
     async ({ dir }) => text(listFiles(id, dir).join("\n") || "(empty)"),
   );
 
-  server.registerTool(
+  reg(
     "read_file",
     {
       description: "Read a project file. Optionally a line range (lines are returned with line numbers).",
@@ -96,7 +104,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
     "write_file",
     {
       description:
@@ -106,7 +114,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     async ({ path, content }) => fmt(writeFile(id, path, content), `Saved ${path}.`),
   );
 
-  server.registerTool(
+  reg(
     "edit_file",
     {
       description: "Replace exact text in a file. old_string must match once (include surrounding context to make it unique), or pass replace_all. Prefer this over rewriting a whole file for small changes.",
@@ -115,7 +123,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     async ({ path, old_string, new_string, replace_all }) => fmt(editFile(id, path, old_string, new_string, replace_all), `Edited ${path}.`),
   );
 
-  server.registerTool(
+  reg(
     "ask_questions",
     {
       description:
@@ -128,7 +136,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
     "look_at_url",
     {
       description:
@@ -145,18 +153,37 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
   );
 
-  server.registerTool(
+  reg(
+    "review_page",
+    {
+      description:
+        "Ask an independent judge agent to review your work. The judge looks at the product for real, looks at your frames up close, and returns VERDICT: PASS or VERDICT: REVISE with specific fixes (what is wrong in which frame, and what to do). It takes a minute or two. Call it after writing or revising a page that has a judge (for a storyboard: judge \"storyboard\"), fix every point, and review again until it passes (at most three rounds), before you show the page.",
+      inputSchema: { judge: z.string().describe("The judge's name from the loaded skill, e.g. storyboard"), page: z.string().describe("File name, e.g. storyboard.html") },
+    },
+    async ({ judge, page }) => {
+      if (!listPages(id).some((p) => p.file === page)) return text(`No page named ${page}.`, true);
+      try {
+        const verdict = await runJudge(id, judge, page, ctx.artifactOrigin);
+        log(id).emit({ type: "review", judge, page, verdict });
+        return text(verdict);
+      } catch (e) {
+        return text(`The review failed: ${e instanceof Error ? e.message : String(e)}`, true);
+      }
+    },
+  );
+
+  reg(
     "view_page",
     {
       description:
         "Take a screenshot to check your own work: any top-level page. For a video page (one that mounts <Composition>) pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
-      inputSchema: { page: z.string().describe("File name, e.g. video.html"), time: z.number().optional() },
+      inputSchema: { page: z.string().describe("File name, e.g. video.html"), time: z.number().optional(), scene: z.number().int().optional().describe("Storyboard only: zoom into this frame (its data-lva-scene number) of the newest version, at full size") },
     },
-    async ({ page, time }) => {
+    async ({ page, time, scene }) => {
       try {
         const info = listPages(id).find((p) => p.file === page);
         if (!info) return text(`No page named ${page}.`, true);
-        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, video: info.kind === "video", time });
+        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, video: info.kind === "video", time, scene });
         return { content: [{ type: "image" as const, data: buf.toString("base64"), mimeType: "image/jpeg" }] };
       } catch (e) {
         return text(`Could not render ${page}: ${e instanceof Error ? e.message : String(e)}`, true);
