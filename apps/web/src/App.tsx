@@ -98,17 +98,17 @@ function Home() {
         <div
           {...att.dropProps}
           className={[
-            "flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white p-4 text-ink shadow-[0_8px_40px_rgba(0,0,0,.35)]",
-            att.dragging ? "border-ink" : "border-line-2",
+            "flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white/[0.08] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_48px_rgba(0,0,0,.35)] backdrop-blur-xl backdrop-saturate-150",
+            att.dragging ? "border-white/60" : "border-white/15 focus-within:border-white/30",
           ].join(" ")}
         >
-          <PendingFiles files={att.files} remove={att.remove} />
+          <PendingFiles files={att.files} remove={att.remove} glass />
           <div className="relative">
           {/* The blanks stay highlighted: a mirror of the text sits behind the (transparent) textarea, with each [blank] marked. */}
           <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
             {prompt.split(/(\[[^\]\n]{2,40}\])/).map((part, i) =>
               i % 2 ? (
-                <mark key={i} className="rounded-[4px] bg-accent-soft text-transparent shadow-[0_0_0_2px_var(--color-accent-soft)]">
+                <mark key={i} className="rounded-[4px] bg-[#d97757]/30 text-transparent shadow-[0_0_0_2px_rgb(217_119_87/0.3)]">
                   {part}
                 </mark>
               ) : (
@@ -137,12 +137,12 @@ function Home() {
             }}
             rows={3}
             placeholder={att.dragging ? "Drop files to attach" : "Describe the video you want…"}
-            className="relative block w-full resize-none bg-transparent text-[17px] leading-normal placeholder:text-faint"
+            className="relative block w-full resize-none bg-transparent text-[17px] leading-normal text-white caret-white placeholder:text-white/45"
           />
           </div>
           <div className="flex items-center justify-between gap-3">
-            <AttachButton onPick={att.add} size="lg" />
-            <button onClick={start} disabled={(!prompt.trim() && !att.files.length) || busy} className="rounded-[10px] bg-ink px-[18px] py-2.5 text-sm font-medium text-white disabled:opacity-35">
+            <AttachButton onPick={att.add} size="lg" glass />
+            <button onClick={start} disabled={(!prompt.trim() && !att.files.length) || busy} className="rounded-[10px] bg-white px-[18px] py-2.5 text-sm font-medium text-ink hover:bg-white/90 disabled:bg-white/15 disabled:text-white/50">
               {busy ? "Starting…" : "Generate"}
             </button>
           </div>
@@ -199,25 +199,40 @@ function Home() {
   );
 }
 
-/** An example: the poster, a muted preview while hovered, a click opens the player. */
+/** An example: its muted preview plays on its own (a fast glimpse of each style); a click opens the player. */
 function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; onOpen: () => void; onUse: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
-  // Start a third in, where the poster frame is (most videos open on an empty title card).
-  const play = () => {
+  // Play only while on screen, so eight previews don't all decode at once. Start a third in, past most intros.
+  useEffect(() => {
     const v = video.current;
-    if (!v) return;
-    if (v.currentTime === 0 && v.duration) v.currentTime = v.duration * 0.35;
-    void v.play().catch(() => {});
-  };
-  const stop = () => {
-    const v = video.current;
-    if (!v) return;
-    v.pause();
-    v.currentTime = 0;
-  };
+    if (!v || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    v.muted = true; // set the property before any play(): autoplay is only allowed muted
+    let inView = false;
+    const play = () => inView && void v.play().catch(() => {});
+    const seek = () => {
+      if (v.currentTime === 0 && v.duration) v.currentTime = v.duration * 0.35;
+      play();
+    };
+    v.addEventListener("loadedmetadata", seek);
+    v.addEventListener("canplay", play);
+    const io = new IntersectionObserver(
+      ([e]) => {
+        inView = e.isIntersecting;
+        if (inView) play();
+        else v.pause();
+      },
+      { threshold: 0.15 },
+    );
+    io.observe(v);
+    return () => {
+      io.disconnect();
+      v.removeEventListener("loadedmetadata", seek);
+      v.removeEventListener("canplay", play);
+    };
+  }, []);
   return (
     <div className="group flex flex-col gap-3">
-      <button onClick={onOpen} onMouseEnter={play} onMouseLeave={stop} onFocus={play} onBlur={stop} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
+      <button onClick={onOpen} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
         <video
           ref={video}
           src={x.preview}
@@ -225,12 +240,12 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           onError={(e) => (e.currentTarget.poster = x.img)}
           className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
         <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
-        <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-80 backdrop-blur-sm transition-opacity group-hover:opacity-0">
+        <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-90">
           <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0v12l10-6z" /></svg>
         </span>
       </button>

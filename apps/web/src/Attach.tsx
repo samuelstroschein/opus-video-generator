@@ -67,7 +67,7 @@ export function useAttachments(onError: (m: string) => void) {
 }
 
 /** The "+" button: a small menu to attach files or a whole folder. */
-export function AttachButton({ onPick, disabled, size = "md" }: { onPick: (f: FileList | null) => void; disabled?: boolean; size?: "md" | "lg" }) {
+export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick: (f: FileList | null) => void; disabled?: boolean; size?: "md" | "lg"; glass?: boolean }) {
   const file = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -98,14 +98,15 @@ export function AttachButton({ onPick, disabled, size = "md" }: { onPick: (f: Fi
         aria-label="Attach"
         title="Attach screenshots, reference videos, brand assets"
         className={[
-          "flex items-center justify-center border border-line-2 bg-white font-light text-ink hover:bg-bubble disabled:opacity-40",
+          "flex items-center justify-center border font-light disabled:opacity-40",
+          glass ? "border-white/20 bg-white/10 text-white hover:bg-white/20" : "border-line-2 bg-white text-ink hover:bg-bubble",
           size === "lg" ? "h-10 w-10 rounded-[10px] text-[22px]" : "h-8 w-8 rounded-lg text-[19px]",
         ].join(" ")}
       >
         {open ? "×" : "+"}
       </button>
       {open && (
-        <div className={["absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border border-line-2 bg-white p-1.5 text-sm shadow-[0_12px_32px_rgba(0,0,0,.10)]", size === "lg" ? "top-12" : "bottom-10"].join(" ")}>
+        <div className={["absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border border-line-2 bg-white p-1.5 text-sm text-ink shadow-[0_12px_32px_rgba(0,0,0,.10)]", size === "lg" ? "top-12" : "bottom-10"].join(" ")}>
           <button type="button" onClick={() => pick(file.current)} className="rounded-lg px-2.5 py-2 text-left hover:bg-bubble">
             Attach file
           </button>
@@ -123,7 +124,7 @@ const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n 
 const isImage = (name: string) => /\.(png|jpe?g|gif|webp|avif)$/i.test(name);
 
 /** Chips for files that have not been sent yet; a folder is one chip. */
-export function PendingFiles({ files, remove }: { files: File[]; remove: (key: string) => void }) {
+export function PendingFiles({ files, remove, glass }: { files: File[]; remove: (key: string) => void; glass?: boolean }) {
   const chips = useMemo(() => {
     const out: { key: string; name: string; meta: string; thumb: string | null }[] = [];
     const folders = new Map<string, File[]>();
@@ -140,7 +141,7 @@ export function PendingFiles({ files, remove }: { files: File[]; remove: (key: s
   return (
     <div className="flex flex-wrap gap-2">
       {chips.map((c) => (
-        <span key={c.key} className="flex max-w-[16rem] items-center gap-2 rounded-lg border border-line-2 bg-bubble py-1 pl-1 pr-1 text-[13px] font-medium">
+        <span key={c.key} className={["flex max-w-[16rem] items-center gap-2 rounded-lg border py-1 pl-1 pr-1 text-[13px] font-medium", glass ? "border-white/15 bg-white/10 text-white" : "border-line-2 bg-bubble"].join(" ")}>
           {c.thumb ? <img src={c.thumb} alt="" className="h-7 w-7 rounded-md object-cover" /> : <FileGlyph name={c.name} />}
           <span className="truncate">{c.name}</span>
           <span className="shrink-0 font-normal text-faint">{c.meta}</span>

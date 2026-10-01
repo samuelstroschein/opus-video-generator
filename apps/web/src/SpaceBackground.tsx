@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 
 // A live WebGL scene behind the landing page: a planet's edge at the bottom of the screen with an orbital sunrise,
-// a slowly drifting nebula and twinkling stars. Rendered at reduced resolution, paused while the tab is hidden,
-// and drawn once (no motion) for people who ask their system to reduce motion.
+// a slowly drifting nebula and twinkling stars. Rendered at the screen's real resolution (retina included, up to 2x),
+// stepping down only if frames get slow; paused while the tab is hidden, and drawn once (no motion) for people who
+// ask their system to reduce motion.
 
 const FRAG = `precision highp float;uniform vec2 R;uniform float T;
 float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
@@ -23,7 +24,7 @@ float rim=exp(-abs(d-rad)*22.);float side=smoothstep(-.6,.9,uv.x);col+=vec3(.35,
 vec2 sunp=c+normalize(vec2(.62,1.))*rad;float sg=length(uv-sunp);col+=vec3(1.,.8,.62)*(.02/(sg+.01))*.35+vec3(1.,.55,.3)*exp(-sg*6.)*.25;
 col=1.-exp(-col*1.25);gl_FragColor=vec4(col,1.);}`;
 
-export function SpaceBackground({ scale = 0.6 }: { scale?: number }) {
+export function SpaceBackground() {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = canvas.current;
@@ -50,7 +51,20 @@ export function SpaceBackground({ scale = 0.6 }: { scale?: number }) {
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const t0 = performance.now() - 20_000; // start mid-drift, not at the very first frame
+    // Pixels per CSS pixel: the device's own (sharp on retina), lowered in steps if the GPU can't hold ~50fps.
+    const max = Math.min(devicePixelRatio || 1, 2);
+    let scale = max;
+    let frames = 0;
+    let since = performance.now();
     let raf = 0;
+    const adapt = () => {
+      if (++frames < 45) return;
+      const ms = (performance.now() - since) / frames;
+      if (ms > 20 && scale > 0.6) scale = Math.max(0.6, scale * 0.8);
+      else if (ms < 12 && scale < max) scale = Math.min(max, scale * 1.15);
+      frames = 0;
+      since = performance.now();
+    };
     const draw = () => {
       const w = Math.round(c.clientWidth * scale);
       const h = Math.round(c.clientHeight * scale);
@@ -62,10 +76,15 @@ export function SpaceBackground({ scale = 0.6 }: { scale?: number }) {
       gl.uniform2f(uR, w, h);
       gl.uniform1f(uT, (performance.now() - t0) / 1000);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
-      if (!still && !document.hidden) raf = requestAnimationFrame(draw);
+      if (!still && !document.hidden) {
+        adapt();
+        raf = requestAnimationFrame(draw);
+      }
     };
     const onVisible = () => {
       cancelAnimationFrame(raf);
+      frames = 0;
+      since = performance.now();
       if (!document.hidden) draw();
     };
     const onResize = () => still && draw();
@@ -77,6 +96,6 @@ export function SpaceBackground({ scale = 0.6 }: { scale?: number }) {
       document.removeEventListener("visibilitychange", onVisible);
       removeEventListener("resize", onResize);
     };
-  }, [scale]);
+  }, []);
   return <canvas ref={canvas} aria-hidden className="pointer-events-none fixed inset-0 -z-10 h-full w-full bg-[#05060c]" />;
 }
