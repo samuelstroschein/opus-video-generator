@@ -55,10 +55,16 @@ Control plane (Node/TS, Hono)  ────────────────�
 - Both normalize into one event schema: `text.delta`, `tool.start/end`, `file.changed`, `turn.done`, `session.id`, `error`. The UI only sees that schema.
 - Claude is primary. Codex is the second adapter, to prove the abstraction and let us compare output quality per stage.
 
-### 2. Video engine: **HyperFrames** over Remotion  (decided)
-- HyperFrames is **Apache 2.0, no per-render fees**. Authoring is plain HTML + GSAP/CSS/WAAPI, which agents write fluently. Renders are deterministic. It ships an embeddable `<hyperframes-player>` web component, agent skills (`npx skills add heygen-com/hyperframes`) and a Lambda renderer. Needs Node 22+, ffmpeg, headless Chrome (we have Node 22 and ffmpeg locally).
-- **Remotion is a licensing risk for this product.** Their model is per-render fees (Automators: $0.01/render, $100/mo minimum). Their FAQ also says services must not let end-users bring their own Remotion code without written approval, and an agent writing React per customer is close to that line. Its tooling (Player, frame-range rendering) is more mature, but we would be building on a license we'd have to renegotiate at the moment we productize.
-- **Unverified: partial rendering.** The README doesn't document frame-range or single-still rendering. Our "re-render only scene 3" and "stills" depend on it. First spike: confirm it, or work around it by making each scene its own composition and stitching with ffmpeg.
+### 2. Video engine: a seekable HTML page with a thin contract  (**under revision, see [OPEN] below**)
+Reference: a Claude Design run for "launch video for linear.app" (files: `Launch Video.dc.html`, `launch-video.jsx`, `animations-v3.jsx`, `tweaks-panel.jsx`). What it shows:
+- **The video is an HTML page.** One React element tree rendered as a **pure function of one time value `T`**. Nothing mounts or unmounts at scene boundaries; everything is keyed to named cues.
+- **The scene list is a JSON string in an inline script** (`window.OM_SCENES = '[{"name":"Chaos","dur":4.5,"desc":"…"}, …]'`). It is the outline and the single source of structure. The host's timeline UI trims or speeds a section by **writing that literal back into the file**. The same trick is used for a `TWEAK_DEFAULTS` block (accent color, glow) that a host "Tweaks" panel edits.
+- **Export contract:** one stage root owns an `…exportable-video-with-duration-secs` attribute and a `seek-to-time-frame` event (`detail {time, sync}`). The exporter seeks frame by frame and serializes the stage, so everything must render from `T` only (no effects, no `requestAnimationFrame` state).
+- **The skill's contract lives in the starter file itself:** a `/* BEGIN USAGE */` block at the top of `animations-v3.jsx`. The agent "reads the skill" and copies the starter files into the project.
+- Because the page is a function of `T`, **rendering any time range is free**. Re-rendering only scene 3 means rendering frames from that scene's cue range. This removes the partial-rendering worry we had with HyperFrames.
+
+Proposal: define our own small contract modeled on this (seekable stage root, `LVA_SCENES` literal, render-from-`T`, a starter engine with a USAGE block), and export with **Playwright + ffmpeg**: load the page, seek each frame, screenshot, encode, and split by frame range for per-scene re-render and (later) parallel workers. Real Chrome screenshots avoid the fidelity limits of serializing the DOM into SVG `foreignObject`. We write our own engine rather than copying Claude Design's starter files.
+- **[OPEN]** Own contract + Playwright export (above) vs HyperFrames (Apache 2.0, its own GSAP-timeline contract, CLI renderer, Lambda support, skills). HyperFrames remains a source of ideas and skills either way.
 
 ### 3. Scene is the unit of work (this is what makes "scoped notes" enforceable)
 ```
@@ -74,17 +80,15 @@ projects/<id>/
 - **One file per scene** means a note scoped to "scene 3" lets the harness check that the diff touched only `scenes/03-*`. The "change receipt" with exact values is a git diff. "Compare · undo" is `git diff` / `git revert`. Version history (v1…v4) is tags. No custom versioning system.
 - The filesystem is the source of truth, because the agent reads and writes files natively. SQLite (Drizzle) only indexes projects, sessions, the event log and jobs.
 
-### 4. Stills: render keyframes from the scene code  (decided)
-- A still is the scene's representative frame, rendered from the same HTML the video uses. Cheap, fast ("redraw in seconds"), uses the **real** screenshots and brand (the wireframe's "use my real screenshot, not a mock" problem goes away), and what you approve is exactly what gets animated.
-- It also needs no image-generation API, which the subscription CLIs don't give us anyway.
-- Trade-off: stills look like the final design, not like a loose concept sketch. That is probably what we want.
+### 4. Stills: frozen frames of the same scene code  (decided)
+A still is the composition rendered at a chosen `T` inside the scene (the hero frame). Cheap, uses the real screenshots and brand, no image-generation API, and what you approve is exactly what gets animated. `stills.html` shows one frozen frame per scene using the same components the video page uses.
 
-### 5. Stage artifacts: agent-authored HTML from harness templates  (decided)
-Stage artifacts are plain HTML files (`brief.html`, `storyboards.html`, `stills.html`, `video.html`, `export.html`), the way Claude Design works, shown in a sandboxed iframe in the right pane.
-- The harness ships **template HTML files per stage** (layout, stage-rail hooks, scope/pin/approve affordances). The agent fills and adapts them rather than inventing each page from scratch, which keeps pages consistent and cheap to regenerate.
-- Host ↔ iframe goes over a small `postMessage` bridge injected into every artifact (`pick`, `approve`, `pin`, `scope`). Gate state is still derived by the server from workspace files, never trusted from the iframe alone.
-- The reference project for this pattern is coming from Samuel in a follow-up; this section gets revised once we've seen it.
-- **[OPEN]** Do templates live as static files the agent copies and edits, or as a small component library the agent imports? Decide after reviewing the reference project.
+### 5. Every stage is an HTML page the agent writes  (decided)
+`brief.html`, `storyboards.html`, `stills.html`, `video.html`, `export.html`: the same model Claude Design uses, where only `.html` files open as pages and code files open as code. The agent starts from reference templates and starter files in `_lva/` and adapts them freely.
+- **The page is the product.** The exportable video is the HTML page itself. The host app adds the chrome around it: stage rail, timeline and transport, tweaks, export button. Those drive the page through the contract (seek event, write-back of the scene list and tweak defaults).
+- **The app recognizes a finished stage by a `data-lva-*` contract** in the page (already implemented for brief and storyboards), never by parsing free-form content.
+- **Host ↔ page bridge** (`_lva/bridge.js`): scene clicks become scoped notes; pins on a still or paused frame will use the same channel.
+- **Clarifying questions are a tool, not chat:** Claude Design opens a form on the canvas (options, "decide for me", "ask me follow-ups") and continues when answered. We want the equivalent: an `lva ask` command the agent calls, the app renders the form, and the answer returns as the tool result.
 
 ### 6. Tool surface for the agent
 Keep it small. Most of the work is "edit files". For deterministic actions (render scene N, render still N, pull brand from URL, analyze reference video) the agent calls a tiny workspace CLI, `lva`, which POSTs to the local control plane. It is documented in the workspace's `CLAUDE.md` / `AGENTS.md` (same file, symlinked). It works identically for Claude and Codex with zero MCP config. In the cloud the same handlers can be exposed as an MCP server.
