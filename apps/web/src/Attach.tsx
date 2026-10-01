@@ -2,7 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEve
 import { api, type Attachment } from "./api";
 
 const MAX_FILE = 30 * 1024 * 1024;
-const MAX_FILES = 12;
+const MAX_FILES = 12; // loose files per message
+const MAX_FOLDER_FILES = 600; // files in one attached folder
+
+/** The folder a file was picked from ("brand/" for brand/logo.svg), or null for a loose file. */
+const folderOf = (f: File) => (f.webkitRelativePath ? f.webkitRelativePath.split("/")[0] : null);
 
 /** Files waiting to be sent with the next message: pick, drop or paste them, remove any before sending. */
 export function useAttachments(onError: (m: string) => void) {
@@ -13,9 +17,14 @@ export function useAttachments(onError: (m: string) => void) {
     if (!list) return;
     const next = [...files];
     for (const f of Array.from(list)) {
+      const loose = next.filter((x) => !folderOf(x)).length;
+      const inFolder = folderOf(f) ? next.filter((x) => folderOf(x) === folderOf(f)).length : 0;
       if (f.size > MAX_FILE) onError(`${f.name} is larger than ${MAX_FILE / 1024 / 1024} MB`);
-      else if (next.length >= MAX_FILES) onError(`At most ${MAX_FILES} files per message`);
-      else next.push(f);
+      else if (!folderOf(f) && loose >= MAX_FILES) onError(`At most ${MAX_FILES} files per message; attach a folder or a zip for more`);
+      else if (folderOf(f) && inFolder >= MAX_FOLDER_FILES) {
+        onError(`A folder can have at most ${MAX_FOLDER_FILES} files`);
+        break;
+      } else next.push(f);
     }
     setFiles(next);
   };
@@ -24,7 +33,8 @@ export function useAttachments(onError: (m: string) => void) {
     files,
     dragging,
     add,
-    remove: (i: number) => setFiles((fs) => fs.filter((_, j) => j !== i)),
+    /** Remove one loose file, or a whole folder. */
+    remove: (key: string) => setFiles((fs) => fs.filter((f) => (folderOf(f) ?? `file:${fs.indexOf(f)}`) !== key)),
     clear: () => setFiles([]),
     // Spread onto the box that should accept drops and pasted files.
     dropProps: {
@@ -54,54 +64,85 @@ export function useAttachments(onError: (m: string) => void) {
   };
 }
 
-export function AttachButton({ onPick, disabled }: { onPick: (f: FileList | null) => void; disabled?: boolean }) {
-  const input = useRef<HTMLInputElement>(null);
+/** The "+" button: a small menu to attach files or a whole folder. */
+export function AttachButton({ onPick, disabled, size = "md" }: { onPick: (f: FileList | null) => void; disabled?: boolean; size?: "md" | "lg" }) {
+  const file = useRef<HTMLInputElement>(null);
+  const folder = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    addEventListener("mousedown", on);
+    return () => removeEventListener("mousedown", on);
+  }, [open]);
+  const pick = (input: HTMLInputElement | null) => {
+    setOpen(false);
+    input?.click();
+  };
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onPick(e.target.files);
+    e.target.value = "";
+  };
   return (
-    <>
-      <input
-        ref={input}
-        type="file"
-        multiple
-        hidden
-        onChange={(e) => {
-          onPick(e.target.files);
-          e.target.value = "";
-        }}
-      />
+    <div ref={box} className="relative">
+      <input ref={file} type="file" multiple hidden onChange={onChange} />
+      {/* webkitdirectory is not in React's input typings */}
+      <input ref={folder} type="file" hidden onChange={onChange} {...({ webkitdirectory: "" } as object)} />
       <button
         type="button"
         disabled={disabled}
-        onClick={() => input.current?.click()}
-        aria-label="Attach files"
-        title="Attach images, zips or other files"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-500 hover:bg-paper hover:text-neutral-900 disabled:opacity-40"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Attach"
+        title="Attach screenshots, reference videos, brand assets"
+        className={[
+          "flex items-center justify-center border border-line-2 bg-white font-light text-ink hover:bg-bubble disabled:opacity-40",
+          size === "lg" ? "h-10 w-10 rounded-[10px] text-[22px]" : "h-8 w-8 rounded-lg text-[19px]",
+        ].join(" ")}
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m13.5 7.3-5.4 5.4a3.2 3.2 0 0 1-4.5-4.5l5.6-5.6a2.1 2.1 0 0 1 3 3L6.6 11.2a1.1 1.1 0 0 1-1.5-1.5L10.4 4.4" />
-        </svg>
+        {open ? "×" : "+"}
       </button>
-    </>
+      {open && (
+        <div className={["absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border border-line-2 bg-white p-1.5 text-sm shadow-[0_12px_32px_rgba(0,0,0,.10)]", size === "lg" ? "top-12" : "bottom-10"].join(" ")}>
+          <button type="button" onClick={() => pick(file.current)} className="rounded-lg px-2.5 py-2 text-left hover:bg-bubble">
+            Attach file
+          </button>
+          <button type="button" onClick={() => pick(folder.current)} className="rounded-lg px-2.5 py-2 text-left hover:bg-bubble">
+            Attach folder
+          </button>
+          <div className="px-2.5 pb-1 pt-1.5 text-xs text-faint">Screenshots, reference videos, brand assets, zips</div>
+        </div>
+      )}
+    </div>
   );
 }
 
 const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 const isImage = (name: string) => /\.(png|jpe?g|gif|webp|avif)$/i.test(name);
 
-/** Chips for files that have not been sent yet. */
-export function PendingFiles({ files, remove }: { files: File[]; remove: (i: number) => void }) {
-  const urls = useMemo(() => files.map((f) => (isImage(f.name) ? URL.createObjectURL(f) : null)), [files]);
-  useEffect(() => () => urls.forEach((u) => u && URL.revokeObjectURL(u)), [urls]);
-  if (!files.length) return null;
+/** Chips for files that have not been sent yet; a folder is one chip. */
+export function PendingFiles({ files, remove }: { files: File[]; remove: (key: string) => void }) {
+  const chips = useMemo(() => {
+    const out: { key: string; name: string; meta: string; thumb: string | null }[] = [];
+    const folders = new Map<string, File[]>();
+    files.forEach((f, i) => {
+      const dir = folderOf(f);
+      if (dir) folders.set(dir, [...(folders.get(dir) ?? []), f]);
+      else out.push({ key: `file:${i}`, name: f.name, meta: sizeLabel(f.size), thumb: isImage(f.name) ? URL.createObjectURL(f) : null });
+    });
+    for (const [dir, list] of folders) out.push({ key: dir, name: `${dir}/`, meta: `${list.length} file${list.length === 1 ? "" : "s"}`, thumb: null });
+    return out;
+  }, [files]);
+  useEffect(() => () => chips.forEach((c) => c.thumb && URL.revokeObjectURL(c.thumb)), [chips]);
+  if (!chips.length) return null;
   return (
-    <div className="mb-2 flex flex-wrap gap-1.5">
-      {files.map((f, i) => (
-        <span key={i} className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-md border border-line bg-paper py-0.5 pl-0.5 pr-1.5 text-xs">
-          {urls[i] ? <img src={urls[i]!} alt="" className="h-6 w-6 rounded object-cover" /> : <FileGlyph name={f.name} />}
-          <span className="truncate" title={f.name}>
-            {f.name}
-          </span>
-          <span className="shrink-0 text-neutral-400">{sizeLabel(f.size)}</span>
-          <button type="button" onClick={() => remove(i)} aria-label={`Remove ${f.name}`} className="shrink-0 text-neutral-400 hover:text-neutral-900">
+    <div className="flex flex-wrap gap-2">
+      {chips.map((c) => (
+        <span key={c.key} className="flex max-w-[16rem] items-center gap-2 rounded-lg border border-line-2 bg-bubble py-1 pl-1 pr-1 text-[13px] font-medium">
+          {c.thumb ? <img src={c.thumb} alt="" className="h-7 w-7 rounded-md object-cover" /> : <FileGlyph name={c.name} />}
+          <span className="truncate">{c.name}</span>
+          <span className="shrink-0 font-normal text-faint">{c.meta}</span>
+          <button type="button" onClick={() => remove(c.key)} aria-label={`Remove ${c.name}`} className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-base leading-none text-mute hover:bg-line">
             ×
           </button>
         </span>
@@ -111,11 +152,11 @@ export function PendingFiles({ files, remove }: { files: File[]; remove: (i: num
 }
 
 function FileGlyph({ name }: { name: string }) {
-  const ext = name.split(".").pop()?.slice(0, 4).toUpperCase() ?? "";
-  return <span className="flex h-6 w-6 items-center justify-center rounded bg-neutral-200 text-[8px] font-semibold text-neutral-600">{ext}</span>;
+  const ext = name.endsWith("/") ? "DIR" : (name.split(".").pop()?.slice(0, 4).toUpperCase() ?? "");
+  return <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-line text-[8px] font-semibold text-mute">{ext}</span>;
 }
 
-/** Files shown on a sent message: image thumbnails, other files as chips. */
+/** Files shown on a sent message: image thumbnails, other files and folders as chips. */
 export function SentFiles({ id, items }: { id: string; items: Attachment[] }) {
   const images = items.filter((a) => a.kind === "image");
   const others = items.filter((a) => a.kind !== "image");
@@ -123,14 +164,14 @@ export function SentFiles({ id, items }: { id: string; items: Attachment[] }) {
     <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
       {images.map((a) => (
         <a key={a.path} href={api.fileUrl(id, a.path, 0)} target="_blank" rel="noreferrer" title={a.name}>
-          <img src={api.fileUrl(id, a.path, 0)} alt={a.name} className="h-16 max-w-[10rem] rounded-md border border-line object-cover" />
+          <img src={api.fileUrl(id, a.path, 0)} alt={a.name} className="h-16 max-w-[10rem] rounded-lg border border-line object-cover" />
         </a>
       ))}
       {others.map((a) => (
-        <span key={a.path} className="inline-flex items-center gap-1.5 rounded-md border border-line bg-paper px-1.5 py-1 text-xs" title={a.path}>
-          <FileGlyph name={a.name} />
-          <span className="max-w-[10rem] truncate">{a.name}</span>
-          <span className="text-neutral-400">{a.kind === "zip" ? `${a.files} files` : sizeLabel(a.size)}</span>
+        <span key={a.path} className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-white px-1.5 py-1 text-xs" title={a.path}>
+          <FileGlyph name={a.kind === "folder" ? `${a.name}/` : a.name} />
+          <span className="max-w-[10rem] truncate">{a.kind === "folder" ? `${a.name}/` : a.name}</span>
+          <span className="text-faint">{a.kind === "zip" || a.kind === "folder" ? `${a.files} files` : sizeLabel(a.size)}</span>
         </span>
       ))}
     </div>

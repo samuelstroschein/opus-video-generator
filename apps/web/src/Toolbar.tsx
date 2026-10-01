@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { api } from "./api";
+import { api, type PageInfo } from "./api";
 
-/** Small click-outside popover used by the page switcher and the export menu. */
+/** Small click-outside popover. */
 function Popover({ button, children, align = "left" }: { button: (toggle: () => void, open: boolean) => ReactNode; children: ReactNode; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -15,7 +15,10 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
     <div ref={ref} className="relative">
       {button(() => setOpen((o) => !o), open)}
       {open && (
-        <div className={["absolute top-full z-20 mt-1 min-w-56 rounded-lg border border-line bg-white p-1 shadow-lg", align === "right" ? "right-0" : "left-0"].join(" ")} onClick={() => setOpen(false)}>
+        <div
+          className={["absolute top-[42px] z-30 rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
+          onClick={() => setOpen(false)}
+        >
           {children}
         </div>
       )}
@@ -23,26 +26,100 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
   );
 }
 
-export type PageItem = { id: string; label: string; file: string };
+const Dot = () => <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />;
 
-export function PageMenu({ pages, current, onPick }: { pages: PageItem[]; current: PageItem | undefined; onPick: (id: string) => void }) {
+/** "Storyboard: Negroni" → "Storyboard". The video page is always "Video". */
+const tabTitle = (p: PageInfo) => (p.kind === "video" ? "Video" : p.title.split(/\s[·—–-]\s|:\s/)[0].trim() || p.file.replace(/\.html$/, ""));
+
+const MAX_TABS = 3;
+
+/**
+ * One tab per page the agent wrote. Up to three show; the rest wait in "N more", newest first. A page keeps its
+ * spot (tabs never reorder on their own); a new page takes a free spot or goes into the menu; opening a hidden page
+ * puts it in place of the active tab. A dot marks a page that changed since you last looked at it.
+ */
+export function PageTabs({ projectId, pages, active, changed, onPick }: { projectId: string; pages: PageInfo[]; active?: string; changed: Record<string, number>; onPick: (file: string) => void }) {
+  const key = `lva-tabs:${projectId}`;
+  const [slots, setSlots] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(key) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [viewed, setViewed] = useState<Record<string, number>>({});
+  const prevActive = useRef<string | undefined>(undefined);
+
+  // Keep slots in line with the pages: drop deleted pages, fill free spots with new ones, and give a newly shown page the active tab's spot.
+  useEffect(() => {
+    setSlots((cur) => {
+      let next = cur.filter((f) => pages.some((p) => p.file === f));
+      if (active && pages.some((p) => p.file === active) && !next.includes(active)) {
+        if (next.length < MAX_TABS) next = [...next, active];
+        else {
+          const at = Math.max(0, next.indexOf(prevActive.current ?? ""));
+          next = next.map((f, i) => (i === at ? active : f));
+        }
+      }
+      for (const p of pages) if (next.length < MAX_TABS && !next.includes(p.file)) next = [...next, p.file];
+      try {
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    prevActive.current = active;
+  }, [pages, active, key]);
+
+  // Being on a page counts as having seen its latest change.
+  useEffect(() => {
+    if (active) setViewed((v) => ({ ...v, [active]: Date.now() }));
+  }, [active, changed[active ?? ""]]);
+
+  const dot = (f: string) => f !== active && (changed[f] ?? 0) > (viewed[f] ?? 0);
+  const byFile = Object.fromEntries(pages.map((p) => [p.file, p]));
+  const visible = slots.map((f) => byFile[f]).filter(Boolean) as PageInfo[];
+  const hidden = pages.filter((p) => !slots.includes(p.file)).sort((a, b) => (changed[b.file] ?? 0) - (changed[a.file] ?? 0) || pages.indexOf(b) - pages.indexOf(a));
+
+  if (!pages.length) return <span className="px-1 text-[13px] text-faint">Pages appear here as the agent makes them</span>;
   return (
-    <Popover
-      button={(toggle) => (
-        <button onClick={toggle} className="flex items-center gap-1.5 rounded-md border border-line bg-white px-3 py-1.5 text-sm font-medium hover:bg-paper">
-          {current?.label ?? "Pages"}
-          <span className="text-[10px] text-neutral-400">▾</span>
-        </button>
-      )}
-    >
-      {pages.length === 0 && <div className="px-3 py-2 text-sm text-neutral-500">Nothing yet</div>}
-      {pages.map((p) => (
-        <button key={p.id} onClick={() => onPick(p.id)} className={["flex w-full items-center justify-between rounded-md px-3 py-1.5 text-left text-sm hover:bg-paper", p.id === current?.id ? "font-semibold" : ""].join(" ")}>
-          {p.label}
-          <span className="ml-4 font-mono text-[11px] text-neutral-400">{p.file}</span>
+    <div className="flex items-center gap-1">
+      {visible.map((p) => (
+        <button
+          key={p.file}
+          onClick={() => onPick(p.file)}
+          title={p.title}
+          className={[
+            "flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium",
+            p.file === active ? "border-line-3 bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,.04)]" : "border-transparent text-mute hover:bg-bubble hover:text-ink",
+          ].join(" ")}
+        >
+          {tabTitle(p)}
+          {dot(p.file) && <Dot />}
         </button>
       ))}
-    </Popover>
+      {hidden.length > 0 && (
+        <Popover
+          button={(toggle) => (
+            <button onClick={toggle} className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-mute hover:bg-line">
+              {hidden.length} more
+              {hidden.some((p) => dot(p.file)) && <Dot />}
+              <span className="text-[9px]">▾</span>
+            </button>
+          )}
+        >
+          <div className="flex w-[280px] flex-col gap-px">
+            <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium text-faint">More pages · newest first</div>
+            {hidden.map((p) => (
+              <button key={p.file} onClick={() => onPick(p.file)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble">
+                <span className="flex-1 truncate">{tabTitle(p)}</span>
+                <span className="font-mono text-[11px] text-faint">{p.file}</span>
+                {dot(p.file) && <Dot />}
+              </button>
+            ))}
+          </div>
+        </Popover>
+      )}
+    </div>
   );
 }
 
@@ -53,37 +130,37 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
     <Popover
       align="right"
       button={(toggle) => (
-        <button onClick={toggle} disabled={!canExport && renders.length === 0} className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40">
+        <button onClick={toggle} disabled={!canExport && renders.length === 0} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
           {exporting ? `Rendering ${pct}%` : "Export"}
         </button>
       )}
     >
-      <div onClick={(e) => e.stopPropagation()} className="w-72 p-2">
+      <div onClick={(e) => e.stopPropagation()} className="w-72">
         <button
           disabled={!canExport || !!exporting}
           onClick={() => api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
-          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper disabled:opacity-50"
+          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble disabled:opacity-50"
         >
           <span>
             Render video
-            <span className="block text-[11px] text-neutral-500">MP4 · 1080p · 30 fps</span>
+            <span className="block text-[11px] text-faint">MP4 · 1080p · 30 fps</span>
           </span>
-          <span className="text-neutral-400">{exporting ? `${pct}%` : "→"}</span>
+          <span className="text-faint">{exporting ? `${pct}%` : "→"}</span>
         </button>
         {exporting && (
-          <div className="mx-2 mt-1 h-1.5 overflow-hidden rounded bg-line">
-            <div className="h-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+          <div className="mx-2.5 mb-1 mt-1 h-[3px] overflow-hidden rounded-full bg-line">
+            <div className="h-full bg-ink transition-all" style={{ width: `${pct}%` }} />
           </div>
         )}
         {renders.length > 0 && (
-          <div className="mt-2 border-t border-line pt-2">
-            <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Renders</div>
+          <div className="mt-1 border-t border-line pt-1.5">
+            <div className="px-2.5 pb-1 text-[11px] font-medium text-faint">Renders</div>
             {renders.slice(0, 5).map((f) => (
-              <div key={f} className="flex items-center justify-between px-2 py-1 text-sm">
-                <a className="truncate font-mono text-[11px] hover:underline" href={api.renderUrl(id, f)} target="_blank" rel="noreferrer">
+              <div key={f} className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[13px] hover:bg-bubble">
+                <a className="truncate font-mono text-[11px]" href={api.renderUrl(id, f)} target="_blank" rel="noreferrer">
                   {f}
                 </a>
-                <a className="ml-3 shrink-0 text-xs underline" href={api.renderUrl(id, f, true)}>
+                <a className="ml-3 shrink-0 text-xs font-medium underline" href={api.renderUrl(id, f, true)}>
                   Download
                 </a>
               </div>

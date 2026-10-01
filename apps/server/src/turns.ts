@@ -16,6 +16,37 @@ const active = new Map<string, AbortController>();
 export const isRunning = (id: string) => active.has(id);
 export const stopTurn = (id: string) => active.get(id)?.abort();
 
+// Notes the user sends while a turn runs. The CLI cannot take input mid-run, so they are delivered together as the next turn.
+type Note = { text: string; scope?: Scope; attachments: Attachment[] };
+const queues = new Map<string, Note[]>();
+
+/** Queue a note for after the running turn; the chat shows it right away as queued. */
+export function enqueue(id: string, note: Note) {
+  queues.set(id, [...(queues.get(id) ?? []), note]);
+  log(id).emit({ type: "queued", text: note.text, scope: note.scope, attachments: note.attachments.length ? note.attachments : undefined });
+}
+
+/** Hand queued notes to the next message the user sends (used when a form is waiting for answers). */
+export function takeQueued(id: string): Note[] {
+  const notes = queues.get(id) ?? [];
+  queues.delete(id);
+  return notes;
+}
+
+function drain(id: string) {
+  // If the turn ended on a form, the user's answers come next: the notes wait and go out with them.
+  const events = log(id).events;
+  const start = events.map((e) => e.type).lastIndexOf("turn.start");
+  if (events.slice(start).some((e) => e.type === "ask")) return;
+  const notes = queues.get(id);
+  queues.delete(id);
+  if (!notes?.length) return;
+  if (notes.length === 1) return startTurn(id, notes[0].text, notes[0].scope, notes[0].attachments);
+  // Several notes become one message; each keeps its own scope line.
+  const text = notes.map((n) => (n.scope ? `${scopePrefix(n.scope)}\n${n.text}` : n.text)).join("\n\n");
+  startTurn(id, text, undefined, notes.flatMap((n) => n.attachments));
+}
+
 /** Starts a turn in the background. Progress reaches clients through the project's event log. */
 export function startTurn(id: string, text: string, scope?: Scope, attachments: Attachment[] = []) {
   if (active.has(id)) throw new Error("A turn is already running");
@@ -61,7 +92,9 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
       if (e.type === "tool.input" && e.name.endsWith("write_file")) {
         const page = partialJsonString(e.partial, "path");
         const html = partialJsonString(e.partial, "content");
-        if (page && html && /^[\w-]+\.html$/.test(page)) {
+        // A page can opt out (<meta name="lva:stream" content="false">), e.g. a brief that is notes, not something to show.
+        const optOut = /name=["']lva:stream["'][^>]*content=["']false/.test(html ?? "");
+        if (page && html && !optOut && /^[\w-]+\.html$/.test(page)) {
           setDraft(id, page, html);
           writing.set(e.id, page);
           l.emit({ type: "file.stream", path: page }, false);
@@ -74,7 +107,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
         clearDraft(id, page);
         l.emit({ type: "file.stream", path: page, done: true }, false);
       }
-      if (e.type === "tool.start" && e.name.endsWith("report_progress")) quiet.add(e.id);
+      if (e.type === "tool.start" && /(report_progress|suggest_replies)$/.test(e.name)) quiet.add(e.id);
       if ((e.type === "tool.start" || e.type === "tool.end") && quiet.has(e.id)) continue;
       l.emit(e);
     }
@@ -89,6 +122,8 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
     const tag = commitTurn(id, turn, text);
     if (tag) l.emit({ type: "version", tag });
     l.emit({ type: "file.changed", path: "*" }, false);
+    if (!ac.signal.aborted) drain(id);
+    else if (queues.delete(id)) l.emit({ type: "queued.dropped" }); // Stop also drops queued notes
   }
 }
 

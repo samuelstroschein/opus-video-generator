@@ -24,10 +24,14 @@ type ChatState = {
   turnSince: number | null;
   /** The page the agent is writing right now (streamed, partial). n counts updates. */
   draft: { path: string; n: number; live: boolean } | null;
+  /** Notes sent while the agent works; they go out together when the turn ends. Shown below the conversation. */
+  queued: { text: string; scope?: Scope; attachments?: Attachment[] }[];
+  /** One-click answers the agent offered for its last question (suggest_replies). Cleared by the next message. */
+  replies: string[];
 };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null, queued: [], replies: [] };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -36,7 +40,13 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return initial;
     case "user":
       items.push({ kind: "user", text: e.text, scope: e.scope, attachments: e.attachments });
-      return { ...state, items, ask: null }; // any reply answers the open form
+      return { ...state, items, ask: null, queued: [], replies: [] }; // any reply answers the open form; queued notes are now delivered
+    case "queued":
+      return { ...state, queued: [...state.queued, { text: e.text, scope: e.scope, attachments: e.attachments }] };
+    case "queued.dropped":
+      return { ...state, queued: [] };
+    case "replies":
+      return { ...state, replies: e.replies };
     case "ask":
       return { ...state, ask: e.form };
     case "turn.start":
@@ -108,6 +118,8 @@ export function useProject(id: string) {
   const [chat, dispatch] = useReducer(reduce, initial);
   const [state, setState] = useState<ProjectState | null>(null);
   const [fileTick, setFileTick] = useState(0);
+  /** When each page last changed (scene files count as the video page). Drives the "unseen change" dots on tabs. */
+  const [changed, setChanged] = useState<Record<string, number>>({});
   const refetch = useRef<number>(0);
 
   const refresh = useCallback(() => {
@@ -125,6 +137,10 @@ export function useProject(id: string) {
     es.onopen = () => dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
     es.onmessage = (m) => {
       const e = JSON.parse(m.data) as ServerEvent;
+      if (e.type === "file.changed" && e.path !== "*") {
+        const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
+        if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
+      }
       if (e.type === "file.changed" || e.type === "canvas") refresh();
       else {
         dispatch(e);
@@ -135,7 +151,7 @@ export function useProject(id: string) {
     return () => es.close();
   }, [id, refresh]);
 
-  return { chat, state, fileTick };
+  return { chat, state, fileTick, changed };
 }
 
 /** The tool the agent is running right now, as a short label ("Writing scenes/02-gin.jsx"), if one is in flight. */

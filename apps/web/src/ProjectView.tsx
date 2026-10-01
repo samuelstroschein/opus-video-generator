@@ -3,7 +3,7 @@ import { api, type Scope } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { lastActivity, useProject } from "./useProject";
-import { ExportMenu, PageMenu } from "./Toolbar";
+import { ExportMenu, PageTabs } from "./Toolbar";
 import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
 
@@ -36,9 +36,8 @@ function DraftFrame({ id, path, n }: { id: string; path: string; n: number }) {
 }
 
 export function ProjectView({ id }: { id: string }) {
-  const { chat, state, fileTick } = useProject(id);
+  const { chat, state, fileTick, changed } = useProject(id);
   const [override, setOverride] = useState<string | null>(null);
-  const [reloads, setReloads] = useState(0);
   const [scope, setScope] = useState<Scope | null>(null);
   const [error, setError] = useState("");
   const [video, setVideo] = useState<VideoState | null>(null);
@@ -48,7 +47,9 @@ export function ProjectView({ id }: { id: string }) {
   const pages = state?.pages ?? [];
   useEffect(() => setOverride(null), [state?.canvasSeq]);
   // Only what the agent has shown (or the user picked) appears; until then the canvas shows progress, never a half-finished page.
-  const file = override ?? state?.canvas ?? null;
+  // Idle with nothing shown yet (e.g. an older project): open the most useful page instead of an empty canvas.
+  const fallback = !chat.running ? (pages.find((p) => p.kind === "video") ?? pages.find((p) => p.file === "storyboard.html") ?? pages.find((p) => p.file !== "brief.html"))?.file : undefined;
+  const file = override ?? state?.canvas ?? fallback ?? null;
   const current = pages.find((p) => p.file === file);
 
   const send = useCallback(
@@ -94,7 +95,7 @@ export function ProjectView({ id }: { id: string }) {
     }, Math.max(0, 2500 - (Date.now() - lastReload.current)));
     return () => clearTimeout(t);
   }, [fileTick]);
-  const tick = liveTick + (state?.canvasSeq ?? 0) + reloads * 1000;
+  const tick = liveTick + (state?.canvasSeq ?? 0);
 
   // A reloaded video resumes where the viewer was.
   const resumeAt = useRef(0);
@@ -107,21 +108,13 @@ export function ProjectView({ id }: { id: string }) {
   };
 
   return (
-    <div className="grid h-full grid-cols-[400px_1fr]">
+    <div className="grid h-full grid-cols-[400px_minmax(0,1fr)] bg-paper">
       <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
-      <section className="flex min-h-0 flex-col border-l border-line">
-        <nav className="flex items-center gap-2 border-b border-line bg-white px-3 py-2">
-          <button onClick={() => setReloads((n) => n + 1)} title="Reload" className="rounded-md px-2 py-1.5 text-neutral-500 hover:bg-paper hover:text-neutral-900">
-            ↻
-          </button>
-          <PageMenu
-            pages={pages.map((p) => ({ id: p.file, label: p.title, file: p.file }))}
-            current={current && { id: current.file, label: current.title, file: current.file }}
-            onPick={(f) => setOverride(f)}
-          />
-          <div className="ml-auto">
-            <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
-          </div>
+      <section className="flex min-h-0 min-w-0 flex-col">
+        <nav className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
+          <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
+          <div className="flex-1" />
+          <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
         </nav>
         <div className="relative min-h-0 flex-1 bg-paper">
           {chat.ask ? (

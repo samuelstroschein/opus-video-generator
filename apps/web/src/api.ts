@@ -19,7 +19,7 @@ export type AskQuestion = {
 };
 export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
 
-export type Attachment = { name: string; path: string; size: number; kind: "image" | "video" | "pdf" | "text" | "zip" | "file"; files?: number; entries?: string[] };
+export type Attachment = { name: string; path: string; size: number; kind: "image" | "video" | "pdf" | "text" | "zip" | "folder" | "file"; files?: number; entries?: string[] };
 
 export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
 
@@ -49,7 +49,8 @@ function message(body: { text: string; scope?: Scope }, files: File[]): RequestI
   const form = new FormData();
   form.set("text", body.text);
   if (body.scope) form.set("scope", JSON.stringify(body.scope));
-  for (const f of files) form.append("files", f);
+  // A file picked from a folder keeps its relative path ("brand/logo.svg") so the server can rebuild the folder.
+  for (const f of files) form.append("files", f, f.webkitRelativePath || f.name);
   return { method: "POST", body: form };
 }
 

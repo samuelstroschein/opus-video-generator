@@ -95,6 +95,19 @@ export function buildServer(ctx: ToolContext): McpServer {
   );
 
   reg(
+    "suggest_replies",
+    {
+      description:
+        "Offer the user one-click replies for the question you are ending your turn with, e.g. [\"Build A\", \"Build B\", \"Build C\", \"Mix takes\"] or [\"Looks good, build it\", \"Change the opening\"]. They appear as chips above the message box until the user replies; clicking one sends it as their message. Call it right before your final reply when there are obvious answers. Two to four short replies, written as the user would say them.",
+      inputSchema: { replies: z.array(z.string().min(1).max(40)).min(1).max(4) },
+    },
+    async ({ replies }) => {
+      log(id).emit({ type: "replies", replies });
+      return text("Replies offered.");
+    },
+  );
+
+  reg(
     "show_page",
     {
       description: "Switch the user's canvas to one of the project's pages (a top-level .html file). Call it whenever the user should look at something: after a form is answered and a page is ready, after you finish a page, or to go back to an earlier one.",

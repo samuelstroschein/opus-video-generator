@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Storyboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- One-click STORY feedback for a selected frame. Story notes, not polish notes. Keep or adapt. -->
 <meta name="lva:chips" content='[["Stronger hook","Make the hook stronger: open on the sharpest, most surprising moment."],["Cut this beat","Cut this beat."],["Swap with previous","Swap this beat with the previous one."],["Add a beat before","Add a short beat before this one that sets it up."],["Shorter","Make this beat shorter."]]'>
 <!--
@@ -81,7 +83,7 @@
 <style>
   :root { --fw:400px; --fh:225px; --cols:4; --ink:#1c1b19; --mute:#6b6963; --g1:#f4f3ef; --g2:#e5e3dd; --g3:#d2cfc7; --g4:#b4b0a6; }
   * { box-sizing:border-box; }
-  html, body { margin:0; height:100%; overflow:hidden; background:#fff; color:var(--ink); font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#fff; color:var(--ink); font:14px/1.45 Geist,-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
 
   /* the infinite canvas: #versions is moved by transform; everything else is plain HTML */
   #vp { position:fixed; inset:0; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
@@ -91,24 +93,24 @@
   /* a version */
   .version { display:flex; flex-direction:column; gap:26px; }
   .vtag { display:flex; gap:12px; align-items:center; margin-bottom:10px; }
-  .chip { font:600 13px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:3px 9px; border-radius:4px; }
-  .version:first-of-type .vtag::after { content:"latest"; font-size:11px; border:1px solid var(--g3); border-radius:10px; padding:1px 9px; color:var(--mute); }
-  .vmeta { font:500 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
-  .vhead h2 { margin:0; font-size:28px; font-weight:600; letter-spacing:-.01em; }
-  .vnote { margin:8px 0 0; font-size:16px; line-height:1.5; color:var(--mute); max-width:820px; }
+  .chip { font:600 11px "IBM Plex Mono",ui-monospace,monospace; background:var(--ink); color:#f6f5f2; padding:2px 7px; border-radius:4px; }
+  .version:first-of-type .vtag::after { content:"latest"; font:500 11px Geist,sans-serif; border:1px solid #dcd9d4; border-radius:10px; padding:1px 9px; color:#77736d; }
+  .vmeta { font:400 12px "IBM Plex Mono",ui-monospace,monospace; color:#9a968f; }
+  .vhead h2 { margin:0; font:600 28px/1.15 Geist,sans-serif; letter-spacing:-.02em; color:#191817; }
+  .vnote { margin:8px 0 0; font-size:16px; line-height:1.55; color:#77736d; max-width:820px; }
   .frames { display:grid; grid-template-columns:repeat(var(--cols),var(--fw)); gap:44px 32px; }
 
   /* a frame card */
   .card { margin:0; width:var(--fw); display:flex; flex-direction:column; gap:12px; cursor:pointer; }
   .card .cap { display:flex; gap:10px; align-items:baseline; }
-  .num { font:600 12px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:2px 7px; border-radius:4px; }
-  .time { font:12px ui-monospace,Menlo,monospace; color:var(--mute); }
-  .card p { margin:0; font-size:15px; line-height:1.45; }
+  .num { font:600 11px "IBM Plex Mono",ui-monospace,monospace; background:var(--ink); color:#f6f5f2; padding:2px 6px; border-radius:4px; }
+  .time { font:400 12px "IBM Plex Mono",ui-monospace,monospace; color:#9a968f; }
+  .card p { margin:0; font-size:15px; line-height:1.5; color:#191817; }
   .card.lva-selected .wf { outline:3px solid var(--ink); outline-offset:3px; }
   .card.changed .wf::after { content:""; position:absolute; top:9px; right:9px; width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 3px var(--g1); }
 
   /* the frame sheet: a container, so cqw units scale everything with the frame */
-  .wf { position:relative; width:var(--fw); height:var(--fh); container-type:inline-size; background:#fbfaf7; border:1px solid var(--g3); border-radius:10px; overflow:hidden; color:#1c1b19;
+  .wf { position:relative; width:var(--fw); height:var(--fh); container-type:inline-size; background:#fbfaf7; border:1px solid #e4e2de; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden; color:#1c1b19;
         --pad:5cqw; --gap:2.6cqw; --r:1.6cqw; --t-hero:13cqw; --t-xl:7cqw; --t-lg:4.6cqw; --t-md:3.3cqw; --t-sm:2.6cqw; }
   .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--gap); padding:var(--pad); }
   .t-hero { font-size:var(--t-hero); font-weight:700; letter-spacing:-.03em; line-height:1; }   /* a wordmark or one huge word */
@@ -126,17 +128,17 @@
   .variants { display:flex; flex-direction:column; gap:64px; }
   .variant { display:flex; flex-direction:column; gap:20px; }
   .vhd { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
-  .vletter { font:700 15px ui-monospace,Menlo,monospace; border:1.5px solid var(--ink); border-radius:5px; padding:2px 10px; }
-  .vname { font-size:22px; font-weight:600; letter-spacing:-.01em; }
-  .vpitch { font-size:16px; color:var(--mute); }
+  .vletter { font:600 14px "IBM Plex Mono",ui-monospace,monospace; border:1px solid #dcd9d4; border-radius:5px; padding:1px 8px; }
+  .vname { font:600 20px Geist,sans-serif; letter-spacing:-.01em; }
+  .vpitch { font-size:16px; color:#77736d; }
   .rail { position:absolute; left:6cqw; right:6cqw; bottom:3.6cqw; display:flex; justify-content:space-between; font-size:var(--t-sm); color:#9a968c; }
   .rail i { font-style:normal; position:relative; padding-top:3.4cqw; flex:1; text-align:center; }
   .rail i::before { content:""; position:absolute; left:50%; top:0; width:2.2cqw; height:2.2cqw; margin-left:-1.1cqw; border-radius:50%; border:.4cqw solid #c9c5ba; background:#fff; }
   .rail i.done { color:#1c1b19; } .rail i.done::before { background:#1c1b19; border-color:#1c1b19; }
   .rail i.now { color:#1c1b19; font-weight:700; } .rail i.now::before { border-color:#1c1b19; }
 
-  .questions { max-width:900px; border:1px dashed var(--g4); border-radius:10px; padding:14px 18px; background:var(--g1); }
-  .questions h3 { margin:0 0 6px; font:600 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
+  .questions { max-width:900px; border:1px solid #e4e2de; border-radius:12px; padding:14px 18px; background:#faf9f7; }
+  .questions h3 { margin:0 0 6px; font:500 12px Geist,sans-serif; color:#9a968f; }
   .questions p { margin:0 0 4px; font-size:15px; line-height:1.5; }
 </style>
 </head>

@@ -1,14 +1,28 @@
 @import "tailwindcss";
 
 @theme {
+  /* From the design handoff: warm neutrals, one ink, no accent beyond the scope chip. */
+  --color-paper: #faf9f7;
+  --color-bubble: #f4f3f0;
+  --color-line: #ebe9e5;
+  --color-line-2: #e4e2de;
+  --color-line-3: #dcd9d4;
+  --color-ink: #191817;
+  --color-mute: #77736d;
+  --color-faint: #9a968f;
+  --color-ok: #3f8f55;
   --color-accent: oklch(0.55 0.17 35);
   --color-accent-soft: oklch(0.96 0.03 35);
-  --color-paper: #faf9f6;
-  --color-line: #e4e1da;
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: Geist, -apple-system, "Segoe UI", Helvetica, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 
 html, body, #root { height: 100%; }
-body { margin: 0; background: var(--color-paper); color: #1a1a1a; font-family: var(--font-sans); }
+body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+textarea:focus { outline: none; }
+@keyframes lva-spin { to { transform: rotate(360deg); } }
 
 @keyframes lva-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+
+/* Keyboard focus in the ink palette instead of the browser default. */
+:where(button, a, [tabindex]):focus-visible { outline: 2px solid rgb(25 24 23 / .35); outline-offset: 2px; }

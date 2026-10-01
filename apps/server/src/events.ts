@@ -27,6 +27,9 @@ export type Scope =
 export type StoredEvent =
   | AgentEvent
   | { type: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
+  | { type: "queued"; text: string; scope?: Scope; attachments?: Attachment[] }
+  | { type: "queued.dropped" }
+  | { type: "replies"; replies: string[] }
   | { type: "turn.start" }
   | { type: "version"; tag: string }
   | { type: "ask"; form: AskForm }

@@ -157,6 +157,18 @@ The user is watching, so latency is a product problem. The skill therefore order
 
 The storyboard is always the first thing the user sees. Whether it holds one story or two or three variants side by side is the agent's call: variants when the direction is open and alternatives would help the user choose, one story when the brief is specific, and then it offers more takes in its closing question. Variants differ in storyline and design (concept, structure, opening, ending, layout, drawing approach), never only in palette; the reviewer fails a palette swap. Asking for more takes on a story already on screen does not create a new version: the existing story becomes variant A of the same version and B and C are added beside it (versions are for revisions and picks). Picking, mixing or asking for changes in chat produces the next version. Scope carries the variant (`storyboard v1, variant B, beat 3`), and `view_page` takes `variant`. How good films get directed (benchmark first, three candidate structures, hook, native move, pacing, camera, step rails for how-to videos, common failures) lives in `skills/launch-video/references/direction.md`, adapted from public Opus 5.5 production guides (athemeroy/awesome-opus-5-5-videos, lemomo-ai/lemo-opuscar, CC BY 4.0), and feeds both the working agent and the reviewers.
 
+### 6h. The editor and landing (from the design handoff)  (decided, implemented)
+
+The UI follows a design handoff (landing 1a, project view 2a/2b, page tabs 3): Geist with IBM Plex Mono for meta, warm neutrals (`#faf9f7` paper, `#191817` ink), no accent beyond the scope chip.
+
+- **Landing.** One prompt card (attach a file or a whole folder, Generate) and an Examples grid. The examples are mock for now: stills from videos this app made, and "Use" fills the prompt. Your projects are listed below.
+- **Steps live above the composer**, not at the top of the chat: one line with a spinner, the active step and what is happening now while the agent works (collapsed); the full list when it waits on you (expanded). The progress bar and "about 40s left" come only from `report_progress`.
+- **Assistant text has no bubble**; only the user's messages do. Lists render as lists, and "A: …" options as letter chips.
+- **Quick replies.** The agent ends a question with `suggest_replies` ("Build A", "Mix takes"); they show as chips above the box until the next message.
+- **Notes while it works.** A message sent during a turn is queued (`queued` event, shown faded under the conversation) and goes out as the next turn when this one ends; several notes merge into one message. If the turn ended on a form, the notes wait and go out with the answers. Stop or a server restart drops them (`queued.dropped`). The CLI harness cannot take input mid-run, so this is the honest version of "add a note".
+- **Pages are tabs.** One tab per page; up to three show and the rest sit in "N more", newest first. Tabs never reorder; a newly shown page takes the active tab's spot; a dot marks a page that changed since you looked. Replaces the page dropdown and the reload button (pages reload live).
+- **Folders.** Attaching a folder sends each file with its relative path; the server rebuilds it under `assets/uploads/<folder>/` with the same type and size rules as zips.
+
 ### 7. Gates and scope live in the app, not the prompt
 - The server derives stage state from workspace files (what exists, what's approved) and **injects it into every turn**: current stage, what's missing, and the scope (`scene 4 @ 0:14, pin (x,y)`, from the clicked still or paused frame).
 - UI buttons are disabled until the gate is met. The agent can still be asked to skip ahead and then says what's missing, as the wireframe specifies.

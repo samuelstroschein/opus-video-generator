@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
-import { isRunning, startTurn, stopTurn } from "./turns.js";
+import { enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
 import { saveUploads } from "./uploads.js";
 import { DRAFT_FIT, getDraft } from "./drafts.js";
 import { mountMcp } from "./mcp/http.js";
@@ -91,9 +91,20 @@ app.post("/api/projects/:id/messages", async (c) => {
   const id = c.req.param("id");
   const { text, scope, files } = await readMessage(c);
   if (!text.trim() && !files.length) return c.json({ error: "text required" }, 400);
-  if (isRunning(id)) return c.json({ error: "A turn is already running" }, 409);
   try {
-    startTurn(id, text.trim() || "See the attached files.", scope, saveUploads(id, files));
+    const note = { text: text.trim() || "See the attached files.", scope, attachments: saveUploads(id, files) };
+    // While the agent works, a message waits and goes out as soon as the turn ends.
+    if (isRunning(id)) {
+      enqueue(id, note);
+      return c.json({ ok: true, queued: true });
+    }
+    // Notes queued while a form was open travel with the answer.
+    const waiting = takeQueued(id);
+    if (waiting.length) {
+      startTurn(id, [...waiting.map((n) => n.text), note.text].join("\n\n"), note.scope, [...waiting.flatMap((n) => n.attachments), ...note.attachments]);
+      return c.json({ ok: true });
+    }
+    startTurn(id, note.text, note.scope, note.attachments);
   } catch (e) {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
   }
@@ -130,7 +141,10 @@ app.get("/api/projects/:id/renders/:file", (c) => {
 app.get("/api/projects/:id/events", (c) => {
   const l = log(c.req.param("id"));
   // A turn the server no longer runs (it restarted mid-turn) would show as "working" forever: close it out.
-  if (l.open && !isRunning(c.req.param("id"))) l.emit({ type: "error", message: "The server restarted while I was working, so that run stopped. Send your message again and I'll pick up from what's saved." });
+  if (l.open && !isRunning(c.req.param("id"))) {
+    l.emit({ type: "error", message: "The server restarted while I was working, so that run stopped. Send your message again and I'll pick up from what's saved." });
+    if (l.events.some((e) => e.type === "queued")) l.emit({ type: "queued.dropped" });
+  }
   return streamSSE(c, async (stream) => {
     for (const e of l.events) await stream.writeSSE({ data: JSON.stringify(e) });
     await stream.writeSSE({ event: "ready", data: "{}" });

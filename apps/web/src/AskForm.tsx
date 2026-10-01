@@ -20,22 +20,22 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
   const submit = () => onSubmit(`Direction:\n${form.questions.map((q) => `- ${q.label} ${answerText(q)}`).join("\n")}`);
 
   return (
-    <div className="flex h-full items-start justify-center overflow-y-auto p-8">
-      <div className="w-full max-w-xl rounded-xl border-[1.5px] border-line bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold">{form.title}</h2>
-        {form.intro && <p className="mt-1 text-sm text-neutral-600">{form.intro}</p>}
-        <div className="mt-4 divide-y divide-line">
+    <div className="flex h-full items-start justify-center overflow-y-auto bg-paper px-8 py-12">
+      <div className="w-full max-w-[600px] rounded-2xl border border-line-2 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
+        <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">{form.title}</h2>
+        {form.intro && <p className="mb-0 mt-1.5 text-sm text-mute">{form.intro}</p>}
+        <div className="mt-5 divide-y divide-line">
           {form.questions.map((q) => (
             <div key={q.id} className="py-4">
-              <div className="text-sm font-medium">{q.label}</div>
-              {q.hint && <div className="mt-0.5 text-xs text-neutral-500">{q.hint}</div>}
+              <div className="text-sm font-semibold">{q.label}</div>
+              {q.hint && <div className="mt-0.5 text-xs text-faint">{q.hint}</div>}
               <div className="mt-2 flex flex-wrap gap-2">
                 {q.type === "text" ? (
                   <textarea
                     value={values[q.id] as string}
                     onChange={(e) => set(q.id, e.target.value)}
                     rows={2}
-                    className="w-full resize-none rounded-lg border-[1.5px] border-line p-2 text-sm outline-none focus:border-neutral-900"
+                    className="w-full resize-none rounded-lg border border-line-3 p-2.5 text-sm outline-none focus:border-mute"
                   />
                 ) : (
                   <>
@@ -45,17 +45,17 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                         <button
                           key={o.value}
                           onClick={() => (q.type === "multi" ? set(q.id, on ? (values[q.id] as string[]).filter((x) => x !== o.value) : [...(values[q.id] as string[]), o.value]) : set(q.id, o.value))}
-                          className={["rounded-full border-[1.5px] px-3 py-1 text-left text-sm", on ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 hover:border-neutral-900"].join(" ")}
+                          className={["rounded-full border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
                         >
                           {o.label}
-                          {o.note && <span className={["ml-1.5 text-xs", on ? "text-neutral-300" : "text-neutral-500"].join(" ")}>{o.note}</span>}
+                          {o.note && <span className={["ml-1.5 text-xs font-normal", on ? "text-white/60" : "text-faint"].join(" ")}>{o.note}</span>}
                         </button>
                       );
                     })}
                     {q.allowOther && (
                       <button
                         onClick={() => (q.type === "multi" ? set(q.id, [...(values[q.id] as string[]).filter((x) => x !== OTHER), OTHER]) : set(q.id, OTHER))}
-                        className={["rounded-full border-[1.5px] border-dashed px-3 py-1 text-sm", (q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER) ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-400 text-neutral-600 hover:border-neutral-900"].join(" ")}
+                        className={["rounded-full border border-dashed px-3 py-1 text-[13px] font-medium", (q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER) ? "border-ink bg-ink text-white" : "border-line-3 text-mute hover:bg-bubble"].join(" ")}
                       >
                         Something else…
                       </button>
@@ -69,20 +69,20 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                   value={other[q.id] ?? ""}
                   onChange={(e) => setOther((s) => ({ ...s, [q.id]: e.target.value }))}
                   placeholder="Tell me more"
-                  className="mt-2 w-full rounded-lg border-[1.5px] border-line p-2 text-sm outline-none focus:border-neutral-900"
+                  className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none focus:border-mute"
                 />
               )}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t border-line pt-4">
-          <button disabled={busy} onClick={() => onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-paper disabled:opacity-40">
+        <div className="flex items-center gap-1 border-t border-line pt-4">
+          <button disabled={busy} onClick={() => onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
             Decide for me
           </button>
-          <button disabled={busy} onClick={() => onSubmit("Direction: Ask me follow-up questions before you continue.")} className="rounded-md px-3 py-1.5 text-sm text-neutral-600 hover:bg-paper disabled:opacity-40">
+          <button disabled={busy} onClick={() => onSubmit("Direction: Ask me follow-up questions before you continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
             Ask me follow-ups
           </button>
-          <button disabled={busy} onClick={submit} className="ml-auto rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+          <button disabled={busy} onClick={submit} className="ml-auto rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
             Continue →
           </button>
         </div>

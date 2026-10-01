@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import type { Step } from "./api";
 import type { Progress } from "./useProject";
 
-const icon = (s: Step["status"], live: boolean) => (s === "done" ? <span className="text-green-700">✓</span> : s === "active" ? <span className={live ? "animate-pulse" : ""}>●</span> : <span className="text-neutral-300">○</span>);
-
 export type Pace = { progress: Progress | null; stepSince: number | null; turnSince: number | null };
+
+export function Spinner({ size = 14 }: { size?: number }) {
+  return <span className="inline-block shrink-0 rounded-full border-2 border-line-2 border-t-ink" style={{ width: size, height: size, animation: "lva-spin .8s linear infinite" }} />;
+}
 
 function useNow(on: boolean) {
   const [now, setNow] = useState(Date.now());
@@ -18,74 +20,121 @@ function useNow(on: boolean) {
 
 const approx = (s: number) => (s < 8 ? "a few seconds" : s < 50 ? `${Math.round(s / 5) * 5}s` : s < 90 ? "about a minute" : `${Math.round(s / 60)} min`);
 
-/** Seconds left in the step, only if the agent gave an estimate (report_progress eta_seconds). We never invent one. */
-function secondsLeft(p: Progress, now: number): number | null {
-  return p.etaSeconds === undefined ? null : Math.max(0, p.etaSeconds - (now - p.at) / 1000);
+/** Time left only if the agent gave an estimate (report_progress eta_seconds). We never invent one, and show no clock. */
+function useTimeLeft(p: Progress | null, live: boolean) {
+  const now = useNow(live && p?.etaSeconds !== undefined);
+  if (!p || p.etaSeconds === undefined) return null;
+  const left = Math.max(0, p.etaSeconds - (now - p.at) / 1000);
+  return left > 1 ? `${approx(left)} left` : "almost done";
 }
 
-/** The bar under the steps: what is happening, how far along, how long it may take. Indeterminate until the agent reports. */
-export function ProgressBar({ pace, live, fallback, big }: { pace: Pace; live: boolean; fallback?: string; big?: boolean }) {
-  const now = useNow(live);
-  if (!live) return null;
-  const p = pace.progress;
-  const left = p ? secondsLeft(p, now) : null;
-  const known = p?.percent !== null && p?.percent !== undefined;
+/** A hairline bar for the agent's percent; nothing at all when it has not reported one. */
+function Bar({ percent }: { percent: number | null | undefined }) {
+  if (percent === null || percent === undefined) return null;
   return (
-    <div className={big ? "mt-2" : "mt-2"}>
-      <div className={["flex items-baseline justify-between gap-3", big ? "text-sm" : "text-[11px]"].join(" ")}>
-        <span className="truncate text-neutral-700">{p?.label || fallback || "Thinking and drafting…"}</span>
-        <span className="shrink-0 tabular-nums text-neutral-500">
-          {known && `${p!.percent}%`}
-          {left !== null && (known ? " · " : "") + (left > 1 ? `${approx(left)} left` : "almost done")}
-        </span>
-      </div>
-      <div className={["mt-1 overflow-hidden rounded-full bg-neutral-200", big ? "h-1.5" : "h-1"].join(" ")}>
-        {known ? (
-          <div className="h-full rounded-full bg-neutral-900 transition-[width] duration-700 ease-out" style={{ width: `${Math.max(3, p!.percent!)}%` }} />
-        ) : (
-          <div className="h-full w-1/3 animate-[lva-slide_1.4s_ease-in-out_infinite] rounded-full bg-neutral-400" />
-        )}
-      </div>
+    <div className="h-[3px] overflow-hidden rounded-full bg-line">
+      <div className="h-full rounded-full bg-ink transition-[width] duration-700 ease-out" style={{ width: `${Math.max(3, percent)}%` }} />
     </div>
   );
 }
 
-/** Compact progress strip: what the agent is doing and what comes next. The agent owns the list (set_steps). */
-export function StepsStrip({ steps, live, pace, activity }: { steps: Step[]; live: boolean; pace: Pace; activity?: string }) {
-  if (!steps.length && !live) return null;
-  const active = steps.find((s) => s.status === "active");
+const icon = (s: Step["status"]) => (s === "done" ? "✓" : s === "active" ? "●" : "○");
+const tone = (s: Step["status"]) => (s === "done" ? "text-ok" : s === "active" ? "font-semibold text-ink" : "text-faint");
+
+/**
+ * The plan, docked above the composer. While the agent works it is one line: a spinner, the active step and what is
+ * happening right now. While it waits on the user it opens into the full list. The user can toggle either way.
+ */
+export function StepCard({ steps, live, pace, activity }: { steps: Step[]; live: boolean; pace: Pace; activity?: string }) {
+  const [pinned, setPinned] = useState<boolean | null>(null);
+  useEffect(() => setPinned(null), [live]);
+  const timeLeft = useTimeLeft(pace.progress, live);
+  if (!steps.length) return null;
+  const idx = steps.findIndex((s) => s.status === "active");
+  const allDone = idx < 0 && steps.every((s) => s.status === "done");
+  const open = pinned ?? (!live && !allDone);
+  // No active step (between set_steps calls): point at the next one still to do.
+  const next = steps.findIndex((s) => s.status === "todo");
+  const i = idx >= 0 ? idx : Math.max(0, next);
+  const active = idx >= 0 ? steps[idx] : allDone ? undefined : steps[i];
+  const counter = allDone ? `${steps.length} of ${steps.length} done` : `Step ${i + 1} of ${steps.length}`;
+  const now = live ? pace.progress?.label || active?.detail || activity : active?.detail;
   return (
-    <div className="border-b border-line px-4 py-2.5 text-xs">
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-        {steps.map((s, i) => (
-          <span key={s.id} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-neutral-300">›</span>}
-            <span className={["flex items-center gap-1", s.status === "active" ? "font-semibold text-neutral-900" : s.status === "done" ? "text-neutral-500" : "text-neutral-400"].join(" ")}>
-              {icon(s.status, live)} {s.title}
-            </span>
-          </span>
-        ))}
-      </div>
-      {active?.detail && <p className="mt-1 text-neutral-500">{active.detail}</p>}
-      <ProgressBar pace={pace} live={live} fallback={activity} />
+    <div className="mx-2 rounded-t-xl border border-b-0 border-line-2 bg-paper">
+      <button onClick={() => setPinned(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
+        {live ? <Spinner /> : allDone && <span className="text-[11px] text-ok">✓</span>}
+        <span className="min-w-0 flex-1 truncate">{open ? counter : (active?.title ?? (allDone ? "All steps done" : counter))}</span>
+        {!open && <span className="text-xs font-normal text-faint">{counter}</span>}
+        <span className="text-[10px] text-faint">{open ? "▾" : "▴"}</span>
+      </button>
+      {open ? (
+        <div className="flex flex-col gap-2 px-3 pb-3 text-[13px]">
+          {steps.map((s) => (
+            <div key={s.id} className="flex flex-col gap-0.5">
+              <div className={["flex items-center gap-2", tone(s.status)].join(" ")}>
+                <span className="w-3 text-center text-[11px]">{icon(s.status)}</span>
+                {s.title}
+              </div>
+              {s.status === "active" && now && <div className="pl-5 text-xs text-mute">{now}</div>}
+            </div>
+          ))}
+          {live && <div className="pl-5"><Bar percent={pace.progress?.percent} /></div>}
+        </div>
+      ) : (
+        <div className="-mt-1 flex flex-col gap-1.5 pb-2.5 pl-9 pr-3">
+          {now && (
+            <div className="flex items-baseline gap-2 text-xs text-mute">
+              <span className="min-w-0 flex-1 truncate">{now}</span>
+              {live && (pace.progress?.percent != null || timeLeft) && (
+                <span className="shrink-0 tabular-nums text-faint">
+                  {pace.progress?.percent != null && `${pace.progress.percent}%`}
+                  {pace.progress?.percent != null && timeLeft && " · "}
+                  {timeLeft}
+                </span>
+              )}
+            </div>
+          )}
+          {live && <Bar percent={pace.progress?.percent} />}
+        </div>
+      )}
     </div>
   );
 }
 
 /** Shown on the canvas until the agent has something to show. */
 export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
+  const timeLeft = useTimeLeft(pace.progress, live);
   return (
-    <div className="flex h-full items-center justify-center bg-white px-8">
+    <div className="flex h-full items-center justify-center bg-paper px-8">
       <div className="w-full max-w-sm">
-        <ol className="flex flex-col gap-3">
-          {steps.length === 0 && <li className="animate-pulse text-neutral-500">Getting started…</li>}
+        {steps.length === 0 && (
+          <div className="flex items-center gap-3 text-sm text-mute">
+            {live ? (
+              <>
+                <Spinner /> Getting started…
+              </>
+            ) : (
+              "Nothing to show yet. Describe the video in the chat."
+            )}
+          </div>
+        )}
+        <ol className="flex flex-col gap-3.5">
           {steps.map((s) => (
             <li key={s.id} className="flex items-start gap-3">
-              <span className="mt-0.5 w-4 text-center">{icon(s.status, true)}</span>
+              <span className="mt-0.5 flex w-4 justify-center">{s.status === "active" && live ? <Spinner /> : <span className={["text-xs", tone(s.status)].join(" ")}>{icon(s.status)}</span>}</span>
               <div className="min-w-0 flex-1">
-                <div className={s.status === "active" ? "font-semibold" : s.status === "done" ? "text-neutral-500" : "text-neutral-400"}>{s.title}</div>
-                {s.status === "active" && s.detail && <div className="text-sm text-neutral-500">{s.detail}</div>}
-                {s.status === "active" && <ProgressBar pace={pace} live={live} fallback={activity} big />}
+                <div className={["text-[15px]", tone(s.status)].join(" ")}>{s.title}</div>
+                {s.status === "active" && (
+                  <div className="mt-1 flex flex-col gap-1.5">
+                    {(pace.progress?.label || s.detail || activity) && (
+                      <div className="flex items-baseline gap-2 text-[13px] text-mute">
+                        <span className="min-w-0 flex-1 truncate">{(live && pace.progress?.label) || s.detail || activity}</span>
+                        {live && timeLeft && <span className="shrink-0 text-faint">{timeLeft}</span>}
+                      </div>
+                    )}
+                    {live && <Bar percent={pace.progress?.percent} />}
+                  </div>
+                )}
               </div>
             </li>
           ))}

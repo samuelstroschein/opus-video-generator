@@ -13,8 +13,8 @@ export type Attachment = {
   /** Workspace-relative path of the file, or of the folder a zip was unpacked into. */
   path: string;
   size: number;
-  kind: "image" | "video" | "pdf" | "text" | "zip" | "file";
-  /** zip only: unpacked file count and the first few entries. */
+  kind: "image" | "video" | "pdf" | "text" | "zip" | "folder" | "file";
+  /** zip and folder: file count and the first few entries. */
   files?: number;
   entries?: string[];
 };
@@ -49,12 +49,24 @@ function uniqueName(dir: string, name: string) {
   return n;
 }
 
-export function saveUploads(id: string, files: { name: string; data: Buffer }[]): Attachment[] {
+export function saveUploads(id: string, all: { name: string; data: Buffer }[]): Attachment[] {
+  // A name with a slash came from an attached folder ("brand/logo.svg"); everything else is a loose file.
+  const files = all.filter((f) => !f.name.includes("/"));
+  const folders = new Map<string, { rel: string; data: Buffer }[]>();
+  for (const f of all.filter((f) => f.name.includes("/"))) {
+    const [top, ...rest] = f.name.split("/");
+    folders.set(top, [...(folders.get(top) ?? []), { rel: rest.join("/"), data: f.data }]);
+  }
   if (files.length > MAX_FILES) throw new Error(`At most ${MAX_FILES} files per message`);
   const root = workspaceDir(id);
   const dir = path.join(root, "assets", "uploads");
   fs.mkdirSync(dir, { recursive: true });
   const out: Attachment[] = [];
+  for (const [top, list] of folders) {
+    const folder = path.join(dir, uniqueName(dir, cleanSegment(top) || "folder"));
+    const { count, entries } = saveFolder(list, folder);
+    out.push({ name: top, path: path.relative(root, folder), size: list.reduce((n, f) => n + f.data.length, 0), kind: "folder", files: count, entries });
+  }
   for (const f of files) {
     if (f.data.length > MAX_FILE) throw new Error(`${f.name} is larger than ${MAX_FILE / 1024 / 1024} MB`);
     const ext = path.extname(f.name).toLowerCase();
@@ -71,6 +83,33 @@ export function saveUploads(id: string, files: { name: string; data: Buffer }[])
     }
   }
   return out;
+}
+
+/** An attached folder: same rules as a zip (allowed types only, no junk folders, safe paths, size limits). */
+function saveFolder(list: { rel: string; data: Buffer }[], folder: string) {
+  if (list.length > ZIP_MAX_ENTRIES) throw new Error(`A folder can have at most ${ZIP_MAX_ENTRIES} files`);
+  if (list.reduce((n, f) => n + f.data.length, 0) > ZIP_MAX_TOTAL) throw new Error("The folder is larger than 200 MB");
+  return writeEntries(
+    list.filter((f) => !SKIP_IN_ZIP.test(f.rel) && ZIP_ALLOWED.has(path.extname(f.rel).toLowerCase())).map((f) => [f.rel, f.data] as const),
+    folder,
+  );
+}
+
+function writeEntries(entries: (readonly [string, Uint8Array])[], folder: string) {
+  const listed: string[] = [];
+  for (const [name, bytes] of entries) {
+    const parts = name.split("/").map(cleanSegment);
+    if (!parts.length || parts.some((p) => !p)) continue;
+    const rel = parts.join("/");
+    const abs = path.resolve(folder, rel);
+    if (!abs.startsWith(folder + path.sep)) continue; // never outside the folder
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, bytes);
+    listed.push(rel);
+  }
+  fs.mkdirSync(folder, { recursive: true });
+  listed.sort();
+  return { count: listed.length, entries: listed.slice(0, 12) };
 }
 
 function unpackZip(data: Buffer, folder: string) {
@@ -95,27 +134,17 @@ function unpackZip(data: Buffer, folder: string) {
   const names = Object.keys(entries);
   const top = new Set(names.map((n) => n.split("/")[0]));
   const strip = top.size === 1 && names.every((n) => n.includes("/")) ? 1 : 0;
-  const listed: string[] = [];
-  for (const [name, bytes] of Object.entries(entries)) {
-    const parts = name.split("/").slice(strip).map(cleanSegment);
-    if (parts.some((p) => !p) || !parts.length) continue;
-    const rel = parts.join("/");
-    const abs = path.resolve(folder, rel);
-    if (!abs.startsWith(folder + path.sep)) continue; // zip-slip
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, bytes);
-    listed.push(rel);
-  }
-  fs.mkdirSync(folder, { recursive: true });
-  listed.sort();
-  return { count: listed.length, entries: listed.slice(0, 12) };
+  return writeEntries(
+    Object.entries(entries).map(([n, b]) => [n.split("/").slice(strip).join("/"), b] as const),
+    folder,
+  );
 }
 
 /** Sent to the agent with the user's message, so it knows what was attached and how to reach it. */
 export function describeAttachments(list: Attachment[]): string {
   if (!list.length) return "";
   const lines = list.map((a) => {
-    if (a.kind === "zip") return `- ${a.name} (zip, unpacked: ${a.files} files in ${a.path}/${a.entries?.length ? `; e.g. ${a.entries.slice(0, 6).join(", ")}` : ""})`;
+    if (a.kind === "zip" || a.kind === "folder") return `- ${a.name} (${a.kind === "zip" ? "zip, unpacked" : "folder"}: ${a.files} files in ${a.path}/${a.entries?.length ? `; e.g. ${a.entries.slice(0, 6).join(", ")}` : ""})`;
     return `- ${a.name} (${a.kind}, ${Math.round(a.size / 1024)} KB) → ${a.path}`;
   });
   return `[The user attached ${list.length === 1 ? "a file" : `${list.length} files`}. They are in the project: look at images with read_file, list folders with list_files. Pages can use them with a relative URL.\n${lines.join("\n")}]`;
