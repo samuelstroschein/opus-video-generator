@@ -13,6 +13,8 @@
       (also keep data-start / data-end in seconds so later stages can read timings)
     - <script src="_lva/bridge.js"></script> at the end of <body>
     - a .lva-selected style so the clicked scene is visibly highlighted
+    - one Pick button per board:  <button class="pick" data-lva-send="Go with Board B. Build the scene stills.">Pick B</button>
+      (data-lva-send makes the host send that text as a chat message)
   Fully self-contained: inline CSS/JS, no external fonts, scripts or images.
 -->
 <style>
@@ -28,6 +30,7 @@
   .strategy { margin:0; color:var(--mute); font-size:13px; }
   .bar { display:flex; gap:2px; height:8px; }
   .bar i { display:block; background:var(--line); border-radius:2px; }
+  .pick { margin-top:auto; font:600 13px system-ui; background:var(--ink); color:#fff; border:0; border-radius:6px; padding:7px 10px; cursor:pointer; }
   .scene { text-align:left; width:100%; font:inherit; color:inherit; background:#fff; border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer; display:flex; flex-direction:column; gap:3px; }
   .scene:hover { border-color:var(--ink); }
   .scene.lva-selected { border:1.5px solid var(--accent); background:var(--accent-soft); }
@@ -61,6 +64,7 @@
       <span class="top"><span class="n">3</span>CTA<span class="t">7–9s</span></span>
       <span class="v">…</span><span class="m">…</span><span class="txt">“…”</span>
     </button>
+    <button class="pick" data-lva-send="Go with Board A. Build the scene stills.">Pick A</button>
   </section>
 
   <section class="board" data-lva-board="B"><!-- same structure as A --></section>

@@ -7,6 +7,9 @@ import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
 import { stageState } from "./stage.js";
 import { isRunning, startTurn, stopTurn } from "./turns.js";
+import { createRequire } from "node:module";
+import { isExporting, startExport } from "./export.js";
+import { listRenders, rendersDir } from "./stage.js";
 
 const app = new Hono();
 
@@ -15,6 +18,7 @@ const MIME: Record<string, string> = {
   ".json": "application/json",
   ".css": "text/css",
   ".js": "text/javascript",
+  ".jsx": "text/javascript",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".svg": "image/svg+xml",
@@ -38,7 +42,7 @@ app.get("/api/projects/:id", (c) => {
   } catch {
     return c.json({ error: "not found" }, 404);
   }
-  return c.json({ id, title: projectTitle(id), running: isRunning(id), ...stageState(id) });
+  return c.json({ id, title: projectTitle(id), running: isRunning(id), exporting: isExporting(id), ...stageState(id) });
 });
 
 app.post("/api/projects/:id/messages", async (c) => {
@@ -53,6 +57,27 @@ app.post("/api/projects/:id/messages", async (c) => {
 app.post("/api/projects/:id/stop", (c) => {
   stopTurn(c.req.param("id"));
   return c.json({ ok: true });
+});
+
+const ARTIFACT_PORT = Number(process.env.ARTIFACT_PORT ?? 8788);
+
+app.post("/api/projects/:id/export", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json<{ fps?: number; from?: number; to?: number }>().catch(() => ({}));
+  try {
+    startExport(id, `http://localhost:${ARTIFACT_PORT}`, body);
+    return c.json({ ok: true });
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 409);
+  }
+});
+
+app.get("/api/projects/:id/renders/:file", (c) => {
+  const file = path.basename(c.req.param("file"));
+  const abs = path.join(rendersDir(c.req.param("id")), file);
+  if (!listRenders(c.req.param("id")).includes(file) || !fs.existsSync(abs)) return c.text("not found", 404);
+  const buf = fs.readFileSync(abs);
+  return new Response(buf, { headers: { "content-type": "video/mp4", "content-length": String(buf.length), "content-disposition": c.req.query("download") ? `attachment; filename="${file}"` : "inline" } });
 });
 
 // Replays the full event log, then streams live events. The client rebuilds state from scratch on connect.
@@ -84,6 +109,19 @@ app.get("/api/projects/:id/events", (c) => {
 // Agent-written HTML runs in an iframe on that origin, so it can't touch the app's origin
 // (cookies, storage, API). In the cloud this becomes a dedicated artifacts domain.
 const artifacts = new Hono();
+const nodeRequire = createRequire(import.meta.url);
+const pkgDir = (name: string) => path.dirname(nodeRequire.resolve(`${name}/package.json`));
+// Shared runtime libraries for agent-written pages, so each workspace stays small. Pages load them from /vendor/.
+const VENDOR: Record<string, string> = {
+  "react.js": path.join(pkgDir("react"), "umd", "react.production.min.js"),
+  "react-dom.js": path.join(pkgDir("react-dom"), "umd", "react-dom.production.min.js"),
+  "babel.js": path.join(pkgDir("@babel/standalone"), "babel.min.js"),
+};
+artifacts.get("/vendor/:name", (c) => {
+  const file = VENDOR[c.req.param("name")];
+  if (!file) return c.text("not found", 404);
+  return new Response(fs.readFileSync(file), { headers: { "content-type": "text/javascript", "cache-control": "public, max-age=3600" } });
+});
 artifacts.get("/p/:id/*", (c) => {
   const id = c.req.param("id");
   const rel = decodeURIComponent(c.req.path.replace(`/p/${id}/`, ""));

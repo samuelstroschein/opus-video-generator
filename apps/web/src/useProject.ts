@@ -6,12 +6,13 @@ export type Item =
   | { kind: "assistant"; id: string; text: string }
   | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean }
   | { kind: "error"; message: string }
-  | { kind: "version"; tag: string };
+  | { kind: "version"; tag: string }
+  | { kind: "export"; file: string; seconds: number };
 
-type ChatState = { items: Item[]; running: boolean; costUsd: number };
+type ChatState = { items: Item[]; running: boolean; costUsd: number; exporting: { frame: number; total: number } | null };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0 };
+const initial: ChatState = { items: [], running: false, costUsd: 0, exporting: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -45,6 +46,16 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "version":
       items.push({ kind: "version", tag: e.tag });
       return { ...state, items };
+    case "export.start":
+      return { ...state, exporting: { frame: 0, total: 1 } };
+    case "export.progress":
+      return { ...state, exporting: { frame: e.frame, total: e.total } };
+    case "export.done":
+      items.push({ kind: "export", file: e.file, seconds: e.seconds });
+      return { ...state, items, exporting: null };
+    case "export.error":
+      items.push({ kind: "error", message: `Export failed: ${e.message}` });
+      return { ...state, items, exporting: null };
     default:
       return state;
   }
@@ -75,7 +86,7 @@ export function useProject(id: string) {
       if (e.type === "file.changed") refresh();
       else {
         dispatch(e);
-        if (e.type === "turn.done" || e.type === "error") refresh();
+        if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh();
       }
     };
     es.addEventListener("ready", refresh);

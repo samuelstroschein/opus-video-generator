@@ -27,9 +27,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   l.emit({ type: "turn.start" });
 
   // Scope travels with the message so a note can only target one scene.
-  const prompt = scope
-    ? `[Scope: Board ${scope.board}, scene ${scope.scene}${scope.title ? ` "${scope.title}"` : ""}. Change only this scene; leave everything else untouched.]\n\n${text}`
-    : text;
+  const prompt = scope ? `${scopePrefix(scope)}\n\n${text}` : text;
 
   const watcher = watchWorkspace(id);
   try {
@@ -57,6 +55,14 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
     if (tag) l.emit({ type: "version", tag });
     l.emit({ type: "file.changed", path: "*" }, false);
   }
+}
+
+function scopePrefix(scope: Scope): string {
+  if (scope.kind === "video") {
+    return `[Scope: the video, section "${scope.scene}" at ${scope.time.toFixed(1)}s, pin at x=${scope.x.toFixed(2)}, y=${scope.y.toFixed(2)} (fractions of the frame, origin top-left). Change only what appears at that point in that section's scene file; leave every other scene untouched.]`;
+  }
+  const where = scope.board ? `Board ${scope.board}, scene ${scope.scene}` : `scene ${scope.scene}`;
+  return `[Scope: ${where}${scope.title ? ` "${scope.title}"` : ""}. Change only this scene (in its scene file or its element); leave everything else untouched.]`;
 }
 
 function watchWorkspace(id: string) {
