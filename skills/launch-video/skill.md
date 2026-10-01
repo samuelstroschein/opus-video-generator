@@ -1,6 +1,6 @@
 ---
 name: launch-video
-description: Make a product launch video (motion graphics written as code) from a product URL and a prompt. Researches the product, asks a short pre-filled form, optionally wireframes the story for review, then builds a video the user can play, adjust and export as MP4.
+description: Make a product launch video (motion graphics written as code) from a product URL and a prompt. Researches the product, asks a short pre-filled form, sketches the story for review when that will help, then builds a video the user can play, adjust and export as MP4.
 ---
 
 # Skill: launch video
@@ -11,16 +11,14 @@ You make a launch video for a real product. The video is an HTML page driven by 
 
 1. **Research** the product (below) and write `brief.html`. Do not show it yet.
 2. **Ask the form** (below), then end your turn.
-3. When the answers arrive:
-   - **Approach "Just build it":** build the video (below). This is the default.
-   - **Approach "Show me the story first":** write the story canvas (below) as v1, `show_page` it, and ask whether the story works. Iterate as new versions. Build the video only after the user approves.
+3. When the answers arrive, **you decide** whether to storyboard first or build the video straight away (see "Deciding whether to storyboard"). Never ask the user to choose; say which you chose, in a sentence, and why. If you storyboard: write the story canvas (below) as v1, `show_page` it, and ask whether the story works; iterate as new versions; build the video when the user says to go ahead. If you build: go to "Build the video".
 4. Iterate on notes. Export is done by the app (the user presses Export), not by you.
 
 The app has no wizard and no buttons for moving between steps. **You are the guide:** every reply tells the user what you did and what they can do next, in one or two plain sentences.
 
 ## Tell the user what is happening (`set_steps`)
 
-Right after `load_skill`, call `set_steps` with the plan: **Research the product**, **Confirm the direction**, **Make the video** (first one active). Update it each time a step starts or finishes. Once the form is answered, rewrite the plan to match the chosen approach: for "Show me the story first" use Research the product ✓ → Confirm the direction ✓ → **Storyboard the story** → **Build the video** → **Review and export**; for "Just build it" use Research ✓ → Confirm ✓ → **Build the video** → **Review and export**. When a revision loop starts (notes on the story or the video), add a step for it ("Revise the story", "Refine the video") and mark it active, then done. Give the active step a `detail`: one short line on what happens now ("Sketching the beats so you can fix the story first"). **When you hand over to the user, call `set_steps` once more and change that detail to what you are waiting for** ("Waiting for your OK on the story"), so the strip never describes work that is already done.
+Right after `load_skill`, call `set_steps` with the plan: **Research the product**, **Confirm the direction**, **Make the video** (first one active). Update it each time a step starts or finishes: **research finishes → call `set_steps` before anything else**. If the user's message already answered everything and you skip the form, rewrite the plan right then: drop "Confirm the direction", mark Research done, and make the next real step active (Build the video, or Storyboard the story). Once the form is answered and you have decided, rewrite the plan to match: with a storyboard use Research the product ✓ → Confirm the direction ✓ → **Storyboard the story** → **Build the video** → **Review and export**; without one use Research ✓ → Confirm ✓ → **Build the video** → **Review and export**. When a revision loop starts (notes on the story or the video), add a step for it ("Revise the story", "Refine the video") and mark it active, then done. Give the active step a `detail`: one short line on what happens now ("Sketching the beats so you can fix the story first"). **When you hand over to the user, call `set_steps` once more and change that detail to what you are waiting for** ("Waiting for your OK on the story"), so the strip never describes work that is already done.
 
 Do not `show_page` the brief or anything half-finished: the canvas shows progress until you have something settled to show.
 
@@ -35,12 +33,25 @@ One form, at most 5 questions, every one with a `default` chosen from your resea
 - `launch_target` (single): what are we launching? Options from the site (a specific feature, or "The product overall"), `allowOther`.
 - `format` (single): where it will be posted, which sets the aspect ratio: X or LinkedIn 16:9, Instagram or TikTok 9:16, Square 1:1. And `length` (single): 15s, 30s, 45s.
 - `style` (single): name concrete looks, not adjectives. Default to **Light and minimal** (warm white, black UI, one accent color, one clean font) unless the brand is clearly dark. Others: "Dark and precise, subtle glow", "Bold color with kinetic type", "Product reveal on a clean stage". `allowOther`.
-- `hero_moment` (text): the one moment the video must show, prefilled with your best guess.
-- `approach` (single): **Just build it** (default) or **Show me the story first**. Give the second option a note: "I sketch the beats as a wireframe so you can fix the story before anything is designed."
+- `aha_moment` (text), labelled exactly **"The single AHA moment"**: the one moment that makes a viewer understand why this product matters. Prefilled with your best guess from the research.
+
+Do not ask whether to storyboard or just build. That is your decision, made after the answers.
 
 Visuals: for now you draw a faithful stylized product UI. Do not offer uploads.
 
-## Storyboard → `storyboard.html` (only when asked for)
+## Deciding whether to storyboard
+
+Storyboarding costs the user a round of review, so do it only when it will pay off.
+
+**Storyboard first** when the story is a real choice and a wrong guess would waste the build: the prompt is vague or says little about the angle ("a launch video for X"); the product has many features and the hook or the single AHA moment is not obvious; there are two or more plausible angles; the user asked for options or to see the story first.
+
+**Your own guesses do not pin anything down.** If the user answered "Decide for me", skipped the AHA moment, or only gave you a bare URL, the angle is still your guess, so storyboard first. The story counts as pinned down only by what the *user* said.
+
+**Build straight away** when the story is already pinned down: the user's prompt or form answers name the claim, the AHA moment, the length and the style; the product is simple with one obvious proof; the user said to just build it; or you are revising a video that already exists.
+
+An explicit request from the user always wins ("show me the story first", "just build it"). Say your choice and the reason in one sentence ("Your prompt is specific, so I'm going straight to the video." or "There are a few good angles on this one, so I'll sketch the story first."), and invite a change of mind only if it is cheap ("Say 'storyboard first' if you'd rather see it.").
+
+## Storyboard → `storyboard.html` (when it will help)
 
 The point is to review the **story**, so the frames are simplified, but at **mid fidelity: the founder must recognize their own product at a glance.** The storyboard is **one infinite canvas that holds every version of the story**: v1, v2, v3 stacked, newest on top, so the user sees how the story evolved and can compare. Start from `_lva/templates/storyboard.html`: pan (scroll or drag) and zoom (pinch) are built in, on a white background, with no buttons or controls. The conversation is in the chat. Do not rewrite its script.
 
