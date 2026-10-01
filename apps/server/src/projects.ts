@@ -48,18 +48,21 @@ export function listProjects(): (ProjectMeta & { title: string })[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function readJson(id: string, file: string): any | null {
+export function readText(id: string, file: string): string | null {
   try {
-    return JSON.parse(fs.readFileSync(path.join(workspaceDir(id), file), "utf8"));
+    return fs.readFileSync(path.join(workspaceDir(id), file), "utf8");
   } catch {
     return null;
   }
 }
 
-export function projectTitle(id: string): string {
-  const name = readJson(id, "brief.json")?.product?.name;
-  return name ? String(name) : readMeta(id).prompt.slice(0, 48);
+/** Product name from the brief page's `<meta name="lva:product">`, if the page honours the contract. */
+export function briefProduct(id: string): string | null {
+  const m = readText(id, "brief.html")?.match(/<meta[^>]*name=["']lva:product["'][^>]*content=["']([^"']+)["']/i);
+  return m ? m[1] : null;
 }
+
+export const projectTitle = (id: string) => briefProduct(id) ?? readMeta(id).prompt.slice(0, 48);
 
 /** Commit whatever the agent changed this turn and tag it as the next version. */
 export function commitTurn(id: string, turn: number, prompt: string): string | null {

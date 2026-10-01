@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief</title>
+<!-- The app reads the product name from this tag to title the project. Keep it. -->
+<meta name="lva:product" content="Product name">
+<!--
+  STARTING POINT, not a final page. Copy to ../../brief.html and replace the sample content.
+  Restyle freely. Keep: the lva:product meta tag, and data-lva-color="#hex" on each brand color swatch
+  (later stages read colors from these). Fully self-contained: inline CSS/JS, no external resources.
+-->
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e4e1da; --bg:#faf9f6; --ok:#2a8a4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui,-apple-system,sans-serif; max-width:760px; }
+  h1 { margin:0 0 2px; font-size:22px; }
+  .one { margin:0 0 18px; color:var(--mute); }
+  .card { background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .card h3 { margin:0 0 8px; font:600 11px ui-monospace,monospace; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .kv { display:grid; grid-template-columns:110px 1fr; gap:6px 12px; margin:0; }
+  .kv dt { color:var(--mute); } .kv dd { margin:0; }
+  .sw { display:flex; gap:10px; flex-wrap:wrap; }
+  .sw span { display:flex; align-items:center; gap:6px; font:12px ui-monospace,monospace; }
+  .sw i { width:22px; height:22px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+  ul { margin:0; padding-left:18px; }
+  .check { list-style:none; padding:0; display:grid; gap:4px; }
+  .ok { color:var(--ok); } .todo, .note { color:var(--mute); } .note { font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>Product name</h1>
+  <p class="one">One-line description.</p>
+  <div class="card"><h3>Product</h3><dl class="kv">
+    <dt>URL</dt><dd>https://…</dd><dt>Audience</dt><dd>…</dd><dt>Tone</dt><dd>…</dd>
+    <dt>Features</dt><dd><ul><li>…</li></ul></dd>
+  </dl></div>
+  <div class="card"><h3>Brand</h3>
+    <div class="sw"><span><i style="background:#5e6ad2" data-lva-color="#5e6ad2"></i>#5e6ad2 primary</span></div>
+    <dl class="kv" style="margin-top:10px"><dt>Fonts</dt><dd>…</dd><dt>Logo</dt><dd>…</dd></dl></div>
+  <div class="card"><h3>Launch</h3><dl class="kv">
+    <dt>Goal</dt><dd>…</dd><dt>Hook</dt><dd>…</dd><dt>CTA</dt><dd>…</dd><dt>Length</dt><dd>30s</dd><dt>Platforms</dt><dd>X</dd>
+  </dl></div>
+  <div class="card"><h3>Context checklist</h3><ul class="check">
+    <li class="ok">✓ Product URL and description</li>
+    <li class="ok">✓ Brand (colors, fonts)</li>
+    <li class="todo">○ Product screenshots <span class="note">(upload not built yet)</span></li>
+    <li class="todo">○ Reference video <span class="note">(upload not built yet)</span></li>
+  </ul></div>
+  <div class="card"><h3>Assumptions the agent made</h3><ul><li>…</li></ul></div>
+</body>
+</html>
