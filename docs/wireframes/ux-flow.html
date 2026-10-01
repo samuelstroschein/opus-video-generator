@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Video Agent: ideal flow</title>
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#d9d5cc; --bg:#f0eee9; --accent:#c2552b; --accent-soft:#fbeee8; --ok:#2a8a4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:40px 44px 80px; background:var(--bg); color:var(--ink); font:14px/1.5 system-ui,-apple-system,sans-serif; }
+  h1 { margin:0 0 4px; font-size:24px; } h2 { margin:44px 0 6px; font-size:17px; }
+  .sub { color:var(--mute); margin:0 0 20px; max-width:760px; }
+  .flow { display:grid; grid-template-columns:repeat(7,minmax(150px,1fr)); gap:10px; align-items:stretch; }
+  .step { background:#fff; border:1.5px solid var(--ink); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; font-size:12.5px; position:relative; }
+  .step.new { border-color:var(--accent); background:var(--accent-soft); }
+  .step b { font-size:13.5px; } .step .n { font:700 10px ui-monospace,monospace; color:var(--mute); }
+  .tag { display:inline-block; font:600 10px ui-monospace,monospace; border-radius:9px; padding:1px 7px; margin-right:4px; }
+  .tag.agent { background:#e8e6e0; } .tag.you { background:var(--ink); color:#fff; } .tag.gate { border:1px solid var(--accent); color:var(--accent); }
+  .step ul { margin:0; padding-left:15px; color:#444; } .step li { margin:1px 0; }
+  .legend { margin-top:12px; color:var(--mute); font-size:12px; }
+  .row { display:grid; grid-template-columns:minmax(0,640px) minmax(0,1fr); gap:32px; align-items:start; }
+  .form { background:#fff; border:2px solid var(--ink); border-radius:10px; padding:20px 22px; }
+  .form h3 { margin:0; font-size:18px; } .form .hint { margin:2px 0 14px; color:var(--mute); font-size:13px; }
+  .q { border-top:1px solid var(--line); padding:12px 0; } .q .t { font-weight:600; margin-bottom:6px; } .q .t small { font-weight:400; color:var(--mute); margin-left:6px; }
+  .opts { display:flex; flex-wrap:wrap; gap:6px; }
+  .opt { border:1.5px solid var(--ink); border-radius:16px; padding:3px 11px; font-size:13px; }
+  .opt.on { background:var(--ink); color:#fff; } .opt.dash { border-style:dashed; border-color:#888; color:#666; }
+  .refs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .ref { border:1.5px solid var(--ink); border-radius:6px; overflow:hidden; font-size:11.5px; }
+  .ref.on { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+  .ref i { display:block; height:54px; background:repeating-linear-gradient(45deg,#eee 0 5px,#fff 5px 10px); }
+  .ref span { display:block; padding:4px 6px; }
+  .field { border:1.5px solid var(--ink); border-radius:5px; padding:6px 8px; color:#888; }
+  .foot { display:flex; gap:10px; align-items:center; border-top:1px solid var(--line); padding-top:14px; margin-top:4px; }
+  .btn { border:1.5px solid var(--ink); border-radius:6px; padding:5px 12px; font-size:13px; } .btn.go { background:var(--ink); color:#fff; margin-left:auto; } .btn.ghost { border-color:transparent; color:var(--mute); }
+  .note { font:700 15px/1.25 ui-rounded,'Segoe Print','Comic Sans MS',cursive; color:var(--accent); margin:8px 0; }
+  .diff { width:100%; border-collapse:collapse; background:#fff; border:1.5px solid var(--ink); border-radius:8px; overflow:hidden; font-size:13px; }
+  .diff th, .diff td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--line); vertical-align:top; } .diff th { background:#f7f5f0; font-size:12px; }
+  .diff tr:last-child td { border-bottom:0; }
+  code { font:12px ui-monospace,monospace; background:#e8e6e0; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<h1>Ideal flow</h1>
+<p class="sub">One prompt starts it. The agent researches first, then asks a few skippable, pre-filled questions about the direction, then walks through the three cheap-to-fix review gates before anything expensive renders. Orange = new compared with what is built today.</p>
+
+<div class="flow">
+  <div class="step"><span class="n">0</span><b>Start</b><div><span class="tag you">YOU</span></div><ul><li>Paste the URL</li><li>Optional: drop screenshots, a reference video, a braindump</li></ul></div>
+  <div class="step"><span class="n">1</span><b>Research</b><div><span class="tag agent">AGENT</span></div><ul><li>Reads the site, pulls logo, colors, fonts</li><li>Captures real screenshots of the site</li><li>Drafts brief.html live</li></ul></div>
+  <div class="step new"><span class="n">2</span><b>Direction questions</b><div><span class="tag agent">ASKS</span><span class="tag you">YOU</span></div><ul><li>5 questions on the canvas, pre-filled from the research</li><li>Skip all with “Decide for me”</li></ul></div>
+  <div class="step"><span class="n">3</span><b>Three storyboards</b><div><span class="tag agent">AGENT</span><span class="tag gate">GATE</span></div><ul><li>3 different bets, each names its reference</li><li>Pick one, mix scenes, or “none fit”</li></ul></div>
+  <div class="step"><span class="n">4</span><b>Stills</b><div><span class="tag agent">AGENT</span><span class="tag gate">GATE</span></div><ul><li>One frame per scene</li><li>Click a still, leave a note, redraw only that one</li><li>Approve all</li></ul></div>
+  <div class="step"><span class="n">5</span><b>Video + notes</b><div><span class="tag agent">AGENT</span><span class="tag you">YOU</span></div><ul><li>Play, pause, pin a frame</li><li>Director chips: slow 0.7x, hard cut, push in</li><li>Receipt with exact values</li></ul></div>
+  <div class="step new"><span class="n">6</span><b>Export + verdict</b><div><span class="tag you">YOU</span></div><ul><li>Pick destinations: 16:9, 1:1, 9:16</li><li>“Would you post this as-is?”</li><li>vs. your usual process</li></ul></div>
+</div>
+<p class="legend"><span class="tag agent">AGENT</span> works on its own &nbsp; <span class="tag you">YOU</span> decides or acts &nbsp; <span class="tag gate">GATE</span> a cheap review before an expensive step</p>
+
+<h2>Step 2: the direction form</h2>
+<p class="sub">Renders on the canvas, like Claude Design’s “Ask user”. It comes <b>after</b> the research, so the defaults are real (the feature it found, the screenshots it grabbed) and you confirm instead of typing. The one question Claude Design doesn’t ask, and the research says matters most, is the visual style to copy.</p>
+<div class="row">
+  <div class="form">
+    <h3>Direction</h3>
+    <p class="hint">Five quick calls on linear.app. Skip any and I’ll decide.</p>
+
+    <div class="q"><div class="t">What are we launching?</div>
+      <div class="opts"><span class="opt on">Linear Agents <small>found on your homepage</small></span><span class="opt">The product overall</span><span class="opt dash">Something else…</span></div></div>
+
+    <div class="q"><div class="t">Where will you post it? <small>sets the aspect ratio</small></div>
+      <div class="opts"><span class="opt on">X / LinkedIn · 16:9</span><span class="opt">Instagram / TikTok · 9:16</span><span class="opt">Square · 1:1</span></div>
+      <div class="opts" style="margin-top:6px"><span class="opt">15s</span><span class="opt on">30s</span><span class="opt">45s</span></div></div>
+
+    <div class="q"><div class="t">Which style should it copy? <small>pick 1–2. Naming a style beats describing one</small></div>
+      <div class="refs">
+        <div class="ref on"><i></i><span>Dark UI, slow pan</span></div>
+        <div class="ref"><i></i><span>Kinetic type</span></div>
+        <div class="ref"><i></i><span>Product reveal</span></div>
+        <div class="ref"><i></i><span>Before / after</span></div>
+      </div>
+      <div class="opts" style="margin-top:8px"><span class="opt dash">+ Paste a link or upload a video</span></div></div>
+
+    <div class="q"><div class="t">The one moment to show</div>
+      <div class="field">An issue gets triaged and fixed with no human touching it</div>
+      <div class="opts" style="margin-top:6px"><span class="opt">Suggested from the site</span><span class="opt">Write my own</span></div></div>
+
+    <div class="q"><div class="t">Product visuals <small>real UI beats invented UI</small></div>
+      <div class="opts"><span class="opt on">Use the 4 screenshots I grabbed</span><span class="opt">Upload mine</span><span class="opt">Draw a stylized UI</span></div></div>
+
+    <div class="foot"><span class="btn ghost">Decide for me</span><span class="btn ghost">Ask me follow-ups</span><span class="btn go">Build storyboards →</span></div>
+  </div>
+  <div>
+    <div class="note">↖ every question has a pre-filled default, so “Continue” works untouched</div>
+    <div class="note">↖ style is visual: looping thumbnails, not a text radio</div>
+    <div class="note">↖ answers go to the agent as one structured message and are saved in the brief</div>
+    <h2 style="margin-top:24px">Rules for questions</h2>
+    <ul style="color:#444;max-width:420px;padding-left:18px">
+      <li>At most 5, one screen, all skippable.</li>
+      <li>Research first so defaults come from the site, not from nothing.</li>
+      <li>Ask only what is expensive to get wrong later: what, where, style, hero moment, visuals.</li>
+      <li>Never ask for what the page can infer (brand, tone, audience).</li>
+      <li>A second round only if the user taps “Ask me follow-ups”.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>How this differs from Claude Design</h2>
+<table class="diff">
+  <tr><th></th><th>Claude Design</th><th>This product</th></tr>
+  <tr><td>When it asks</td><td>Before looking at anything</td><td>After researching the site, with defaults filled in</td></tr>
+  <tr><td>Style</td><td>Text options (“dark, precise, subtle glow”)</td><td>Visual references to copy, or your own video</td></tr>
+  <tr><td>Product UI</td><td>Draws a mock interface</td><td>Uses real screenshots you supply or the agent captures</td></tr>
+  <tr><td>Review gates</td><td>Straight to the finished video</td><td>3 storyboards, then stills, then video: each cheap to fix</td></tr>
+  <tr><td>Revisions</td><td>Free chat plus a tweaks panel</td><td>Notes scoped to a scene or a pinned frame, with a receipt of exact values</td></tr>
+  <tr><td>Success measure</td><td>None</td><td>“Would you post this?” and time vs. your usual process</td></tr>
+</table>
+
+<h2>How the form works technically</h2>
+<p class="sub">The agent ends its turn after writing the question set (for example <code>ask.json</code>). The app renders it on the canvas. Submitting sends the answers as the next chat message, and the agent continues. Nothing blocks, so it survives page reloads and works the same in the cloud. This is simpler and sturdier than a tool call that waits for the user.</p>
+</body>
+</html>
