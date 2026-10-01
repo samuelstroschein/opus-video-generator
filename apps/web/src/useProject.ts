@@ -7,7 +7,8 @@ export type Item =
   | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean }
   | { kind: "error"; message: string }
   | { kind: "version"; tag: string }
-  | { kind: "export"; file: string; seconds: number };
+  | { kind: "export"; file: string; seconds: number }
+  | { kind: "review"; judge: string; page: string; pass: boolean; fixes: string[]; round: number };
 
 type ChatState = { items: Item[]; running: boolean; costUsd: number; ask: AskForm | null; steps: Step[]; exporting: { frame: number; total: number } | null };
 type ServerEvent = { type: string; [k: string]: any };
@@ -35,6 +36,16 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     }
     case "steps":
       return { ...state, steps: e.steps };
+    case "review": {
+      // The judge's verdict, as the user sees it: PASS or REVISE with its fixes. Round = reviews of this page since the user's last message.
+      const lastUser = items.map((i) => i.kind).lastIndexOf("user");
+      const round = items.slice(lastUser + 1).filter((i) => i.kind === "review" && i.page === e.page).length + 1;
+      const lines = String(e.verdict).split("\n").map((l: string) => l.trim()).filter(Boolean);
+      const pass = /^VERDICT:\s*PASS/i.test(lines[0] ?? "");
+      const fixes = lines.slice(1).filter((l: string) => /^[-•*]/.test(l)).map((l: string) => l.replace(/^[-•*]\s*/, ""));
+      items.push({ kind: "review", judge: e.judge, page: e.page, pass, fixes, round });
+      return { ...state, items };
+    }
     case "tool.start":
       // Text the agent wrote before calling a tool is thinking aloud; only the final message of a turn belongs in the chat.
       if (items.at(-1)?.kind === "assistant") items.pop();

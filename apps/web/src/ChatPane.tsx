@@ -177,6 +177,29 @@ function ToolGroup({ tools, live }: { tools: Tool[]; live: boolean }) {
   );
 }
 
+function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
+  const [open, setOpen] = useState(false); // one line by default; the objections are one click away
+  const label = item.pass ? "passed" : `${item.fixes.length} fix${item.fixes.length === 1 ? "" : "es"} to make`;
+  return (
+    <div className={["rounded-lg border px-3 py-2 text-xs", item.pass ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"].join(" ")}>
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-1.5 text-left">
+        <span>{item.pass ? "✓" : "⚑"}</span>
+        <span className="font-medium">
+          Judge review · round {item.round} · {label}
+        </span>
+        {item.fixes.length > 0 && <span className="ml-auto text-[9px] text-neutral-500">{open ? "▾" : "▸"}</span>}
+      </button>
+      {open && item.fixes.length > 0 && (
+        <ul className="mt-1.5 list-disc space-y-1 pl-4 text-neutral-700">
+          {item.fixes.map((f, i) => (
+            <li key={i}>{f}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ChatItem({ item, id }: { item: Exclude<Item, { kind: "tool" }>; id: string }) {
   switch (item.kind) {
     case "user":
@@ -191,6 +214,8 @@ function ChatItem({ item, id }: { item: Exclude<Item, { kind: "tool" }>; id: str
       return <div className="mr-8 whitespace-pre-wrap rounded-lg bg-neutral-100 px-3 py-2">{item.text}</div>;
     case "error":
       return <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{item.message}</div>;
+    case "review":
+      return <ReviewRow item={item} />;
     case "export":
       return (
         <div className="rounded-lg border border-line px-3 py-2 text-xs">
