@@ -200,17 +200,47 @@ const LinkedInMark = () => (
   </svg>
 );
 
+/** Start a file download without leaving the page. */
+export function download(url: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 /**
- * One click to post about the video: X and LinkedIn open with the text filled in. Neither lets a site attach a file,
- * so the menu also offers the latest MP4 to download and attach.
+ * One click to post about the video: the post opens in a new tab with the text filled in, and the MP4 downloads at
+ * the same time so it is ready to attach (neither site lets a page attach a file). With no export yet, the click
+ * starts one and the MP4 downloads as soon as it is rendered.
  */
-export function ShareMenu({ id, renders }: { id: string; renders: string[] }) {
+export function ShareMenu(props: { id: string; renders: string[]; canExport: boolean; exporting: { frame: number; total: number } | null; setError: (e: string) => void }) {
+  const { id, renders, canExport, exporting, setError } = props;
   const text = encodeURIComponent(SHARE_TEXT);
   const targets = [
     { label: "Share on X", icon: <XMark />, href: `https://x.com/intent/post?text=${text}` },
     { label: "Share on LinkedIn", icon: <LinkedInMark />, href: `https://www.linkedin.com/feed/?shareActive=true&text=${text}` },
   ];
   const latest = renders[0];
+
+  // When a share started an export, download the new render the moment it appears.
+  const waiting = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (waiting.current === undefined || renders[0] === waiting.current || !renders[0]) return;
+    waiting.current = undefined;
+    download(api.renderUrl(id, renders[0], true));
+  }, [renders, id]);
+
+  const share = (href: string) => {
+    window.open(href, "_blank", "noopener,noreferrer"); // first, inside the click, so popup blockers allow it
+    if (latest && !exporting) return download(api.renderUrl(id, latest, true));
+    if (!canExport) return;
+    waiting.current = latest ?? null;
+    if (!exporting) api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  };
+
+  const pct = exporting ? Math.round((exporting.frame / exporting.total) * 100) : 0;
   return (
     <Popover
       align="right"
@@ -222,20 +252,20 @@ export function ShareMenu({ id, renders }: { id: string; renders: string[] }) {
     >
       <div className="flex w-72 flex-col gap-px" role="menu">
         {targets.map((t) => (
-          <a key={t.label} role="menuitem" href={t.href} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium hover:bg-bubble">
+          <button key={t.label} role="menuitem" onClick={() => share(t.href)} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium hover:bg-bubble">
             {t.icon}
             {t.label}
-          </a>
+          </button>
         ))}
-        <div className="mx-2.5 my-1 border-t border-line" />
-        {latest ? (
-          <a role="menuitem" href={api.renderUrl(id, latest, true)} className="rounded-lg px-2.5 py-2 text-[13px] hover:bg-bubble">
-            Download the MP4 to attach
-            <span className="block text-[11px] text-faint">{latest}</span>
-          </a>
-        ) : (
-          <div className="px-2.5 py-2 text-xs leading-snug text-faint">Export the video first to attach the MP4 to your post.</div>
-        )}
+        <div className="mx-2.5 mt-1 border-t border-line px-0 pt-2 text-xs leading-snug text-faint">
+          {exporting
+            ? `Rendering the MP4 (${pct}%). It downloads when it's ready; attach it to your post.`
+            : latest
+              ? "The MP4 downloads as the post opens; attach it to your post."
+              : canExport
+                ? "Sharing renders the MP4 first and downloads it when it's ready; attach it to your post."
+                : "Build the video first to attach an MP4 to your post."}
+        </div>
       </div>
     </Popover>
   );

@@ -49,8 +49,10 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   const [pinned, setPinned] = useState<boolean | null>(null);
   useEffect(() => setPinned(null), [live]);
   const timeLeft = useTimeLeft(pace.progress, live);
-  // An open question takes the card's place, and a finished plan needs no card at all.
-  if (!steps.length || quiet || steps.every((s) => s.status === "done")) return null;
+  // An open question takes the card's place, and a finished plan needs no card at all. A plan whose only step left is
+  // the last one, with the agent no longer working, is finished too (agents often leave the final step "active").
+  const lastLeft = steps.findIndex((s) => s.status !== "done") === steps.length - 1;
+  if (!steps.length || quiet || steps.every((s) => s.status === "done") || (!live && lastLeft)) return null;
   const idx = steps.findIndex((s) => s.status === "active");
   const allDone = idx < 0 && steps.every((s) => s.status === "done");
   const open = pinned ?? false; // one line by default; the full plan is a click away
