@@ -97,5 +97,11 @@ export function SpaceBackground() {
       removeEventListener("resize", onResize);
     };
   }, []);
-  return <canvas ref={canvas} aria-hidden className="pointer-events-none fixed inset-0 -z-10 h-full w-full bg-[#05060c]" />;
+  return (
+    <>
+      <canvas ref={canvas} aria-hidden className="pointer-events-none fixed inset-0 -z-10 h-full w-full bg-[#05060c]" />
+      {/* Softens the bright planet behind the lower half of the page so text over it stays readable. */}
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[55vh] bg-gradient-to-t from-[#05060c]/70 via-[#05060c]/30 to-transparent" />
+    </>
+  );
 }

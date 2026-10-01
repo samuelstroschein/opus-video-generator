@@ -4,7 +4,8 @@ import path from "node:path";
 import { zipSync, strToU8 } from "fflate";
 import { REPO_ROOT } from "./projects.js";
 
-// Landing-page examples: the most-liked Opus 5.5 product launches, then the most-liked video per visual style, in athemeroy/awesome-opus-5-5-videos
+// Landing-page examples from athemeroy/awesome-opus-5-5-videos: a curated set first (the most-liked product launches,
+// then the most-liked video per visual style), then every other well-liked case, filterable by category
 // (likes as of 2026-09-27). "Use" attaches a reference pack (this module builds it) and a prompt with blanks.
 // Case notes are from that repo's case index (CC BY 4.0), lightly edited and translated. Thumbnails and videos
 // remain the creators' material: the pack credits them and is for style reference only.
@@ -12,9 +13,10 @@ import { REPO_ROOT } from "./projects.js";
 const SOURCE = "https://github.com/athemeroy/awesome-opus-5-5-videos";
 const THUMBS = "https://raw.githubusercontent.com/athemeroy/awesome-opus-5-5-videos/main/assets/case-thumbnails";
 
-type Example = { id: string; by: string; title: string; style: string; likes: string; look: string; made: string; seen: string; launch?: boolean };
+type Example = { id: string; by: string; title: string; style: string; likes: string; look: string; made: string; seen: string; launch?: boolean; category?: string; likesN?: number };
 
-const EXAMPLES: Example[] = [
+// Hand-picked and hand-written: shown first on the landing page, in this order.
+const CURATED: Example[] = [
   // Product launches first: what this app is for.
   {
     id: "2102787937482252537", by: "deedydas", title: "Inference startup launch", style: "Motion graphics", likes: "3.2k", launch: true,
@@ -114,6 +116,15 @@ const EXAMPLES: Example[] = [
   },
 ];
 
+// Everything else comes from scripts/build-examples.mjs (every case made with Opus with 60+ likes and a playable
+// video), sorted by likes. Curated entries keep their hand-written titles and notes.
+const DATA = JSON.parse(fs.readFileSync(new URL("./examples-data.json", import.meta.url), "utf8")) as (Example & { category: string; likesN: number })[];
+const byId = new Map(DATA.map((d) => [d.id, d]));
+const EXAMPLES: Example[] = [
+  ...CURATED.map((c) => ({ ...byId.get(c.id), ...c, category: byId.get(c.id)?.category ?? (c.launch ? "Launches" : "Art") })),
+  ...DATA.filter((d) => !CURATED.some((c) => c.id === d.id)),
+].map((x) => ({ ...x, launch: x.category === "Launches" }));
+
 // Each example's video is pulled once from X's public embed data into a LOCAL cache (data/ is git-ignored) and served
 // from our own API: fast, works offline, and no hotlinking. It is not committed: the videos belong to their creators.
 const CACHE = path.join(REPO_ROOT, "data", "examples");
@@ -130,47 +141,66 @@ async function download(url: string, file: string) {
   fs.renameSync(file + ".part", file);
 }
 
-/** Make sure poster.jpg, preview.mp4 (small, for hover) and video.mp4 (720p, for the player) are cached. */
-function ensureMedia(id: string): Promise<void> {
-  const dir = path.join(CACHE, id);
-  if (MEDIA.every((m) => fs.existsSync(path.join(dir, m)))) return Promise.resolve();
-  if (!pending.has(id)) {
+type Variants = { mp4: { url: string }[]; firstFrame: string };
+const variants = new Map<string, Promise<Variants>>();
+
+/** The post's MP4 variants (smallest to largest) and X's first-frame image, from its public embed data. Cached. */
+function variantsOf(id: string): Promise<Variants> {
+  if (!variants.has(id)) {
     const job = (async () => {
       const res = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=a`, { headers: { "user-agent": "Mozilla/5.0" } });
       if (!res.ok) throw new Error(`X embed data: ${res.status}`);
       const data = (await res.json()) as { mediaDetails?: { type: string; media_url_https: string; video_info?: { variants: { content_type: string; url: string }[] } }[] };
       const media = data.mediaDetails?.find((m) => m.type === "video");
-      if (!media) throw new Error("no video in the post");
-      // Variants come smallest to largest; the size is in the path (…/vid/avc1/1280x720/…).
-      const mp4 = (media.video_info?.variants ?? []).filter((v) => v.content_type === "video/mp4");
-      const height = (u: string) => Math.min(...(u.match(/\/(\d+)x(\d+)\//)?.slice(1).map(Number) ?? [0]));
-      const pick = (target: number) => mp4.reduce((best, v) => (Math.abs(height(v.url) - target) < Math.abs(height(best.url) - target) ? v : best), mp4[0]);
-      if (!mp4.length) throw new Error("no mp4 variants");
-      await download(pick(360).url, path.join(dir, "preview.mp4"));
-      await download(pick(720).url, path.join(dir, "video.mp4"));
-      // Many videos open on an empty title card, so the poster is a frame from about a third in (X's first frame as a fallback).
-      try {
-        posterFrom(path.join(dir, "video.mp4"), path.join(dir, "poster.jpg"));
-      } catch {
-        await download(media.media_url_https, path.join(dir, "poster.jpg"));
-      }
-    })().finally(() => pending.delete(id));
-    pending.set(id, job);
+      const mp4 = (media?.video_info?.variants ?? []).filter((v) => v.content_type === "video/mp4");
+      if (!media || !mp4.length) throw new Error("no video in the post");
+      return { mp4, firstFrame: media.media_url_https };
+    })();
+    job.catch(() => variants.delete(id)); // retry on the next request
+    variants.set(id, job);
   }
-  return pending.get(id)!;
+  return variants.get(id)!;
+}
+
+// The size is in the path (…/vid/avc1/1280x720/…); pick the variant whose short side is closest to the target.
+const side = (u: string) => Math.min(...(u.match(/\/(\d+)x(\d+)\//)?.slice(1).map(Number) ?? [0]));
+const pick = (mp4: { url: string }[], target: number) => mp4.reduce((best, v) => (Math.abs(side(v.url) - target) < Math.abs(side(best.url) - target) ? v : best), mp4[0]);
+
+/** One media file, fetched on first use: preview.mp4 (360p, for the cards), poster.jpg, video.mp4 (720p, for the player). */
+function ensureFile(id: string, file: Media): Promise<void> {
+  const dir = path.join(CACHE, id);
+  const out = path.join(dir, file);
+  if (fs.existsSync(out)) return Promise.resolve();
+  const key = `${id}/${file}`;
+  if (!pending.has(key)) {
+    const job = (async () => {
+      const v = await variantsOf(id);
+      if (file === "preview.mp4") return download(pick(v.mp4, 360).url, out);
+      if (file === "video.mp4") return download(pick(v.mp4, 720).url, out);
+      // Many videos open on an empty title card, so the poster is a frame from a third in (X's first frame as a fallback).
+      await ensureFile(id, "preview.mp4");
+      try {
+        posterFrom(path.join(dir, "preview.mp4"), out);
+      } catch {
+        await download(v.firstFrame, out);
+      }
+    })().finally(() => pending.delete(key));
+    pending.set(key, job);
+  }
+  return pending.get(key)!;
 }
 
 /** A cached media file for an example, fetching it first if needed. Null for unknown ids or files. */
 export async function exampleMedia(id: string, file: string): Promise<string | null> {
   if (!EXAMPLES.some((e) => e.id === id) || !MEDIA.includes(file as Media)) return null;
-  await ensureMedia(id);
+  await ensureFile(id, file as Media);
   return path.join(CACHE, id, file);
 }
 
-/** Pull every example's media in the background so the landing page is instant. */
+/** Pull every example's card media (poster and 360p preview) in the background; the 720p video waits for the player. */
 export function warmExamples() {
   void (async () => {
-    for (const x of EXAMPLES) await ensureMedia(x.id).catch((e) => console.warn(`example ${x.by}: ${e instanceof Error ? e.message : e}`));
+    for (const x of EXAMPLES) await ensureFile(x.id, "poster.jpg").catch((e) => console.warn(`example ${x.by}: ${e instanceof Error ? e.message : e}`));
   })();
 }
 
@@ -188,11 +218,9 @@ const packName = (x: Example) => `${x.by}-reference.zip`;
 
 /** What the landing page shows, plus the prompt "Use" puts in the box. Blanks are in [brackets]. */
 export function listExamples() {
-  // Launches first, then by likes.
-  const n = (l: string) => parseFloat(l) * (l.endsWith("k") ? 1000 : 1);
-  const sorted = [...EXAMPLES].sort((a, b) => Number(!!b.launch) - Number(!!a.launch) || n(b.likes) - n(a.likes));
+  const sorted = EXAMPLES; // curated first, then by likes
   return sorted.map((x) => ({
-    id: x.id, by: x.by, title: x.title, style: x.style, likes: x.likes, launch: !!x.launch,
+    id: x.id, by: x.by, title: x.title, style: x.style, likes: x.likes, launch: !!x.launch, category: x.category,
     img: `${THUMBS}/${x.id}.webp`,
     poster: `/api/examples/${x.id}/media/poster.jpg`,
     preview: `/api/examples/${x.id}/media/preview.mp4`,

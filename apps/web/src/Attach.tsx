@@ -75,8 +75,13 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     addEventListener("mousedown", on);
-    return () => removeEventListener("mousedown", on);
+    addEventListener("keydown", key);
+    return () => {
+      removeEventListener("mousedown", on);
+      removeEventListener("keydown", key);
+    };
   }, [open]);
   const pick = (input: HTMLInputElement | null) => {
     setOpen(false);
@@ -143,9 +148,12 @@ export function PendingFiles({ files, remove, glass }: { files: File[]; remove: 
       {chips.map((c) => (
         <span key={c.key} className={["flex max-w-[16rem] items-center gap-2 rounded-lg border py-1 pl-1 pr-1 text-[13px] font-medium", glass ? "border-white/15 bg-white/10 text-white" : "border-line-2 bg-bubble"].join(" ")}>
           {c.thumb ? <img src={c.thumb} alt="" className="h-7 w-7 rounded-md object-cover" /> : <FileGlyph name={c.name} />}
-          <span className="truncate">{c.name}</span>
-          <span className="shrink-0 font-normal text-faint">{c.meta}</span>
-          <button type="button" onClick={() => remove(c.key)} aria-label={`Remove ${c.name}`} className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-base leading-none text-mute hover:bg-line">
+          <span className="flex min-w-0" title={c.name}>
+            <span className="truncate">{c.name.replace(/(\.[\w]{1,5}|\/)$/, "")}</span>
+            <span className="shrink-0">{c.name.match(/(\.[\w]{1,5}|\/)$/)?.[0] ?? ""}</span>
+          </span>
+          <span className={["shrink-0 font-normal", glass ? "text-white/60" : "text-faint"].join(" ")}>{c.meta}</span>
+          <button type="button" onClick={() => remove(c.key)} aria-label={`Remove ${c.name}`} className={["flex h-5 w-5 shrink-0 items-center justify-center rounded text-base leading-none", glass ? "text-white/70 hover:bg-white/15 hover:text-white" : "text-mute hover:bg-line"].join(" ")}>
             ×
           </button>
         </span>
