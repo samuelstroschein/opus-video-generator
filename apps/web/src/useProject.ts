@@ -4,7 +4,7 @@ import { api, type Attachment, type AskForm, type ProjectState, type Scope, type
 export type Item =
   | { kind: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
   | { kind: "assistant"; id: string; text: string }
-  | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean }
+  | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean; at?: number; end?: number }
   | { kind: "error"; message: string }
   | { kind: "version"; tag: string }
   | { kind: "export"; file: string; seconds: number }
@@ -26,12 +26,12 @@ type ChatState = {
   draft: { path: string; n: number; live: boolean } | null;
   /** Notes sent while the agent works; they go out together when the turn ends. Shown below the conversation. */
   queued: { text: string; scope?: Scope; attachments?: Attachment[] }[];
-  /** One-click answers the agent offered for its last question (suggest_replies). Cleared by the next message. */
-  replies: string[];
+  /** The question the agent ended on, with numbered answers (suggest_replies). Cleared by the next message. */
+  question: { text?: string; replies: string[] } | null;
 };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null, queued: [], replies: [] };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null, queued: [], question: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -40,13 +40,13 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return initial;
     case "user":
       items.push({ kind: "user", text: e.text, scope: e.scope, attachments: e.attachments });
-      return { ...state, items, ask: null, queued: [], replies: [] }; // any reply answers the open form; queued notes are now delivered
+      return { ...state, items, ask: null, queued: [], question: null }; // any reply answers the open form; queued notes are now delivered
     case "queued":
       return { ...state, queued: [...state.queued, { text: e.text, scope: e.scope, attachments: e.attachments }] };
     case "queued.dropped":
       return { ...state, queued: [] };
     case "replies":
-      return { ...state, replies: e.replies };
+      return { ...state, question: { text: e.question, replies: e.replies } };
     case "ask":
       return { ...state, ask: e.form };
     case "turn.start":
@@ -83,11 +83,11 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "tool.start":
       // Text the agent wrote before calling a tool is thinking aloud; only the final message of a turn belongs in the chat.
       if (items.at(-1)?.kind === "assistant") items.pop();
-      items.push({ kind: "tool", id: e.id, summary: e.summary, done: false, ok: true });
+      items.push({ kind: "tool", id: e.id, summary: e.summary, done: false, ok: true, at: e.ts });
       return { ...state, items };
     case "tool.end": {
       const i = items.findIndex((x) => x.kind === "tool" && x.id === e.id);
-      if (i >= 0) items[i] = { ...(items[i] as Extract<Item, { kind: "tool" }>), done: true, ok: e.ok };
+      if (i >= 0) items[i] = { ...(items[i] as Extract<Item, { kind: "tool" }>), done: true, ok: e.ok, end: e.ts };
       return { ...state, items };
     }
     case "turn.done":

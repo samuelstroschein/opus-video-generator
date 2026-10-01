@@ -33,4 +33,7 @@ Show where the viewer is in the process: a step rail along the bottom (done, now
 
 ## Text
 
+**Write on-screen copy in simplified technical English** (the style of good manuals and Apple keynote slides): common words, short sentences, one idea each, concrete nouns and verbs, present tense, active voice. It reads clearly at a glance and does not sound AI-written. Prefer "Every edit shows up as a diff" to "Experience seamless, AI-powered editing". Never use: seamless, effortless, unleash, elevate, supercharge, revolutionize, game-changing, next-level, cutting-edge, "the future of", "not just X, it's Y", rhetorical questions as headlines, or three-adjective lists. Use the product's own words and UI labels where you can.
+
+
 On-screen text is short: a headline of 2–7 words per beat, in the product's voice. Reveal word by word or line by line on a mask. Never fade a paragraph.

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
 import { runReviewer } from "../reviewer.js";
-import { editFile, listFiles, readFile, resolve as resolvePath, writeFile, type WriteResult } from "../files.js";
+import { editFile, editFileMany, lastEdit, listFiles, readFile, resolve as resolvePath, writeFile, type WriteResult } from "../files.js";
 import { readUpload } from "../uploads.js";
 import fs from "node:fs";
 import { listSkills, loadSkill } from "../skills.js";
@@ -98,11 +98,14 @@ export function buildServer(ctx: ToolContext): McpServer {
     "suggest_replies",
     {
       description:
-        "Offer the user one-click replies for the question you are ending your turn with, e.g. [\"Build A\", \"Build B\", \"Build C\", \"Mix takes\"] or [\"Looks good, build it\", \"Change the opening\"]. They appear as chips above the message box until the user replies; clicking one sends it as their message. Call it right before your final reply when there are obvious answers. Two to four short replies, written as the user would say them.",
-      inputSchema: { replies: z.array(z.string().min(1).max(40)).min(1).max(4) },
+        "Ask the user the question you are ending your turn with, with numbered answers: it appears as a question panel over the message box (the user picks one, types their own answer, or skips). Use it whenever you need the user's input to continue, e.g. question \"Which take should I build?\" with [\"Build A\", \"Build B\", \"Mix takes\"], or \"Does the story work?\" with [\"Looks good, build it\", \"Change the opening\"]. Call it right before your final reply. Two to four short answers. Do not repeat the question or the options in your reply text.",
+      inputSchema: {
+        question: z.string().max(140).describe("The question, short and plain, e.g. \"Does the story work?\" or \"Which take should I build?\""),
+        replies: z.array(z.string().min(1).max(40)).min(1).max(4).describe("The answers, as the user would say them"),
+      },
     },
-    async ({ replies }) => {
-      log(id).emit({ type: "replies", replies });
+    async ({ question, replies }) => {
+      log(id).emit({ type: "replies", question, replies });
       return text("Replies offered.");
     },
   );
@@ -158,10 +161,21 @@ export function buildServer(ctx: ToolContext): McpServer {
   reg(
     "edit_file",
     {
-      description: "Replace exact text in a file. old_string must match once (include surrounding context to make it unique), or pass replace_all. Prefer this over rewriting a whole file for small changes.",
-      inputSchema: { path: z.string(), old_string: z.string(), new_string: z.string(), replace_all: z.boolean().optional() },
+      description:
+        "Replace exact text in a file. Either one replacement (old_string, new_string) or several at once with `edits` (applied in order, all or nothing). When you have several fixes for a file, send them together in one call with `edits`: every call is a round trip the user waits for. old_string must match once (include surrounding context to make it unique), or pass replace_all.",
+      inputSchema: {
+        path: z.string(),
+        old_string: z.string().optional(),
+        new_string: z.string().optional(),
+        replace_all: z.boolean().optional(),
+        edits: z.array(z.object({ old_string: z.string(), new_string: z.string(), replace_all: z.boolean().optional() })).optional().describe("Several replacements in one call"),
+      },
     },
-    async ({ path, old_string, new_string, replace_all }) => fmt(editFile(id, path, old_string, new_string, replace_all), `Edited ${path}.`),
+    async ({ path, old_string, new_string, replace_all, edits }) => {
+      if (edits?.length) return fmt(editFileMany(id, path, edits), `Edited ${path} (${edits.length} change${edits.length === 1 ? "" : "s"}).`);
+      if (old_string === undefined || new_string === undefined) return text("Pass old_string and new_string, or edits.", true);
+      return fmt(editFile(id, path, old_string, new_string, replace_all), `Edited ${path}.`);
+    },
   );
 
   reg(
@@ -253,6 +267,14 @@ export function buildServer(ctx: ToolContext): McpServer {
     },
     async ({ reviewer, page }) => {
       if (!listPages(id).some((p) => p.file === page)) return text(`No page named ${page}.`, true);
+      // Reviews are slow (about a minute each), so the server holds the line the skill sets: at most two rounds per
+      // turn, and never a review of a page that has not changed since its last review.
+      const events = log(id).events;
+      const since = events.map((e) => e.type).lastIndexOf("turn.start");
+      const rounds = events.slice(since).filter((e) => e.type === "review" && e.page === page) as { ts: number }[];
+      if (rounds.length >= 2) return text(`${page} has had two reviews this turn, the limit. Apply the last fixes, stop editing, and tell the user what the reviewer raised and what you changed.`, true);
+      const last = rounds.at(-1);
+      if (last && lastEdit(id) <= last.ts) return text(`Nothing changed since the last review of ${page}. Apply its fixes first (batch them with edit_file \`edits\`), then review again.`, true);
       try {
         const verdict = await runReviewer(id, reviewer, page, ctx.artifactOrigin);
         log(id).emit({ type: "review", reviewer, page, verdict });

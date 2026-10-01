@@ -45,14 +45,14 @@ const tone = (s: Step["status"]) => (s === "done" ? "text-ok" : s === "active" ?
  * The plan, docked above the composer. While the agent works it is one line: a spinner, the active step and what is
  * happening right now. While it waits on the user it opens into the full list. The user can toggle either way.
  */
-export function StepCard({ steps, live, pace, activity }: { steps: Step[]; live: boolean; pace: Pace; activity?: string }) {
+export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]; live: boolean; pace: Pace; activity?: string; quiet?: boolean }) {
   const [pinned, setPinned] = useState<boolean | null>(null);
   useEffect(() => setPinned(null), [live]);
   const timeLeft = useTimeLeft(pace.progress, live);
   if (!steps.length) return null;
   const idx = steps.findIndex((s) => s.status === "active");
   const allDone = idx < 0 && steps.every((s) => s.status === "done");
-  const open = pinned ?? (!live && !allDone);
+  const open = pinned ?? (!live && !allDone && !quiet); // a question below needs the room
   // No active step (between set_steps calls): point at the next one still to do.
   const next = steps.findIndex((s) => s.status === "todo");
   const i = idx >= 0 ? idx : Math.max(0, next);
@@ -94,7 +94,6 @@ export function StepCard({ steps, live, pace, activity }: { steps: Step[]; live:
               )}
             </div>
           )}
-          {live && <Bar percent={pace.progress?.percent} />}
         </div>
       )}
     </div>
@@ -103,7 +102,6 @@ export function StepCard({ steps, live, pace, activity }: { steps: Step[]; live:
 
 /** Shown on the canvas until the agent has something to show. */
 export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
-  const timeLeft = useTimeLeft(pace.progress, live);
   return (
     <div className="flex h-full items-center justify-center bg-paper px-8">
       <div className="w-full max-w-sm">
@@ -129,7 +127,6 @@ export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; p
                     {(pace.progress?.label || s.detail || activity) && (
                       <div className="flex items-baseline gap-2 text-[13px] text-mute">
                         <span className="min-w-0 flex-1 truncate">{(live && pace.progress?.label) || s.detail || activity}</span>
-                        {live && timeLeft && <span className="shrink-0 text-faint">{timeLeft}</span>}
                       </div>
                     )}
                     {live && <Bar percent={pace.progress?.percent} />}

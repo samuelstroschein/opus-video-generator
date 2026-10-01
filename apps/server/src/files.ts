@@ -75,6 +75,30 @@ export function editFile(id: string, rel: string, oldStr: string, newStr: string
   return writeFile(id, rel, next);
 }
 
+/** Several replacements in one file, applied in order, all or nothing (one round trip for a batch of fixes). */
+export function editFileMany(id: string, rel: string, edits: { old_string: string; new_string: string; replace_all?: boolean }[]): WriteResult {
+  const cur = readFile(id, rel);
+  if (!cur.ok) return cur;
+  let text = cur.text;
+  for (const [i, e] of edits.entries()) {
+    const n = e.old_string ? text.split(e.old_string).length - 1 : 0;
+    const which = `Edit ${i + 1} of ${edits.length}`;
+    if (e.old_string === e.new_string) return { ok: false, error: `${which}: old_string and new_string are identical. Nothing was saved.` };
+    if (n === 0) return { ok: false, error: `${which}: old_string was not found in ${rel} (after the earlier edits in this batch). Nothing was saved.` };
+    if (n > 1 && !e.replace_all) return { ok: false, error: `${which}: old_string appears ${n} times in ${rel}. Add context or pass replace_all. Nothing was saved.` };
+    text = e.replace_all ? text.split(e.old_string).join(e.new_string) : text.replace(e.old_string, () => e.new_string);
+  }
+  return writeFile(id, rel, text);
+}
+
+/** When the agent last changed anything in the project (ms), ignoring the read-only _lva/ folder. */
+export function lastEdit(id: string): number {
+  const root = workspaceDir(id);
+  return listFiles(id)
+    .filter((f) => !f.startsWith("_lva/"))
+    .reduce((t, f) => Math.max(t, fs.statSync(path.join(root, f)).mtimeMs), 0);
+}
+
 // Validation on write: syntax errors are rejected (so a broken scene never reaches the user's screen);
 // contract problems, which belong to the loaded skills, are saved with a warning so the agent can fix them.
 function validate(id: string, rel: string, content: string): WriteResult {

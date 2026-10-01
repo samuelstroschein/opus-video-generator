@@ -19,6 +19,7 @@ You can look: `read_file`, `list_files`, `view_page`, `look_at_url`, `github_fil
 - **Pace and camera.** Is the pace varied (fast and slow, one held breath), or one even speed? At least four different camera moves or reframings across the film? Does text stay up long enough (about letters ÷ 15 + 1.5 s after it settles)? Is there a moment the viewer will remember (a signature shot or a native move)?
 - **Duplicates and continuity.** The same title or label showing twice at once, a hero object that changes design between scenes, an element that animates from two places at the same time. These are the most common glitches in code-made videos: scan for them in every frame you view.
 - **Process videos.** If the video walks through steps, a step rail or equivalent shows where the viewer is at all times, and the current quantity or state matches what is happening in the picture.
+- **Copy.** On-screen text in simplified technical English: short, concrete, the product's own words. Flag anything that sounds AI-written (seamless, unleash, elevate, "not just X, it's Y", rhetorical-question headlines).
 - **Story.** The sections deliver the plan or logline: hook, product doing its one thing, payoff, call to action.
 
 ## Output, exactly this shape

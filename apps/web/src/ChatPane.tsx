@@ -75,17 +75,46 @@ export function ChatPane(props: {
       setError(e instanceof Error ? e.message : String(e));
     }
   }
+
+
+  const chips = scope ? (scope.chips ?? (scope.kind === "video" ? VIDEO_CHIPS : SCENE_CHIPS)) : null;
+  // The agent's question (suggest_replies) takes over the composer until it is answered or skipped.
+  const [skipped, setSkipped] = useState<object | null>(null);
+  const [sel, setSel] = useState(0);
+  useEffect(() => setSel(0), [chat.question]);
+  const asking = !chat.running && !scope && chat.question && skipped !== chat.question ? chat.question : null;
+  const canSend = !!text.trim() || att.files.length > 0;
+  const placeholder = att.dragging
+    ? "Drop files to attach"
+    : asking
+      ? "Or write your own response"
+      : scope
+        ? "What should change here?"
+        : chat.running
+          ? "Add a note while it works…"
+          : "Reply, or tell me what to change…";
   const onKey = (e: KeyboardEvent) => {
+    // With a question open and nothing typed: 1–4 picks an answer, arrows move, Enter sends the highlighted one.
+    if (asking && !text) {
+      const n = Number(e.key);
+      if (n >= 1 && n <= asking.replies.length) {
+        e.preventDefault();
+        return void send(asking.replies[n - 1], []);
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        return setSel((i) => (i + (e.key === "ArrowDown" ? 1 : asking.replies.length - 1)) % asking.replies.length);
+      }
+      if (e.key === "Enter" && !e.shiftKey && !att.files.length) {
+        e.preventDefault();
+        return void send(asking.replies[sel], []);
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void send();
     }
   };
-
-  const chips = scope ? (scope.chips ?? (scope.kind === "video" ? VIDEO_CHIPS : SCENE_CHIPS)) : null;
-  const replies = !chat.running && !scope ? chat.replies : [];
-  const canSend = !!text.trim() || att.files.length > 0;
-  const placeholder = att.dragging ? "Drop files to attach" : scope ? "What should change here?" : chat.running ? "Add a note while it works…" : "Reply, or tell me what to change…";
 
   return (
     <section className="flex min-h-0 flex-col border-r border-line bg-white">
@@ -113,7 +142,7 @@ export function ChatPane(props: {
 
       <div className="flex shrink-0 flex-col px-3 pb-3">
         {error && <p className="mx-2 mb-2 text-xs text-red-600">{error}</p>}
-        <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} />
+        <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
         <div
           {...att.dropProps}
           className={[
@@ -132,24 +161,52 @@ export function ChatPane(props: {
               {!chat.running && chips?.map(([label, msg]) => <Pill key={label} onClick={() => void send(msg, [], scope)}>{label}</Pill>)}
             </div>
           )}
-          {replies.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {replies.map((r) => (
-                <Pill key={r} onClick={() => void send(r, [])}>
-                  {r}
-                </Pill>
-              ))}
+          {asking && (
+            <div className="flex flex-col gap-2 px-1 pb-1 pt-0.5">
+              <div className="flex items-center gap-2 text-[13px] text-mute">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <circle cx="8" cy="8" r="6.5" />
+                  <path d="M6.2 6.3a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4M8 11.6v.1" strokeLinecap="round" />
+                </svg>
+                <span className="flex-1">Question</span>
+                <button onClick={() => setSkipped(asking)} aria-label="Dismiss" className="flex h-6 w-6 items-center justify-center rounded-md text-base leading-none hover:bg-bubble hover:text-ink">
+                  ×
+                </button>
+              </div>
+              {asking.text && <div className="text-[15px] font-medium leading-snug">{asking.text}</div>}
+              <div className="-mx-1 flex flex-col">
+                {asking.replies.map((r, i) => (
+                  <button
+                    key={r}
+                    onMouseEnter={() => setSel(i)}
+                    onClick={() => void send(r, [])}
+                    className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm", i === sel ? "bg-bubble" : ""].join(" ")}
+                  >
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line-3 bg-white font-mono text-xs text-mute">{i + 1}</span>
+                    <span className="flex-1">{r}</span>
+                    <span className={["text-mute", i === sel ? "opacity-100" : "opacity-0"].join(" ")}>→</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <PendingFiles files={att.files} remove={att.remove} />
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKey}
-            rows={2}
-            placeholder={placeholder}
-            className="max-h-40 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint"
-          />
+          <div className={["flex items-start gap-2", asking ? "border-t border-line pt-2" : ""].join(" ")}>
+            {asking && (
+              <svg className="ml-1 mt-[3px] flex-none text-faint" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+                <path d="M10.8 2.7 13.3 5.2 5.6 12.9 2.6 13.4 3.1 10.4z" />
+              </svg>
+            )}
+            <textarea
+              autoFocus={!!asking}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKey}
+              rows={asking ? 1 : 2}
+              placeholder={placeholder}
+              className="max-h-40 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint"
+            />
+          </div>
           <div className="flex items-center justify-between">
             <AttachButton onPick={att.add} />
             <div className="flex items-center gap-2">
@@ -157,6 +214,11 @@ export function ChatPane(props: {
                 <button onClick={() => api.stop(id)} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
                   <span className="h-2 w-2 rounded-[1px] bg-ink" />
                   Stop
+                </button>
+              )}
+              {asking && !canSend && (
+                <button onClick={() => setSkipped(asking)} className="rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
+                  Skip
                 </button>
               )}
               {(!chat.running || canSend) && (
@@ -252,14 +314,20 @@ function Lead({ text }: { text: string }) {
   );
 }
 
+const dur = (ms: number) => (ms < 60_000 ? `${Math.max(1, Math.round(ms / 1000))}s` : `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`);
+
+/** The agent's tool calls between two messages, folded to one line: "25 actions · 2m 14s". The step card shows what is happening now. */
 function ToolGroup({ tools, live }: { tools: Tool[]; live: boolean }) {
   const [open, setOpen] = useState(false);
-  const current = [...tools].reverse().find((t) => !t.done) ?? tools.at(-1)!;
+  const n = `${tools.length} action${tools.length === 1 ? "" : "s"}`;
+  const first = tools[0].at;
+  const last = tools.at(-1)?.end;
+  const took = !live && first && last ? ` · ${dur(last - first)}` : "";
   return (
     <div className="text-xs text-faint">
       <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-mute">
-        {live ? <Spinner size={11} /> : <span className="text-ok">✓</span>}
-        <span>{live ? current.summary : `Worked · ${tools.length} step${tools.length === 1 ? "" : "s"}`}</span>
+        <span className={live ? "text-faint" : "text-ok"}>{live ? "◦" : "✓"}</span>
+        <span>{live ? `${n} so far` : `${n}${took}`}</span>
         <span className="text-[9px]">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
@@ -275,25 +343,21 @@ function ToolGroup({ tools, live }: { tools: Tool[]; live: boolean }) {
   );
 }
 
+/** A reviewer's verdict, inline like the actions row: one line, the fixes one click away. */
 function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
-  const [open, setOpen] = useState(false); // one line by default; the objections are one click away
-  const label = item.pass ? "passed" : `${item.fixes.length} fix${item.fixes.length === 1 ? "" : "es"}`;
+  const [open, setOpen] = useState(false);
+  const label = item.pass ? `Review passed · round ${item.round}` : `Review · round ${item.round} · ${item.fixes.length} fix${item.fixes.length === 1 ? "" : "es"}`;
   return (
-    <div className="rounded-xl border border-line-2 bg-paper px-3 py-2 text-[13px]">
-      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2 text-left">
+    <div className="text-xs text-faint">
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-mute">
         <span className={item.pass ? "text-ok" : "text-[#b7791f]"}>{item.pass ? "✓" : "⚑"}</span>
-        <span className="font-medium">Review</span>
-        <span className="text-mute">
-          round {item.round} · {label}
-        </span>
-        {item.fixes.length > 0 && <span className="ml-auto text-[9px] text-faint">{open ? "▾" : "▸"}</span>}
+        <span>{label}</span>
+        {item.fixes.length > 0 && <span className="text-[9px]">{open ? "▾" : "▸"}</span>}
       </button>
       {open && item.fixes.length > 0 && (
-        <ul className="mt-2 flex list-none flex-col gap-1.5 pl-6 text-[12.5px] leading-normal text-mute">
+        <ul className="mt-1.5 flex list-none flex-col gap-1.5 border-l border-line pl-3 text-[12.5px] leading-normal text-mute">
           {item.fixes.map((f, i) => (
-            <li key={i} className="relative before:absolute before:-left-3 before:top-[8px] before:h-1 before:w-1 before:rounded-full before:bg-faint">
-              {f}
-            </li>
+            <li key={i}>{f.replace(/\*\*/g, "")}</li>
           ))}
         </ul>
       )}

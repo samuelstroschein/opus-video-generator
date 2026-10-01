@@ -29,7 +29,7 @@ export type StoredEvent =
   | { type: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
   | { type: "queued"; text: string; scope?: Scope; attachments?: Attachment[] }
   | { type: "queued.dropped" }
-  | { type: "replies"; replies: string[] }
+  | { type: "replies"; question?: string; replies: string[] }
   | { type: "turn.start" }
   | { type: "version"; tag: string }
   | { type: "ask"; form: AskForm }
