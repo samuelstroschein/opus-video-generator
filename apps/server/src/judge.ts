@@ -13,7 +13,7 @@ const runner = new ClaudeCliRunner();
  */
 export async function runJudge(projectId: string, judgeName: string, page: string, artifactOrigin: string): Promise<string> {
   const skills = readMeta(projectId).skills ?? [];
-  const file = skills.map((s) => path.join(REPO_ROOT, "harnesses", s, "judges", `${judgeName}.md`)).find((f) => fs.existsSync(f));
+  const file = skills.map((s) => path.join(REPO_ROOT, "skills", s, "judges", `${judgeName}.md`)).find((f) => fs.existsSync(f));
   if (!file) throw new Error(`No judge named "${judgeName}" in the loaded skills.`);
   const token = issueToken({ projectId, artifactOrigin, role: "judge" });
   const ac = new AbortController();

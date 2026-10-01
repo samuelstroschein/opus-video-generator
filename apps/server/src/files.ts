@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { workspaceDir } from "./projects.js";
-import { validate as skillValidate } from "./harness.js";
+import { validate as skillValidate } from "./skills.js";
 
 // The agent never touches the disk. Every read and write goes through these functions (via MCP tools), so we can
 // restrict where it writes and validate what it writes. Locally the store is a folder; in the cloud it is a

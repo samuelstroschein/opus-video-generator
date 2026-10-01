@@ -4,7 +4,7 @@ import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
 import { runJudge } from "../judge.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
-import { listSkills, loadSkill } from "../harness.js";
+import { listSkills, loadSkill } from "../skills.js";
 import { listPages } from "../pages.js";
 
 export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "judge" };

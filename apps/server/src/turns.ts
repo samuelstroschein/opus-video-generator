@@ -3,7 +3,7 @@ import { log, type Scope } from "./events.js";
 import { ClaudeCliRunner } from "./runner/claude.js";
 import type { AgentRunner } from "./runner/types.js";
 import { agentDir, commitTurn, readMeta, SHELL_PROMPT, workspaceDir, writeMeta } from "./projects.js";
-import { listSkills, skillBody } from "./harness.js";
+import { listSkills, skillBody } from "./skills.js";
 import { canvasPage, listPages } from "./pages.js";
 import { issueToken, revokeToken } from "./mcp/http.js";
 

@@ -1,14 +1,22 @@
 # Launch Video Agent: architecture proposal (draft for alignment)
 
-Status: **aligning.** Decided: HyperFrames, stills rendered from scene code, HTML artifacts from harness templates. Still open items are marked **[OPEN]**.
+Status: **aligning.** Decided: HyperFrames, stills rendered from scene code, HTML artifacts from skill templates. Still open items are marked **[OPEN]**.
 
 ## What we're building
 
-A browser app that turns a real product (URL, brand, screenshots, 1–2 reference videos) into a launch video via a guided agent harness. Wireframe: [`wireframes/launch-video-agent-wireframes.html`](wireframes/launch-video-agent-wireframes.html), option **1b + 2a**: chat on the left, stage artifact on the right, with a stage rail.
+A browser app that turns a real product (URL, brand, screenshots, 1–2 reference videos) into a launch video via a guided agent. Wireframe: [`wireframes/launch-video-agent-wireframes.html`](wireframes/launch-video-agent-wireframes.html), option **1b + 2a**: chat on the left, stage artifact on the right, with a stage rail.
 
 Pipeline: `Brief → 3 Storyboards → Scene stills → Video + scoped notes → Export`. Each gate is a cheap review before an expensive step. Notes are always scoped to a scene or a pin.
 
 Why this shape (from the X cluster): one-prompt output is mediocre. What makes the difference is references, real product UI, brand assets, storyboard options, still-frame review and specific revision notes. The harness exists to enforce that process.
+
+## Vocabulary
+
+- **Model:** the LLM itself (Opus, GPT, DeepSeek).
+- **Harness:** the program that runs a model in a tool loop: Claude Code, Codex CLI, OpenCode. To our server a harness is an **MCP client** (the spec also says "host").
+- **Runner:** our adapter that launches one harness (`AgentRunner`). A new harness means a new runner; the MCP tool surface stays the same.
+- **Skill:** a folder in `skills/<name>/` holding the instructions, starter files, references and judges for one kind of job. The agent loads one with `load_skill`.
+- **Judge:** a separate agent run, with a look-only slice of the tools, that reviews the working agent's output against a rubric shipped by the skill.
 
 ## Constraints
 
@@ -79,7 +87,7 @@ projects/<id>/
   renders/                # stills + scene clips + final mp4s
   .git                    # every agent turn = one commit
 ```
-- **One file per scene** means a note scoped to "scene 3" lets the harness check that the diff touched only `scenes/03-*`. The "change receipt" with exact values is a git diff. "Compare · undo" is `git diff` / `git revert`. Version history (v1…v4) is tags. No custom versioning system.
+- **One file per scene** means a note scoped to "scene 3" lets the app check that the diff touched only `scenes/03-*`. The "change receipt" with exact values is a git diff. "Compare · undo" is `git diff` / `git revert`. Version history (v1…v4) is tags. No custom versioning system.
 - The project store is the source of truth (a folder locally). The agent reaches it only through MCP tools, which present it as a virtual file tree. SQLite (Drizzle) would only index projects, sessions, the event log and jobs.
 
 ### 4. Stills: frozen frames of the same scene code  (decided)
@@ -101,11 +109,11 @@ The agent runs with `--tools "WebFetch,WebSearch"` plus our MCP server; its work
 - **Harness-agnostic.** Any MCP-capable agent (Codex, a hosted agent) gets the same tools.
 - **Future:** per-turn scope can be enforced at the tool (reject writes outside the scene the note targets), plus `capture_site`, `analyze_reference`, `render_frame` as further tools.
 
-### 6b. The shell is generic; use cases are skills (harness packs)  (decided, implemented)
-The shell knows pages, files, forms, `show_page`, export and skill loading. It does not know what a launch video is. A use case is a folder in `harnesses/<name>/`:
+### 6b. The shell is generic; use cases are skills  (decided, implemented)
+The shell knows pages, files, forms, `show_page`, export and skill loading. It does not know what a launch video is. A use case is a folder in `skills/<name>/`:
 
 ```
-harnesses/launch-video/
+skills/launch-video/
   skill.md       frontmatter (name, description) + the flow the agent follows
   starters/      engine, bridge, page templates → copied into the project's read-only _lva/ on load
   references/    craft notes the agent reads on demand (craft, motion, story)
@@ -118,12 +126,12 @@ harnesses/launch-video/
 - **Story before polish, on an infinite canvas of versions.** The optional storyboard is one white, pannable and zoomable HTML canvas holding every version of the story (v1, v2, v3, newest on top), with no controls. Frames are **mid fidelity**: the founder must recognize their own product (its real layout, labels, copy, theme and colors, simplified), with placeholders only for imagery. The quality bar is a worked example in the skill (`references/storyboard-example.html`, extracted from a storyboard the product owner made in Claude Design). The agent gets there by looking at the product (`look_at_url`) before drawing it. A revision never edits an old version: it inserts a new one with a one-line changelog and a dot on the changed frames. **The agent is the guide:** every reply ends with the next step in chat ("Say 'build it' when you're happy"), and plain chat moves the work forward. Hi-fi only starts when the video is built.
 
 ### 6c. Judges: taste is judged by an agent that can see, not by rules  (decided, implemented)
-A skill can ship judges (`harnesses/<skill>/judges/<name>.md`). The working agent calls `review_page(judge, page)`; the server starts a **separate agent run** with the judge's rubric as its instructions and a **look-only slice of the tools** (`list_files`, `read_file`, `view_page`, `look_at_url`: no writing, no asking, no web tools). It studies the real product, views every frame up close, and returns `VERDICT: PASS` or `VERDICT: REVISE` with concrete per-frame fixes. The working agent must fix them and review again (at most three rounds). The verdict is stored as a `review` event.
+A skill can ship judges (`skills/<skill>/judges/<name>.md`). The working agent calls `review_page(judge, page)`; the server starts a **separate agent run** with the judge's rubric as its instructions and a **look-only slice of the tools** (`list_files`, `read_file`, `view_page`, `look_at_url`: no writing, no asking, no web tools). It studies the real product, views every frame up close, and returns `VERDICT: PASS` or `VERDICT: REVISE` with concrete per-frame fixes. The working agent must fix them and review again (at most three rounds). The verdict is stored as a `review` event.
 - **Why not rules.** We first built a geometry checker (font sizes, overlaps, clipping, element counts). It was calibrated, but it could not judge what matters: whether a frame looks like the founder's product, whether a crop slices through a word, whether the buttons out-shout the subject. Hard-coded rules also broke on our own sample frames. Rules stay only for the structural contract the app needs (a page has versions, beats and a plan).
 - **Same pattern for other skills.** A video judge (pacing, legibility, off-beat motion) is a new rubric file, nothing else.
 - **Costs and limits.** A review is a full agent run with screenshots (about a minute or two and a few tenths of a dollar), and it is a model, so it can be inconsistent between rounds. The cap on rounds bounds the cost.
 
-### 7. Gates and scope live in the harness, not the prompt
+### 7. Gates and scope live in the app, not the prompt
 - The server derives stage state from workspace files (what exists, what's approved) and **injects it into every turn**: current stage, what's missing, and the scope (`scene 4 @ 0:14, pin (x,y)`, from the clicked still or paused frame).
 - UI buttons are disabled until the gate is met. The agent can still be asked to skip ahead and then says what's missing, as the wireframe specifies.
 
