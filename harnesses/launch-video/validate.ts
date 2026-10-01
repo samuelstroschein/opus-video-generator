@@ -5,9 +5,13 @@ export default function validate(rel: string, content: string): string[] {
     w.push('brief.html is missing <meta name="lva:product" content="Product name">, which titles the project.');
   }
   if (rel === "storyboard.html") {
+    if (!/data-lva-version=/.test(content)) w.push('storyboard.html has no <section class="version" data-lva-version="v1"> sections. The storyboard is a canvas of versions.');
     if (!/data-lva-beat/.test(content)) w.push("storyboard.html has no data-lva-beat cards (one per beat, each also with data-lva-scene and data-lva-title).");
     if (!/id=["']lva-plan["']/.test(content)) w.push('storyboard.html is missing the hidden <script type="application/json" id="lva-plan"> with the detailed plan.');
-    if (!/data-lva-send=["']Story approved/.test(content)) w.push('storyboard.html needs the Approve button: data-lva-send="Story approved. Build the video."');
+    if (!/id=["']approve["']/.test(content) || !/Story approved/.test(content)) w.push("storyboard.html lost the Approve button or its script. Start from the template and keep the canvas script at the bottom.");
+    if (/cursive|Segoe Print|Bradley Hand|Chalkboard|Comic Sans/i.test(content)) w.push("Use a normal sans-serif font in the storyboard, no handwriting fonts.");
+    const versions = [...content.matchAll(/data-lva-version=["'](v\d+)["']/g)].map((m) => Number(m[1].slice(1)));
+    if (versions.length > 1 && versions.some((v, i) => i > 0 && v >= versions[i - 1])) w.push("Versions must be ordered newest first (v3, v2, v1 from top to bottom).");
   }
   if (rel === "video.html") {
     const m = content.match(/window\.LVA_SCENES\s*=\s*'([^']*)'/);

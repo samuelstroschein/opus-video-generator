@@ -82,7 +82,7 @@ function scopePrefix(scope: Scope): string {
   if (scope.kind === "video") {
     return `[Scope: the video, section "${scope.scene}" at ${scope.time.toFixed(1)}s, pin at x=${scope.x.toFixed(2)}, y=${scope.y.toFixed(2)} (fractions of the frame, origin top-left). Change only what appears at that point in that section's scene file; leave every other scene untouched.]`;
   }
-  const where = scope.board ? `Board ${scope.board}, scene ${scope.scene}` : `scene ${scope.scene}`;
+  const where = scope.version ? `storyboard ${scope.version}, beat ${scope.scene}` : scope.board ? `Board ${scope.board}, scene ${scope.scene}` : `scene ${scope.scene}`;
   return `[Scope: ${where}${scope.title ? ` "${scope.title}"` : ""}. Change only this scene (in its scene file or its element); leave everything else untouched.]`;
 }
 

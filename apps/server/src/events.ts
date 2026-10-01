@@ -16,7 +16,7 @@ export type AskForm = { title: string; intro?: string; questions: AskQuestion[] 
 
 // What a note targets. A document scene (storyboard/still): board? + scene + title. A point in the video: kind "video".
 export type Scope =
-  | { kind?: "scene"; board?: string; scene: number; title?: string }
+  | { kind?: "scene"; board?: string; version?: string; scene: number; title?: string }
   | { kind: "video"; scene: string; time: number; x: number; y: number };
 
 // Persisted events (replayed to the browser on connect) vs live-only ones.

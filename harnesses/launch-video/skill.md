@@ -13,7 +13,7 @@ You make a launch video for a real product. The video is an HTML page driven by 
 2. **Ask the form** (below), then end your turn.
 3. When the answers arrive:
    - **Approach "Just build it":** build the video (below). This is the default.
-   - **Approach "Show me the story first":** write the story wireframe (below), `show_page` it, and ask whether the story works. Build the video only after the user approves.
+   - **Approach "Show me the story first":** write the story canvas (below) as v1, `show_page` it, and ask whether the story works. Iterate as new versions. Build the video only after the user approves.
 4. Iterate on notes. Export is done by the app (the user presses Export), not by you.
 
 ## 1. Research → `brief.html`
@@ -32,19 +32,21 @@ One form, at most 5 questions, every one with a `default` chosen from your resea
 
 Visuals: for now you draw a faithful stylized product UI. Do not offer uploads.
 
-## Story wireframe → `storyboard.html` (only when asked for)
+## Story canvas → `storyboard.html` (only when asked for)
 
-The point is to review the **story**, not the look. So the wireframe is deliberately low fidelity.
+The point is to review the **story**, not the look, so the frames are deliberately low fidelity. And the storyboard is **one canvas that holds every version of the story**: v1, v2, v3 stacked, newest on top, so the user sees how the story evolved and can compare. Start from `_lva/templates/storyboard.html`: it already contains pan and zoom, a version dock and an Approve button wired to the newest version. Do not rewrite that script.
 
-Write `storyboard.html` from `_lva/templates/storyboard.html`:
+**Each version** (a `<section class="version" data-lva-version="vN">`) has:
+- a header: the version tag, format and length, a short title for this version of the story, and one or two sentences: the story, and (from v2 on) **what changed and why**;
+- a grid of numbered frames, one per beat, each a **greyscale wireframe in a normal sans-serif font**: grey boxes with plain labels like `[Headline]` or `[Issue list]`, text bars, arrows for movement, placeholder hatching for images. At most six elements per frame. No brand colors, no photos, no handwriting fonts, no polish;
+- under each frame: the number, the time range, and a bold title plus ONE sentence about what happens and the beat's job in the story (hook, problem, turn, proof, payoff, call to action);
+- on the newest version only, optionally an "Open questions" block with up to three real story decisions for the user (for example "Open on the pain or on the product?").
 
-- A one-sentence logline and the structure as 3 short chips (for example Problem → Product → Payoff).
-- One card per beat, in order: a **grayscale wireframe** (dashed boxes with bracketed labels like `[Headline]`, `[Issue list]`, arrows for movement, at most six elements, no brand colors, no photos, no real fonts), the beat title, its time range, and one line saying its **job in the story** (hook, problem, turn, proof, payoff, call to action).
-- Honor the length and format. 4–7 beats, contiguous, the last one is the call to action. The first beat is a hook that works in under 3 seconds.
-- Keep the detailed plan out of sight but in the file: a `<script type="application/json" id="lva-plan">` with, per beat, title, start, end, on-screen text, what is on screen, and the motion. This is what you build from.
-- Keep the template's chips (`lva:chips`): they are story feedback ("Stronger hook", "Cut this beat", "Swap with previous", "Add a beat before", "Shorter"). Keep the Approve button.
+**Rules for the story itself:** honor the chosen length and format (set `--fw`, `--fh`, `--cols` on `:root` to match: 16:9 → 400x225 and 4 columns, 9:16 → 225x400 and 6, 1:1 → 300x300 and 5). 4–7 beats, contiguous, the last one the call to action, the first a hook that works in under 3 seconds. Keep the hidden `#lva-plan` JSON equal to the **newest** version (per beat: title, start, end, on-screen text, what is on screen, motion); you build the video from it.
 
-Then `view_page` it, `show_page("storyboard.html")`, and reply with one sentence asking whether the story works. Story notes arrive scoped to a beat: edit that beat (and the plan), shift times so beats stay contiguous, keep the total length, and `show_page` again.
+**Versioning is the whole point.** Every revision, whether from a note, a chip or your own improvement, becomes a **new version inserted at the top** (directly below the VERSIONS marker comment) as a full copy of the previous version with the changes applied. Mark the frames you changed with `class="changed"` (a dot). Never edit an older version, and never delete one. A note scoped to a frame in an older version applies to the newest version: say so. After inserting, update the plan, `view_page` once, `show_page("storyboard.html")`, and reply with one sentence naming what changed and asking whether the story works now. The first story is v1.
+
+When the user approves ("Story approved (v3). Build the video."), build from the newest version's plan.
 
 ## 3. Build the video → `video.html` + `scenes/`
 

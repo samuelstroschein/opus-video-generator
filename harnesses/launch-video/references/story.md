@@ -2,6 +2,10 @@
 
 The story is what founders can judge fastest, and it is the part that is cheapest to fix, so get it right before polishing visuals.
 
+## One claim, one proof
+
+A launch video is an argument, not a tour. Write two sentences before planning beats: the **claim** (this product does X for you) and the **proof** (here is X happening, visible on screen). If the claim needs two sentences it is two videos; if the proof can't be shown, the brief isn't ready. Cut anything neither one needs. The test: a viewer who has never seen the product can say what changed and why it is good.
+
 ## Structures that work for a launch video
 
 - **Problem → Product → Payoff** (default). The pain in one image, the product resolving it, the result and a call to action.

@@ -1,10 +1,10 @@
 export type Chips = [label: string, message: string][];
 export type Scope =
-  | { kind?: "scene"; board?: string; scene: number; title?: string; chips?: Chips | null }
+  | { kind?: "scene"; board?: string; version?: string; scene: number; title?: string; chips?: Chips | null }
   | { kind: "video"; scene: string; time: number; x: number; y: number; chips?: Chips | null };
 
 export const scopeLabel = (s: Scope) =>
-  s.kind === "video" ? `Video · ${s.scene} @ ${fmtTime(s.time)} · pin` : `${s.board ? `Board ${s.board} · ` : ""}scene ${s.scene}${s.title ? ` · ${s.title}` : ""}`;
+  s.kind === "video" ? `Video · ${s.scene} @ ${fmtTime(s.time)} · pin` : `${s.version ? `${s.version} · ` : s.board ? `Board ${s.board} · ` : ""}scene ${s.scene}${s.title ? ` · ${s.title}` : ""}`;
 
 export const fmtTime = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 

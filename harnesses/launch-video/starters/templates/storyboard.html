@@ -3,86 +3,203 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Story</title>
-<!-- One-click feedback for a selected beat. These are STORY notes, not polish notes. Keep or adapt. -->
+<title>Storyboard</title>
+<!-- One-click STORY feedback for a selected frame. Story notes, not polish notes. Keep or adapt. -->
 <meta name="lva:chips" content='[["Stronger hook","Make the hook stronger: open on the sharpest, most surprising moment."],["Cut this beat","Cut this beat."],["Swap with previous","Swap this beat with the previous one."],["Add a beat before","Add a short beat before this one that sets it up."],["Shorter","Make this beat shorter."]]'>
 <!--
-  STARTING POINT, not a final page. Copy to storyboard.html and replace the sample content.
-  This is a LOW-FIDELITY STORY WIREFRAME: the user reviews the story (hook, order, payoff), not the look.
-  So: grayscale only, dashed boxes with bracketed labels, arrows for movement, at most six elements per frame,
-  no brand colors, no photos, no real fonts, no polish. Text on the page: logline, beat title, time, ONE line
-  saying the beat's job in the story. No paragraphs.
-  Contract, keep it:
-    - one  data-lva-beat  card per beat, also carrying  data-lva-scene="<n>" data-lva-title="<title>"
-    - the hidden plan:  <script type="application/json" id="lva-plan">  with per-beat title, start, end,
-      on-screen text, what is on screen, motion (you build the video from it; it is never shown)
-    - the button  <button data-lva-send="Story approved. Build the video.">
-    - <script src="_lva/bridge.js"></script> at the end of <body>, and a .lva-selected style
+  STARTING POINT. Copy to storyboard.html and replace the sample content.
+
+  THIS IS A CANVAS OF STORYBOARD VERSIONS. The user reviews the STORY (hook, order, payoff), so every frame is a
+  LOW-FIDELITY GREYSCALE WIREFRAME in a normal sans-serif font: grey boxes with plain labels, text bars, arrows.
+  No brand colors, no photos, no handwriting fonts, no polish. Pan/zoom, the version dock and the Approve button are
+  built in (the script at the bottom); do not rewrite them.
+
+  VERSIONS. The first story is v1. Every revision (a user note, a chip, your own improvement) becomes a NEW version:
+  insert a new <section class="version"> directly below the VERSIONS marker comment (newest on top), as a full copy
+  of the previous version with the changes applied. Mark changed frames with class="changed". Say in one sentence
+  what changed and why. NEVER edit an older version. Keep the hidden plan (#lva-plan) equal to the NEWEST version.
+  Only the newest version carries the "Open questions" block (at most 3 real story decisions, or omit it).
+
+  FORMAT. Set --fw / --fh (frame size) and --cols on :root to match the video: 16:9 → 400x225, cols 4;
+  9:16 → 225x400, cols 6; 1:1 → 300x300, cols 5.
+
+  CONTRACT, keep it:
+    - <section class="version" data-lva-version="vN"> per version
+    - <figure class="card" data-lva-beat data-lva-scene="<n>" data-lva-title="<title>"> per beat inside it
+    - the hidden plan  <script type="application/json" id="lva-plan">  (per beat: title, start, end, on-screen text,
+      what is on screen, motion). You build the video from it; it is never shown.
+    - <script src="_lva/bridge.js"></script> at the end of <body>
+    - the Approve button (#approve) is wired by the script below to send "Story approved (vN). Build the video."
 -->
 <style>
-  :root { --ink:#222; --mute:#777; --line:#cfcac0; --paper:#fbfaf6; --hi:#c2552b; --hi-soft:#fbeee8; }
+  :root { --fw:400px; --fh:225px; --cols:4; --ink:#1c1b19; --mute:#6b6963; --g1:#f4f3ef; --g2:#e5e3dd; --g3:#d2cfc7; --g4:#b4b0a6; --canvas:#e9e8e4; }
   * { box-sizing:border-box; }
-  body { margin:0; padding:24px; background:var(--paper); color:var(--ink); font:14px/1.35 system-ui,-apple-system,sans-serif; }
-  .hand { font-family:'Segoe Print','Bradley Hand','Chalkboard SE','Comic Sans MS',cursive; }
-  .top { display:flex; align-items:flex-start; gap:16px; margin-bottom:6px; }
-  .top h1 { margin:0; font-size:19px; font-weight:600; } .logline { margin:4px 0 0; color:#444; max-width:640px; }
-  .approve { margin-left:auto; flex:none; font:600 13px system-ui; background:var(--ink); color:#fff; border:0; border-radius:8px; padding:9px 16px; cursor:pointer; }
-  .spine { display:flex; gap:6px; margin:10px 0 18px; } .spine span { font:600 12px system-ui; border:1.5px solid var(--ink); border-radius:14px; padding:2px 10px; }
-  .spine i { align-self:center; color:var(--mute); font-style:normal; }
-  .strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:16px; }
-  figure.beat { margin:0; background:#fff; border:2px solid var(--ink); border-radius:6px; padding:8px; cursor:pointer; }
-  figure.beat:hover { background:#fffdf8; }
-  figure.beat.lva-selected { border-color:var(--hi); box-shadow:0 0 0 3px var(--hi-soft); }
-  /* the wireframe: a 16:9 sheet; place elements with % so it scales */
-  .wf { position:relative; aspect-ratio:16/9; background:repeating-linear-gradient(45deg,#f4f2ec 0 6px,#fbfaf6 6px 12px); border:1.5px solid var(--line); overflow:hidden; font-size:11px; }
-  .bx { position:absolute; border:1.5px dashed #555; border-radius:3px; display:flex; align-items:center; justify-content:center; color:#555; background:rgba(255,255,255,.65); text-align:center; padding:2px; }
-  .bx.solid { border-style:solid; border-color:#222; color:#222; }
-  .ln { position:absolute; height:5px; background:#c9c5ba; border-radius:3px; }
-  .ar { position:absolute; color:#555; font-size:18px; line-height:1; }
-  figcaption { margin:8px 2px 0; } .cap1 { display:flex; gap:8px; align-items:baseline; font-weight:600; }
-  .cap1 .n { font:700 11px ui-monospace,monospace; color:var(--mute); } .cap1 .t { margin-left:auto; font:400 11px ui-monospace,monospace; color:var(--mute); }
-  .job { margin:2px 0 0; color:var(--mute); font-size:12.5px; }
-  .map { display:flex; gap:3px; margin-top:20px; height:26px; } .map div { border:1.5px solid var(--ink); border-radius:4px; font:600 11px ui-monospace,monospace; padding:3px 6px; overflow:hidden; white-space:nowrap; background:#fff; }
+  html, body { margin:0; height:100%; overflow:hidden; background:var(--canvas); color:var(--ink); font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif; }
+
+  /* canvas */
+  #vp { position:fixed; inset:0; cursor:grab; touch-action:none; background-image:radial-gradient(#cdcbc3 1px,transparent 1px); background-size:24px 24px; }
+  #world { position:absolute; left:0; top:0; transform-origin:0 0; width:max-content; padding:80px; display:flex; flex-direction:column; gap:130px; }
+  #world.anim { transition:transform .35s cubic-bezier(.2,.7,.2,1); }
+
+  /* a version */
+  .version { display:flex; flex-direction:column; gap:30px; }
+  .vtag { display:flex; gap:12px; align-items:center; margin-bottom:10px; }
+  .chip { font:600 13px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:3px 9px; border-radius:4px; }
+  .latest { font-size:11px; background:#fff; border:1px solid var(--g3); border-radius:10px; padding:1px 9px; color:var(--mute); }
+  .vmeta { font:500 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
+  .vhead h2 { margin:0; font-size:30px; font-weight:600; letter-spacing:-.01em; }
+  .vnote { margin:8px 0 0; font-size:16px; line-height:1.5; color:var(--mute); max-width:820px; }
+  .frames { display:grid; grid-template-columns:repeat(var(--cols),var(--fw)); gap:44px 32px; }
+
+  /* a frame card */
+  .card { margin:0; width:var(--fw); display:flex; flex-direction:column; gap:12px; cursor:pointer; }
+  .card .cap { display:flex; gap:10px; align-items:baseline; }
+  .num { font:600 12px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:2px 7px; border-radius:4px; }
+  .time { font:12px ui-monospace,Menlo,monospace; color:var(--mute); }
+  .card p { margin:0; font-size:15px; line-height:1.45; }
+  .card.lva-selected .wf { outline:3px solid var(--ink); outline-offset:3px; }
+  .card.changed .wf::after { content:""; position:absolute; top:9px; right:9px; width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 3px var(--g1); }
+
+  /* the wireframe sheet and its vocabulary: all greyscale */
+  .wf { position:relative; width:var(--fw); height:var(--fh); background:var(--g1); border:1px solid var(--g3); border-radius:10px; overflow:hidden; font-size:11px; color:#5d5a53; }
+  .bx { position:absolute; display:flex; align-items:center; justify-content:center; text-align:center; padding:2px 4px; background:var(--g2); border:1px solid var(--g4); border-radius:6px; }
+  .bx.lt { background:var(--g1); } .bx.dk { background:var(--g3); } .bx.ink { background:#58554e; border-color:#3d3b36; color:#f1efe9; } .bx.line { background:transparent; border-style:dashed; }
+  .ph { background:repeating-linear-gradient(45deg,var(--g2) 0 7px,var(--g1) 7px 14px); }   /* image / video placeholder */
+  .ln { position:absolute; height:6px; border-radius:3px; background:var(--g3); } .ln.dk { background:var(--g4); }
+  .ar { position:absolute; font-size:18px; line-height:1; color:#77736a; }
+  .big { font-size:15px; font-weight:600; color:#3c3a35; }                                   /* a headline label */
+
+  .questions { max-width:900px; border:1px dashed var(--g4); border-radius:10px; padding:14px 18px; background:rgba(255,255,255,.55); }
+  .questions h3 { margin:0 0 6px; font:600 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
+  .questions p { margin:0; font-size:15px; line-height:1.5; }
+
+  /* chrome */
+  #dock { position:fixed; left:16px; bottom:16px; z-index:10; display:flex; gap:4px; align-items:center; background:#fff; border:1px solid var(--g3); border-radius:10px; padding:5px; box-shadow:0 4px 18px rgba(0,0,0,.08); }
+  #dock button { font:500 12px ui-monospace,Menlo,monospace; border:0; background:none; border-radius:6px; padding:5px 9px; cursor:pointer; color:var(--ink); }
+  #dock button:hover { background:var(--g1); } #dock button.on { background:var(--ink); color:#fff; }
+  #dock .sep { width:1px; height:18px; background:var(--g3); margin:0 4px; } #dock .z { min-width:44px; text-align:center; font:12px ui-monospace,Menlo,monospace; color:var(--mute); }
+  #approve { position:fixed; right:16px; top:16px; z-index:10; font:600 13px -apple-system,Helvetica,Arial,sans-serif; background:var(--ink); color:#fff; border:0; border-radius:8px; padding:9px 16px; cursor:pointer; }
 </style>
 </head>
 <body>
-<div class="top">
-  <div>
-    <h1>The story</h1>
-    <p class="logline hand">One sentence: who has what problem, what the product does about it, and the payoff.</p>
-  </div>
-  <button class="approve" data-lva-send="Story approved. Build the video.">Story works → build video</button>
-</div>
-<div class="spine"><span>Problem</span><i>→</i><span>Product</span><i>→</i><span>Payoff</span></div>
+<div id="vp"><div id="world">
 
-<div class="strip">
-  <figure class="beat" data-lva-beat data-lva-scene="1" data-lva-title="Hook">
-    <div class="wf hand">
-      <div class="bx solid" style="left:10%;top:30%;width:80%;height:26%">[Headline: the sharpest claim]</div>
-      <div class="ln" style="left:10%;top:66%;width:50%"></div>
-      <div class="ln" style="left:10%;top:76%;width:34%"></div>
+  <!-- VERSIONS: newest first. Insert each new version section directly below this comment. -->
+  <section class="version" data-lva-version="v1">
+    <div class="vhead">
+      <div class="vtag"><span class="chip">v1</span><span class="vmeta">1920×1080 (16:9) · ~9s</span></div>
+      <h2>A title for this version of the story</h2>
+      <p class="vnote">One or two sentences: the story in this version, and (from v2 on) what changed and why.</p>
     </div>
-    <figcaption><div class="cap1"><span class="n">1</span>Hook<span class="t">0–3s</span></div><p class="job">Grab attention with the sharpest contrast.</p></figcaption>
-  </figure>
-  <figure class="beat" data-lva-beat data-lva-scene="2" data-lva-title="Product">
-    <div class="wf hand">
-      <div class="bx" style="left:8%;top:12%;width:56%;height:70%">[App window]</div>
-      <div class="bx" style="left:70%;top:20%;width:22%;height:22%">[Cursor]</div>
-      <div class="ar" style="left:66%;top:30%">→</div>
+    <div class="frames">
+      <figure class="card" data-lva-beat data-lva-scene="1" data-lva-title="Hook">
+        <div class="wf">
+          <div class="bx lt" style="left:10%;top:28%;width:80%;height:28%"><span class="big">[Headline: the sharpest claim]</span></div>
+          <div class="ln" style="left:10%;top:68%;width:48%"></div><div class="ln" style="left:10%;top:78%;width:32%"></div>
+        </div>
+        <div class="cap"><span class="num">01</span><span class="time">0.0–3.0s</span></div>
+        <p><b>Hook.</b> One sentence on what the viewer sees and why it grabs them.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="2" data-lva-title="Product">
+        <div class="wf">
+          <div class="bx" style="left:8%;top:14%;width:58%;height:70%">[App window]</div>
+          <div class="bx dk" style="left:72%;top:24%;width:20%;height:20%">[Cursor]</div>
+          <div class="ar" style="left:67%;top:30%">→</div>
+        </div>
+        <div class="cap"><span class="num">02</span><span class="time">3.0–7.0s</span></div>
+        <p><b>Product.</b> The product doing the one thing the video is about.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="3" data-lva-title="Call to action">
+        <div class="wf">
+          <div class="bx ink" style="left:34%;top:20%;width:32%;height:22%">[Logo]</div>
+          <div class="bx lt" style="left:28%;top:52%;width:44%;height:16%">[product.com]</div>
+        </div>
+        <div class="cap"><span class="num">03</span><span class="time">7.0–9.0s</span></div>
+        <p><b>Call to action.</b> Name and URL, held long enough to read.</p>
+      </figure>
     </div>
-    <figcaption><div class="cap1"><span class="n">2</span>Product<span class="t">3–9s</span></div><p class="job">Show the product doing the thing.</p></figcaption>
-  </figure>
-  <!-- one figure per beat -->
-</div>
+    <aside class="questions"><h3>Open questions</h3><p>Optional, newest version only: up to three real story decisions for the user.</p></aside>
+  </section>
 
-<!-- Beat map: proportional to each beat's length -->
-<div class="map"><div style="flex:3">1 Hook</div><div style="flex:6">2 Product</div></div>
+</div></div>
+
+<div id="dock"></div>
+<button id="approve">Approve → build video</button>
 
 <script type="application/json" id="lva-plan">
 { "beats": [
-  { "title": "Hook", "start": 0, "end": 3, "text": "…", "onScreen": "…", "motion": "…" },
-  { "title": "Product", "start": 3, "end": 9, "text": "…", "onScreen": "…", "motion": "…" }
+  { "title": "Hook", "start": 0, "end": 3, "onScreenText": "…", "onScreen": "…", "motion": "…" },
+  { "title": "Product", "start": 3, "end": 7, "onScreenText": "…", "onScreen": "…", "motion": "…" },
+  { "title": "Call to action", "start": 7, "end": 9, "onScreenText": "…", "onScreen": "…", "motion": "…" }
 ] }
+</script>
+
+<script>
+// Canvas behaviour: pan (scroll or drag), zoom (pinch / ctrl+scroll), version dock, Approve for the newest version.
+(() => {
+  const vp = document.getElementById("vp"), world = document.getElementById("world"), dock = document.getElementById("dock");
+  let z = 1, x = 0, y = 0, drag = null, moved = false;
+  const versions = () => [...world.querySelectorAll(".version")];
+  const zoomLabel = document.createElement("span");
+  zoomLabel.className = "z";
+
+  function apply(anim) {
+    if (anim) { world.classList.add("anim"); setTimeout(() => world.classList.remove("anim"), 400); }
+    world.style.transform = `translate(${x}px,${y}px) scale(${z})`;
+    zoomLabel.textContent = Math.round(z * 100) + "%";
+  }
+  function fit(el, anim = true) {
+    const vw = innerWidth, vh = innerHeight, w = el.offsetWidth, h = el.offsetHeight;
+    z = Math.min((vw - 120) / w, (vh - 150) / h, 1.2);
+    x = (vw - w * z) / 2 - el.offsetLeft * z;
+    y = h * z < vh - 150 ? (vh - h * z) / 2 - el.offsetTop * z : 70 - el.offsetTop * z;
+    apply(anim);
+    dock.querySelectorAll("[data-v]").forEach((b) => b.classList.toggle("on", b.dataset.v === el.dataset.lvaVersion));
+  }
+  function zoomAt(cx, cy, nz) {
+    nz = Math.max(0.1, Math.min(3, nz));
+    x = cx - (cx - x) * (nz / z); y = cy - (cy - y) * (nz / z); z = nz; apply();
+  }
+
+  vp.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, z * Math.exp(-e.deltaY * 0.01));
+    else { x -= e.deltaX; y -= e.deltaY; apply(); }
+  }, { passive: false });
+  vp.addEventListener("pointerdown", (e) => { if (e.button === 0) { drag = { sx: e.clientX, sy: e.clientY, x, y }; moved = false; } });
+  addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+    if (moved) { x = drag.x + dx; y = drag.y + dy; vp.style.cursor = "grabbing"; apply(); }
+  });
+  addEventListener("pointerup", () => { drag = null; vp.style.cursor = ""; });
+  addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // a drag is not a click
+
+  // dock: one chip per version (newest first), zoom controls
+  const vs = versions();
+  vs.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.dataset.v = s.dataset.lvaVersion; b.textContent = s.dataset.lvaVersion; b.title = "Jump to " + s.dataset.lvaVersion;
+    b.onclick = () => fit(s);
+    dock.appendChild(b);
+    if (i === 0) { const t = s.querySelector(".vtag"); if (t) t.insertAdjacentHTML("beforeend", '<span class="latest">latest</span>'); }
+  });
+  const sep = document.createElement("span"); sep.className = "sep"; dock.appendChild(sep);
+  const mk = (label, fn, title) => { const b = document.createElement("button"); b.textContent = label; b.title = title; b.onclick = fn; dock.appendChild(b); };
+  mk("−", () => zoomAt(innerWidth / 2, innerHeight / 2, z / 1.25), "Zoom out");
+  dock.appendChild(zoomLabel);
+  mk("+", () => zoomAt(innerWidth / 2, innerHeight / 2, z * 1.25), "Zoom in");
+  mk("Fit", () => vs[0] && fit(vs[0]), "Fit the newest version");
+
+  // Approve always refers to the newest version
+  const approve = document.getElementById("approve"), latest = vs[0]?.dataset.lvaVersion ?? "";
+  approve.textContent = `Approve ${latest} → build video`;
+  approve.setAttribute("data-lva-send", `Story approved (${latest}). Build the video.`);
+
+  if (vs[0]) fit(vs[0], false);
+  addEventListener("resize", () => vs[0] && fit(vs[0], false));
+})();
 </script>
 <script src="_lva/bridge.js"></script>
 </body>

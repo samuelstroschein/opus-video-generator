@@ -38,7 +38,7 @@ export function ProjectView({ id }: { id: string }) {
     const on = (e: MessageEvent) => {
       if (e.source !== iframe.current?.contentWindow || !e.data) return;
       const d = e.data;
-      if (d.type === "lva.scope") setScope({ kind: "scene", board: d.board || undefined, scene: d.scene, title: d.title, chips: d.chips });
+      if (d.type === "lva.scope") setScope({ kind: "scene", board: d.board || undefined, version: d.version || undefined, scene: d.scene, title: d.title, chips: d.chips });
       else if (d.type === "lva.send") void send(String(d.text));
       else if (d.type === "lva.state") setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
       else if (d.type === "lva.pin") setScope({ kind: "video", scene: d.scene, time: d.time, x: d.x, y: d.y, chips: d.chips });

@@ -1,5 +1,5 @@
 // Host bridge for the document pages (brief, storyboard). Include with <script src="_lva/bridge.js"></script>.
-//   [data-lva-scene] (optionally inside [data-lva-board]) : click -> scoped note target (highlighted with .lva-selected)
+//   [data-lva-scene] (optionally inside [data-lva-board] or [data-lva-version]) : click -> scoped note target (highlighted with .lva-selected)
 //   [data-lva-send="text"]                                 : click -> the host sends that text as a chat message
 // The video page does not use this file; engine.js speaks the host protocol itself.
 (() => {
@@ -17,6 +17,7 @@
     const el = target.closest("[data-lva-scene]");
     if (!el) return;
     const board = el.closest("[data-lva-board]")?.getAttribute("data-lva-board") ?? "";
+    const version = el.closest("[data-lva-version]")?.getAttribute("data-lva-version") ?? "";
     selected?.classList.remove("lva-selected");
     selected = el;
     el.classList.add("lva-selected");
@@ -27,7 +28,7 @@
       chips = raw ? JSON.parse(raw) : null;
     } catch {}
     parent.postMessage(
-      { type: "lva.scope", board, scene: Number(el.getAttribute("data-lva-scene")), title: el.getAttribute("data-lva-title") ?? "", chips },
+      { type: "lva.scope", board, version, scene: Number(el.getAttribute("data-lva-scene")), title: el.getAttribute("data-lva-title") ?? "", chips },
       "*",
     );
   });
