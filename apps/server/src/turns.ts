@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import { log, type Scope } from "./events.js";
 import { ClaudeCliRunner } from "./runner/claude.js";
 import type { AgentRunner } from "./runner/types.js";
@@ -17,13 +18,29 @@ export const isRunning = (id: string) => active.has(id);
 export const stopTurn = (id: string) => active.get(id)?.abort();
 
 // Notes the user sends while a turn runs. The CLI cannot take input mid-run, so they are delivered together as the next turn.
-type Note = { text: string; scope?: Scope; attachments: Attachment[] };
+type Note = { qid: string; text: string; scope?: Scope; attachments: Attachment[] };
 const queues = new Map<string, Note[]>();
 
 /** Queue a note for after the running turn; the chat shows it right away as queued. */
-export function enqueue(id: string, note: Note) {
+export function enqueue(id: string, n: Omit<Note, "qid">) {
+  const note = { ...n, qid: randomUUID().slice(0, 8) };
   queues.set(id, [...(queues.get(id) ?? []), note]);
-  log(id).emit({ type: "queued", text: note.text, scope: note.scope, attachments: note.attachments.length ? note.attachments : undefined });
+  log(id).emit({ type: "queued", qid: note.qid, text: note.text, scope: note.scope, attachments: note.attachments.length ? note.attachments : undefined });
+}
+
+/** Change or drop a queued note before it goes out. False if it is no longer queued (already sent). */
+export function editQueued(id: string, qid: string, text: string | null): boolean {
+  const notes = queues.get(id) ?? [];
+  const note = notes.find((n) => n.qid === qid);
+  if (!note) return false;
+  if (text === null) {
+    queues.set(id, notes.filter((n) => n !== note));
+    log(id).emit({ type: "queued.removed", qid });
+  } else {
+    note.text = text;
+    log(id).emit({ type: "queued.edited", qid, text });
+  }
+  return true;
 }
 
 /** Hand queued notes to the next message the user sends (used when a form is waiting for answers). */

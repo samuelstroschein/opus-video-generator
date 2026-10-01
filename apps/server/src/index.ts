@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
-import { enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
+import { editQueued, enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
 import { saveUploads } from "./uploads.js";
 import { DRAFT_FIT, getDraft } from "./drafts.js";
 import { exampleMedia, examplePack, listExamples, warmExamples } from "./examples.js";
@@ -146,6 +146,16 @@ app.post("/api/projects/:id/messages", async (c) => {
   }
   return c.json({ ok: true });
 });
+
+// A queued note can be changed or removed until the running turn ends and it goes out.
+app.patch("/api/projects/:id/queue/:qid", async (c) => {
+  const { text } = await c.req.json<{ text: string }>();
+  if (!text?.trim()) return c.json({ error: "text required" }, 400);
+  return editQueued(c.req.param("id"), c.req.param("qid"), text.trim()) ? c.json({ ok: true }) : c.json({ error: "Already sent" }, 409);
+});
+app.delete("/api/projects/:id/queue/:qid", (c) =>
+  editQueued(c.req.param("id"), c.req.param("qid"), null) ? c.json({ ok: true }) : c.json({ error: "Already sent" }, 409),
+);
 
 app.post("/api/projects/:id/stop", (c) => {
   stopTurn(c.req.param("id"));

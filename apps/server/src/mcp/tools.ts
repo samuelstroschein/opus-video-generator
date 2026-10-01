@@ -179,6 +179,25 @@ export function buildServer(ctx: ToolContext): McpServer {
   );
 
   reg(
+    "edit_files",
+    {
+      description:
+        "Apply changes to several files in ONE call, e.g. a reviewer's fixes across scenes/01-hook.jsx, scenes/03-diff.jsx and video.html. Each file's edits apply in order, all or nothing for that file. Use this instead of one edit_file call per file: every call is a round trip the user waits for.",
+      inputSchema: {
+        changes: z
+          .array(z.object({ path: z.string(), edits: z.array(z.object({ old_string: z.string(), new_string: z.string(), replace_all: z.boolean().optional() })).min(1) }))
+          .min(1),
+      },
+    },
+    async ({ changes }) => {
+      const results = changes.map((c) => ({ path: c.path, r: editFileMany(id, c.path, c.edits) }));
+      const failed = results.filter((x) => !x.r.ok);
+      const lines = results.map((x) => (x.r.ok ? `Edited ${x.path} (${changes.find((c) => c.path === x.path)!.edits.length})${x.r.warnings.length ? `; warnings: ${x.r.warnings.join("; ")}` : ""}` : `NOT saved ${x.path}: ${(x.r as { error: string }).error}`));
+      return text(lines.join("\n"), failed.length === results.length);
+    },
+  );
+
+  reg(
     "ask_questions",
     {
       description:

@@ -25,7 +25,7 @@ type ChatState = {
   /** The page the agent is writing right now (streamed, partial). n counts updates. */
   draft: { path: string; n: number; live: boolean } | null;
   /** Notes sent while the agent works; they go out together when the turn ends. Shown below the conversation. */
-  queued: { text: string; scope?: Scope; attachments?: Attachment[] }[];
+  queued: { qid?: string; text: string; scope?: Scope; attachments?: Attachment[] }[];
   /** The question the agent ended on, with numbered answers (suggest_replies). Cleared by the next message. */
   question: { text?: string; replies: string[] } | null;
 };
@@ -42,7 +42,11 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       items.push({ kind: "user", text: e.text, scope: e.scope, attachments: e.attachments });
       return { ...state, items, ask: null, queued: [], question: null }; // any reply answers the open form; queued notes are now delivered
     case "queued":
-      return { ...state, queued: [...state.queued, { text: e.text, scope: e.scope, attachments: e.attachments }] };
+      return { ...state, queued: [...state.queued, { qid: e.qid, text: e.text, scope: e.scope, attachments: e.attachments }] };
+    case "queued.removed":
+      return { ...state, queued: state.queued.filter((q) => q.qid !== e.qid) };
+    case "queued.edited":
+      return { ...state, queued: state.queued.map((q) => (q.qid === e.qid ? { ...q, text: e.text } : q)) };
     case "queued.dropped":
       return { ...state, queued: [] };
     case "replies":

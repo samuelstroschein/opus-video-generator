@@ -49,7 +49,8 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   const [pinned, setPinned] = useState<boolean | null>(null);
   useEffect(() => setPinned(null), [live]);
   const timeLeft = useTimeLeft(pace.progress, live);
-  if (!steps.length || quiet) return null; // an open question takes the card's place
+  // An open question takes the card's place, and a finished plan needs no card at all.
+  if (!steps.length || quiet || steps.every((s) => s.status === "done")) return null;
   const idx = steps.findIndex((s) => s.status === "active");
   const allDone = idx < 0 && steps.every((s) => s.status === "done");
   const open = pinned ?? false; // one line by default; the full plan is a click away
@@ -65,7 +66,13 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
       <button onClick={() => setPinned(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
         {live ? <Spinner /> : allDone && <span className="text-[11px] text-ok">✓</span>}
         <span className="min-w-0 flex-1 truncate">{open ? counter : (active?.title ?? (allDone ? "All steps done" : counter))}</span>
-        {!open && <span className="text-xs font-normal text-faint">{counter}</span>}
+        {!open && (
+          <span className="shrink-0 text-xs font-normal tabular-nums text-faint">
+            {live && (pace.progress?.percent != null || timeLeft)
+              ? [pace.progress?.percent != null && `${pace.progress.percent}%`, timeLeft].filter(Boolean).join(" · ")
+              : counter}
+          </span>
+        )}
         <span className="text-[10px] text-faint">{open ? "▾" : "▴"}</span>
       </button>
       {open ? (
@@ -81,24 +88,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
           ))}
           {live && <div className="pl-5"><Bar percent={pace.progress?.percent} /></div>}
         </div>
-      ) : (
-        now && (
-        <div className="-mt-1 flex flex-col gap-1.5 pb-2.5 pl-9 pr-3">
-          {now && (
-            <div className="flex items-baseline gap-2 text-xs text-mute">
-              <span className="min-w-0 flex-1 truncate">{now}</span>
-              {live && (pace.progress?.percent != null || timeLeft) && (
-                <span className="shrink-0 tabular-nums text-faint">
-                  {pace.progress?.percent != null && `${pace.progress.percent}%`}
-                  {pace.progress?.percent != null && timeLeft && " · "}
-                  {timeLeft}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        )
-      )}
+      ) : null}
     </div>
   );
 }

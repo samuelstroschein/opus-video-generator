@@ -90,9 +90,7 @@ export function ChatPane(props: {
       ? "Or write your own response"
       : scope
         ? "What should change here?"
-        : chat.running
-          ? "Add a note while it works…"
-          : "Reply, or tell me what to change…";
+        : "Reply, or tell me what to change…";
   const onKey = (e: KeyboardEvent) => {
     // With a question open and nothing typed: 1–4 picks an answer, arrows move, Enter sends the highlighted one.
     if (asking && !text) {
@@ -128,13 +126,14 @@ export function ChatPane(props: {
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
         <div className="mt-auto flex flex-col gap-4 text-sm leading-[1.55]">
           {groupRows(chat.items).map((row, i, all) =>
-            row.kind === "tools" ? <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} /> : <ChatItem key={i} item={row} id={id} />,
+            row.kind === "tools" ? (
+              <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />
+            ) : (
+              <ChatItem key={i} item={row} id={id} />
+            ),
           )}
           {chat.queued.map((q, i) => (
-            <div key={`q${i}`} className="flex flex-col items-end gap-1">
-              <UserBubble id={id} text={q.text} scope={q.scope} attachments={q.attachments} faded />
-              <span className="text-[11px] text-faint">Queued · goes out when this run finishes</span>
-            </div>
+            <QueuedNote key={q.qid ?? `q${i}`} id={id} note={q} onError={setError} />
           ))}
           <div ref={bottom} />
         </div>
@@ -244,6 +243,63 @@ function UserBubble({ id, text, scope, attachments, faded }: { id: string; text:
   );
 }
 
+/** A note waiting for the run to finish: shown faded, and editable or removable until it goes out. */
+function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof useProject>["chat"]["queued"][number]; onError: (m: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note.text);
+  const act = (p: Promise<unknown>) => p.catch((e) => onError(e instanceof Error ? e.message : String(e)));
+  const save = () => {
+    if (!note.qid || !draft.trim()) return;
+    if (draft.trim() !== note.text) void act(api.editQueued(id, note.qid, draft.trim()));
+    setEditing(false);
+  };
+  return (
+    <div className="group flex flex-col items-end gap-1">
+      {editing ? (
+        <div className="flex w-[85%] flex-col gap-2 self-end rounded-[14px] border border-line-3 bg-white p-2.5">
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                save();
+              }
+              if (e.key === "Escape") setEditing(false);
+            }}
+            rows={Math.min(6, draft.split("\n").length + 1)}
+            className="resize-none bg-transparent px-1 text-sm leading-normal"
+          />
+          <div className="flex justify-end gap-1.5">
+            <button onClick={() => setEditing(false)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-mute hover:bg-bubble">
+              Cancel
+            </button>
+            <button onClick={save} className="rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white">
+              Save
+            </button>
+          </div>
+        </div>
+      ) : (
+        <UserBubble id={id} text={note.text} scope={note.scope} attachments={note.attachments} faded />
+      )}
+      <div className="flex items-center gap-2 text-[11px] text-faint">
+        <span>Queued · goes out when this run finishes</span>
+        {note.qid && !editing && (
+          <>
+            <button onClick={() => (setDraft(note.text), setEditing(true))} className="font-medium hover:text-ink">
+              Edit
+            </button>
+            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="font-medium hover:text-ink">
+              Remove
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** The agent's form answers, folded to one line. */
 function FormAnswer({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
@@ -317,7 +373,7 @@ function Lead({ text }: { text: string }) {
 const dur = (ms: number) => (ms < 60_000 ? `${Math.max(1, Math.round(ms / 1000))}s` : `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`);
 
 /** The agent's tool calls between two messages, folded to one line: "25 actions · 2m 14s". The step card shows what is happening now. */
-function ToolGroup({ tools, live }: { tools: Tool[]; live: boolean }) {
+function ToolGroup({ tools, live, now }: { tools: Tool[]; live: boolean; now?: string }) {
   const [open, setOpen] = useState(false);
   const n = `${tools.length} action${tools.length === 1 ? "" : "s"}`;
   const first = tools[0].at;
@@ -325,9 +381,9 @@ function ToolGroup({ tools, live }: { tools: Tool[]; live: boolean }) {
   const took = !live && first && last ? ` · ${dur(last - first)}` : "";
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-mute">
+      <button onClick={() => setOpen((o) => !o)} className="flex max-w-full items-center gap-1.5 hover:text-mute">
         <span className={live ? "text-faint" : "text-ok"}>{live ? "◦" : "✓"}</span>
-        <span>{live ? `${n} so far` : `${n}${took}`}</span>
+        <span className="min-w-0 truncate">{live ? `${n} so far${now ? ` · ${now}` : ""}` : `${n}${took}`}</span>
         <span className="text-[9px]">{open ? "▾" : "▸"}</span>
       </button>
       {open && (
