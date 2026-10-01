@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&amp;family=Caveat:wght@500;700&amp;display=swap" rel="stylesheet"><style>body{margin:0;background:#f0eee9;font-family:Kalam,system-ui,sans-serif;color:#1a1a1a}a{color:#1a1a1a}a:hover{color:oklch(0.55 0.17 35)}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}</style></helmet>
+<template id="__bundler_thumbnail" data-bg-color="#f0eee9"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="34" width="40" height="32" rx="4" fill="none" stroke="#1a1a1a" stroke-width="3"></rect><polygon points="45,42 45,58 58,50" fill="#d9603b"></polygon></svg></template>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Chat left, HTML artifact right (from <a class="dv-oid" href="#1b">1b</a>), with a guided harness</span></div>
+
+<div style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:24px 28px;margin:0 0 32px;max-width:1860px;box-sizing:border-box">
+<div style="font:700 22px Kalam;margin:0 0 4px">The harness</div>
+<div style="font:400 14px Kalam;color:#555;margin:0 0 18px">Free chat, fixed pipeline. The agent can say anything, but each stage has required inputs, a specific HTML artifact, and a gate. Skipping ahead is allowed, but the agent says what's missing.</div>
+<div style="display:grid;grid-template-columns:120px repeat(5,minmax(0,1fr));gap:0;font:400 13px/1.35 Kalam;border:1.5px solid #222;border-radius:6px;overflow:hidden">
+<div style="padding:8px;border-bottom:1px solid #ccc"></div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc;font-weight:700">1 · Brief</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc;font-weight:700">2 · Storyboards</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc;font-weight:700">3 · Stills</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc;font-weight:700">4 · Video</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc;font-weight:700">5 · Export</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;font-weight:700">Agent needs</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">URL, ≥1 screenshot, ≥1 reference video. Brand + braindump optional (brand auto-pulled)</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">Approved brief</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">One chosen board</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">All stills approved</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">A version marked final</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;font-weight:700">Artifact</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">brief.html: pre-filled form, uploads, checklist</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">storyboards.html: 3 boards side by side</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">stills.html: one frame per scene, pinnable</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">video.html: player, scene timeline, versions</div>
+<div style="padding:8px;border-bottom:1px solid #ccc;border-left:1px solid #ccc">export.html: formats, render, download</div>
+<div style="padding:8px;font-weight:700">Gate</div>
+<div style="padding:8px;border-left:1px solid #ccc">Generate storyboards</div>
+<div style="padding:8px;border-left:1px solid #ccc">Pick one (or mix scenes)</div>
+<div style="padding:8px;border-left:1px solid #ccc">Approve all → animate</div>
+<div style="padding:8px;border-left:1px solid #ccc">Mark final</div>
+<div style="padding:8px;border-left:1px solid #ccc">Download + "would you post it?"</div>
+</div>
+<div style="display:flex;gap:36px;margin:16px 0 0;flex-wrap:wrap;font:700 20px Caveat;color:oklch(0.55 0.17 35)">
+<div>① stage rail on the artifact</div><div>② context checklist</div><div>③ scope chip: every note targets a scene or a pin</div><div>④ suggested next actions per stage</div><div>⑤ change receipt after every edit</div>
+</div>
+</div>
+
+<div class="dv-opts" style="flex-direction:column;gap:36px">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Full flow: stage rail + suggested actions + scoped composer</div>
+<div class="dv-card" style="width:1860px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 20px Kalam;margin:0 0 16px">The artifact is whatever HTML the stage needs. The rail above it shows where you are and what unlocks next.</div>
+<div style="display:grid;grid-template-columns:repeat(3,560px);gap:30px 40px">
+
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:700 15px Kalam">1 · Brief</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:200px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Paste your product URL to start.</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:6px">acme.io</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Pulled your logo, 3 colors and font. Now I need real screenshots and 1–2 videos whose style you want. →</div>
+<div style="margin-top:auto;display:flex;flex-wrap:wrap;gap:4px"><span style="border:1px solid oklch(0.55 0.17 35);color:oklch(0.55 0.17 35);border-radius:9px;padding:0 6px">Browse reference library</span><span style="border:1px solid #999;color:#666;border-radius:9px;padding:0 6px">Why references?</span></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:5px">Message…   +</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1.5px solid #222;font-size:10px"><b style="border-bottom:2px solid #222">1 Brief</b><span style="color:#aaa">· 2 Boards · 3 Stills · 4 Video · 5 Export</span><span style="margin-left:auto;font:400 9px ui-monospace,monospace;color:#888">brief.html</span></div>
+<div style="padding:10px;display:flex;flex-direction:column;gap:7px;flex:1">
+<div style="display:flex;gap:8px;align-items:center"><div style="width:30px;height:30px;border:1.5px solid #222;border-radius:50%"></div><div style="width:16px;height:16px;background:#222"></div><div style="width:16px;height:16px;background:#888"></div><div style="width:16px;height:16px;background:oklch(0.7 0.12 250)"></div><span>Font: detected ✎</span><span style="margin-left:auto;color:#2a8a4a">✓ brand</span></div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div style="height:44px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:44px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:44px;border:1.5px dashed #222;display:flex;align-items:center;justify-content:center">+ screen</div><div style="height:44px;border:1.5px dashed #222;display:flex;align-items:center;justify-content:center">+ screen</div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><div style="height:44px;border:2px dashed oklch(0.55 0.17 35);display:flex;align-items:center;justify-content:center;color:oklch(0.55 0.17 35)">Reference 1 (required)</div><div style="height:44px;border:1.5px dashed #999;display:flex;align-items:center;justify-content:center;color:#888">Reference 2</div></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:6px;flex:1">Braindump (optional): who it's for, the one moment to show…</div>
+<div style="align-self:flex-end;background:#ccc;color:#fff;border-radius:4px;padding:4px 10px">Generate 3 storyboards (needs 1 ref)</div>
+</div></div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">② the form is the checklist; the button names what's missing</div></div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:700 15px Kalam">2 · Storyboards</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:200px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Three directions. A copies Ref 1's fast cuts, B leads with the product, C mixes both.</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:6px">B, but open on the problem</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Moved "problem line" to scene 1 in B.</div>
+<div style="margin-top:auto;display:flex;flex-wrap:wrap;gap:4px"><span style="border:1px solid oklch(0.55 0.17 35);color:oklch(0.55 0.17 35);border-radius:9px;padding:0 6px">Pick B → stills</span><span style="border:1px solid #999;color:#666;border-radius:9px;padding:0 6px">Regenerate all</span></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:5px">Message…   +</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1.5px solid #222;font-size:10px"><span style="color:#2a8a4a">1 ✓</span><b style="border-bottom:2px solid #222">· 2 Boards</b><span style="color:#aaa">· 3 Stills · 4 Video · 5 Export</span><span style="margin-left:auto;font:400 9px ui-monospace,monospace;color:#888">storyboards.html</span></div>
+<div style="padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1">
+<div style="border:1.5px solid #222;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px"><b>A · Fast cuts</b><span style="color:#666">Ref 1 · 24s</span><div style="border:1px solid #999;padding:2px">1 Logo sting</div><div style="border:1px solid #999;padding:2px">2 Three-word hook</div><div style="border:1px solid #999;padding:2px">3 UI montage</div><div style="border:1px solid #999;padding:2px">4 CTA</div><div style="margin-top:auto;border:1.5px solid #222;text-align:center">Pick</div></div>
+<div style="border:2.5px solid oklch(0.55 0.17 35);border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px"><b>B · Product-led</b><span style="color:#666">Ref 2 · 30s</span><div style="border:1.5px solid oklch(0.55 0.17 35);padding:2px">1 Problem line ●</div><div style="border:1px solid #999;padding:2px">2 Logo</div><div style="border:1px solid #999;padding:2px">3 Dashboard pan</div><div style="border:1px solid #999;padding:2px">4 Push in: button</div><div style="border:1px solid #999;padding:2px">5 CTA</div><div style="margin-top:auto;background:#222;color:#fff;text-align:center">Pick</div></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px"><b>C · Story</b><span style="color:#666">Ref 1+2 · 35s</span><div style="border:1px solid #999;padding:2px">1 Founder quote</div><div style="border:1px solid #999;padding:2px">2 Before</div><div style="border:1px solid #999;padding:2px">3 After</div><div style="border:1px solid #999;padding:2px">4 CTA</div><div style="margin-top:auto;border:1.5px solid #222;text-align:center">Pick</div></div>
+</div></div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">⑤ edited beats get a dot, so you can see what changed</div></div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:700 15px Kalam">3 · Stills</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:200px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">One frame per scene. Click anywhere on a still to leave a note there.</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Scene 3 redrawn with your real dashboard screenshot.</div>
+<div style="margin-top:auto;display:flex;flex-wrap:wrap;gap:4px"><span style="border:1px solid oklch(0.55 0.17 35);color:oklch(0.55 0.17 35);border-radius:9px;padding:0 6px">Approve remaining 4</span></div>
+<div style="border:1.5px solid oklch(0.55 0.17 35);border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:3px"><span style="align-self:flex-start;background:oklch(0.95 0.03 35);border-radius:9px;padding:0 6px;color:oklch(0.55 0.17 35)">Scene 4 · pin 1 ×</span>use the real Deploy button</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1.5px solid #222;font-size:10px"><span style="color:#2a8a4a">1 ✓ · 2 ✓</span><b style="border-bottom:2px solid #222">· 3 Stills</b><span style="color:#aaa">· 4 Video · 5 Export</span><span style="margin-left:auto;font:400 9px ui-monospace,monospace;color:#888">stills.html</span></div>
+<div style="padding:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-content:start;flex:1">
+<div><div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><span style="color:#2a8a4a">✓</span> 1 Problem</div>
+<div><div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>○ 2 Logo</div>
+<div><div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>○ 3 Dashboard ●</div>
+<div><div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:2px solid oklch(0.55 0.17 35);position:relative"><span style="position:absolute;top:26px;left:60px;width:16px;height:16px;border-radius:50%;background:oklch(0.55 0.17 35);color:#fff;text-align:center;line-height:16px">1</span></div>✎ 4 Button</div>
+<div><div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>○ 5 CTA</div>
+<div style="display:flex;align-items:flex-end"><div style="background:#ccc;color:#fff;border-radius:4px;padding:4px 8px">Animate (1/5 approved)</div></div>
+</div></div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">③ clicking the still fills the scope chip in the composer</div></div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:700 15px Kalam">4 · Video + notes</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:200px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:4px;max-width:90%"><div style="display:flex;gap:5px;align-items:center;border:1px solid oklch(0.55 0.17 35);background:oklch(0.97 0.02 35);border-radius:4px;padding:3px"><div style="width:30px;height:18px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999;position:relative"><span style="position:absolute;top:3px;left:10px;width:9px;height:9px;border-radius:50%;background:oklch(0.55 0.17 35)"></span></div><span style="font-size:10px;color:oklch(0.55 0.17 35)">Comment · scene 3 @ 0:09</span></div>slow this zoom</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:3px"><b>Changed scene 3 only</b><span style="font:400 10px ui-monospace,monospace">zoom 1.2s → 1.7s (0.7x)<br>scene length 7s → 7.5s</span><span style="text-decoration:underline">compare · undo</span></div>
+<div style="margin-top:auto;display:flex;flex-wrap:wrap;gap:4px"><span style="border:1px solid #999;border-radius:9px;padding:0 6px">slow 0.7x</span><span style="border:1px solid #999;border-radius:9px;padding:0 6px">hard cut</span><span style="border:1px solid #999;border-radius:9px;padding:0 6px">push in</span><span style="border:1px solid #999;border-radius:9px;padding:0 6px">hold +1s</span></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:5px">Message…   +</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1.5px solid #222;font-size:10px"><span style="color:#2a8a4a">1 ✓ · 2 ✓ · 3 ✓</span><b style="border-bottom:2px solid #222">· 4 Video</b><span style="color:#aaa">· 5 Export</span><span style="margin-left:auto;font:400 9px ui-monospace,monospace;color:#888">video.html</span></div>
+<div style="padding:10px;display:flex;flex-direction:column;gap:7px;flex:1">
+<div style="height:150px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222;position:relative;font:400 10px ui-monospace,monospace"><span style="position:absolute;bottom:5px;left:6px">❚❚ 0:09 / 0:30 · paused</span><span style="position:absolute;top:52px;left:120px;width:18px;height:18px;border-radius:50%;background:oklch(0.55 0.17 35);color:#fff;text-align:center;line-height:18px;font:700 11px Kalam">1</span><div style="position:absolute;top:30px;left:146px;width:130px;background:#fff;border:1.5px solid #222;border-radius:4px;padding:5px;font:400 10px/1.3 Kalam;display:flex;flex-direction:column;gap:3px"><span style="color:#888">scene 3 · 0:09</span>slow this zoom<span style="align-self:flex-end;background:#222;color:#fff;padding:0 6px">Send to chat</span></div></div>
+<div style="display:flex;gap:3px"><div style="flex:3;height:20px;border:1px solid #222;padding:1px 3px;box-sizing:border-box">1</div><div style="flex:2;height:20px;border:1px solid #222;padding:1px 3px;box-sizing:border-box">2</div><div style="flex:7.5;height:20px;border:2px solid oklch(0.55 0.17 35);background:oklch(0.95 0.03 35);padding:1px 3px;box-sizing:border-box">3 ●</div><div style="flex:5;height:20px;border:1px solid #222;padding:1px 3px;box-sizing:border-box">4</div><div style="flex:3;height:20px;border:1px solid #222;padding:1px 3px;box-sizing:border-box">5</div></div>
+<div style="display:flex;gap:8px;align-items:center"><span style="border:1px solid #222;padding:1px 6px">v4 ▾</span><span style="border:1px solid #222;padding:1px 6px">before | after</span><span style="margin-left:auto;background:#222;color:#fff;border-radius:4px;padding:3px 10px">Mark final</span></div>
+</div></div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">③ pause, click the frame, comment → it lands in chat as an attachment · ⑤ receipt with exact values</div></div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><div style="font:700 15px Kalam">5 · Export</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:200px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Where will you post it?</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:6px">X and LinkedIn</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">Rendering 16:9 and 1:1. The 1:1 recrops scenes 3 and 4; check them before posting.</div>
+<div style="margin-top:auto;border:1.5px solid #222;border-radius:4px;padding:5px">Message…   +</div>
+</div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1.5px solid #222;font-size:10px"><span style="color:#2a8a4a">1 ✓ · 2 ✓ · 3 ✓ · 4 ✓</span><b style="border-bottom:2px solid #222">· 5 Export</b><span style="margin-left:auto;font:400 9px ui-monospace,monospace;color:#888">export.html</span></div>
+<div style="padding:10px;display:flex;flex-direction:column;gap:8px;flex:1">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<div style="border:1.5px solid #222;padding:6px;display:flex;flex-direction:column;gap:4px"><div style="height:56px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>X · 16:9 · 1080p<div style="background:#222;color:#fff;text-align:center">Download MP4</div></div>
+<div style="border:1.5px solid #222;padding:6px;display:flex;flex-direction:column;gap:4px"><div style="height:56px;width:56px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>LinkedIn · 1:1<div style="border:1px solid #222;text-align:center">rendering 64%</div></div>
+</div>
+<div style="border-top:1.5px dashed #999;padding-top:8px;display:flex;flex-direction:column;gap:4px">Would you post this as-is?<div style="display:flex;gap:6px"><span style="border:1px solid #222;padding:1px 8px">Yes</span><span style="border:1px solid #222;padding:1px 8px">After edits</span><span style="border:1px solid #222;padding:1px 8px">No</span></div>Compared to your usual process: faster · same · slower</div>
+</div></div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">export by destination; MVP test question at the end</div></div>
+
+</div></div></div>
+
+<div style="display:flex;gap:28px;flex-wrap:wrap">
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Stricter guidance: structured note builder in the composer</div>
+<div class="dv-card" style="width:620px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 17px Kalam;margin:0 0 12px">Notes are built from parts, so the agent always gets a scene, an action and an amount.</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:220px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="background:#f1f1f1;border-radius:6px;padding:6px">v3 ready. Watch it, then leave notes.</div>
+<div style="margin-top:auto;border:1.5px solid #222;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;gap:4px;flex-wrap:wrap"><span style="border:1.5px solid #222;padding:0 5px">Scene 3 ▾</span><span style="border:1.5px solid #222;padding:0 5px">Zoom ▾</span><span style="border:1.5px solid #222;padding:0 5px">Slower ▾</span><span style="border:1.5px solid #222;padding:0 5px">0.7x</span></div>
+<div style="color:#888">+ free text (optional)</div>
+<div style="display:flex;justify-content:space-between"><span style="color:#666">+ add another note</span><span style="background:#222;color:#fff;padding:0 8px">Apply 1</span></div>
+</div>
+<div style="text-decoration:underline;color:#666">switch to free text</div>
+</div>
+<div style="padding:10px;display:flex;flex-direction:column;gap:7px">
+<div style="height:150px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222"></div>
+<div style="display:flex;gap:3px"><div style="flex:1;height:20px;border:1px solid #222"></div><div style="flex:1;height:20px;border:1px solid #222"></div><div style="flex:2;height:20px;border:2px solid oklch(0.55 0.17 35)"></div><div style="flex:1;height:20px;border:1px solid #222"></div></div>
+<div style="color:#666">Action list: Pace · Camera (zoom, pan, push in) · Cut · Hold · Swap asset · Copy · Type</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35);margin-top:8px">notes can be batched, then one re-render covers all of them</div>
+</div></div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Lighter guidance: agent catches vague notes</div>
+<div class="dv-card" style="width:620px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 17px Kalam;margin:0 0 12px">Free text by default. If a note is vague, the agent asks back with specific choices before rendering.</div>
+<div style="width:560px;height:350px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:220px 1fr;font:400 11px/1.3 Kalam;overflow:hidden">
+<div style="border-right:1.5px solid #222;padding:10px;display:flex;flex-direction:column;gap:6px">
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:6px">make the middle part better</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:4px">Scenes 3–4? What should change?
+<span style="border:1px solid #222;border-radius:9px;padding:0 6px;background:#fff">Pace: it drags (trim 2s)</span>
+<span style="border:1px solid #222;border-radius:9px;padding:0 6px;background:#fff">Camera: push in on the button</span>
+<span style="border:1px solid #222;border-radius:9px;padding:0 6px;background:#fff">Content: show the real UI</span>
+<span style="border:1px solid #222;border-radius:9px;padding:0 6px;background:#fff">Something else…</span></div>
+<div style="margin-top:auto;border:1.5px solid #222;border-radius:4px;padding:5px">Message…</div>
+</div>
+<div style="padding:10px;display:flex;flex-direction:column;gap:7px">
+<div style="height:150px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222"></div>
+<div style="display:flex;gap:3px"><div style="flex:1;height:20px;border:1px solid #222"></div><div style="flex:1;height:20px;border:1px solid #222"></div><div style="flex:2;height:20px;border:2px dashed oklch(0.55 0.17 35)"></div><div style="flex:1;height:20px;border:2px dashed oklch(0.55 0.17 35)"></div></div>
+<div style="color:#666">agent highlights the scenes it thinks you mean</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35);margin-top:8px">teaches director vocabulary without forcing it</div>
+</div></div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "use <a class="dv-oid" href="#2a">2a</a> with <a class="dv-oid" href="#2c">2c</a>'s vague-note catch" · "detail the scene timeline in <a class="dv-oid" href="#2a">2a</a> step 4" · "show the empty state and first message"</p>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">MVP flow + three ways to structure the app</span></div>
+
+<div style="background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:24px 28px;margin:0 0 32px;max-width:1860px;box-sizing:border-box">
+<div style="font:700 22px Kalam;margin:0 0 4px">Core flow (same in every option)</div>
+<div style="font:400 14px Kalam;color:#555;margin:0 0 20px">Each gate is a cheap review before an expensive step. Loops stay scoped: a note changes one scene, not the whole video.</div>
+<div style="display:flex;align-items:stretch;gap:10px;flex-wrap:wrap">
+<div style="border:2px solid #222;border-radius:8px;padding:10px 14px;width:220px;box-sizing:border-box"><div style="font:700 16px Kalam">1 · Brief</div><div style="font:400 13px/1.35 Kalam;color:#444">URL, logo/colors/fonts, product screenshots, 1–2 reference videos, braindump</div></div>
+<div style="display:flex;align-items:center;font:700 22px Kalam">→</div>
+<div style="border:2px solid #222;border-radius:8px;padding:10px 14px;width:220px;box-sizing:border-box"><div style="font:700 16px Kalam">2 · Three storyboards</div><div style="font:400 13px/1.35 Kalam;color:#444">Beats, pacing, which reference each follows. Pick one.</div></div>
+<div style="display:flex;align-items:center;font:700 22px Kalam">→</div>
+<div style="border:2px solid #222;border-radius:8px;padding:10px 14px;width:220px;box-sizing:border-box"><div style="font:700 16px Kalam">3 · Scene stills</div><div style="font:400 13px/1.35 Kalam;color:#444">One frame per scene. Note + regenerate a still in seconds.</div></div>
+<div style="display:flex;align-items:center;font:700 22px Kalam">→</div>
+<div style="border:2px solid #222;border-radius:8px;padding:10px 14px;width:220px;box-sizing:border-box"><div style="font:700 16px Kalam">4 · Video + notes</div><div style="font:400 13px/1.35 Kalam;color:#444">Built in code. Director notes per scene → re-render that scene.</div></div>
+<div style="display:flex;align-items:center;font:700 22px Kalam">→</div>
+<div style="border:2px solid #222;border-radius:8px;padding:10px 14px;width:220px;box-sizing:border-box"><div style="font:700 16px Kalam">5 · Export MP4</div><div style="font:400 13px/1.35 Kalam;color:#444">Aspect ratio, resolution, download. Ask: would you post this?</div></div>
+</div>
+<div style="display:flex;gap:40px;margin:16px 0 0;flex-wrap:wrap;font:700 20px Caveat;color:oklch(0.55 0.17 35)">
+<div>↺ gate 2: "none fit" → regenerate 3 with a steer</div>
+<div>↺ gate 3: note on a still → redraw that still only</div>
+<div>↺ gate 4: note on a scene → re-render that scene, keep version history</div>
+</div>
+</div>
+
+<div class="dv-opts" style="flex-direction:column;gap:36px">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Guided wizard: one step per screen, stepper at top</div>
+<div class="dv-card" style="width:1860px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 20px Kalam;margin:0 0 16px">Linear and hard to get lost in. Best for a first-time founder with no video vocabulary.</div>
+<div style="display:flex;gap:14px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">1 · Brief</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 11px Kalam">
+<div style="display:flex;gap:4px"><div style="flex:1;height:5px;background:#222;border-radius:3px"></div><div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div><div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div><div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div><div style="flex:1;height:5px;background:#ddd;border-radius:3px"></div></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:4px 6px">Product URL  https://…</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+<div style="border:1.5px dashed #222;border-radius:4px;padding:6px;height:44px;box-sizing:border-box">Brand: logo, colors, fonts<br>(auto-pulled from URL)</div>
+<div style="border:1.5px dashed #222;border-radius:4px;padding:6px;height:44px;box-sizing:border-box">UI screenshots<br>drop 3–8</div>
+</div>
+<div style="border:1.5px dashed #222;border-radius:4px;padding:6px">Reference videos (1–2) · paste link or browse library</div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:6px;flex:1">Braindump: who it's for, the one feature to show, length…</div>
+<div style="align-self:flex-end;background:#222;color:#fff;border-radius:4px;padding:4px 10px">Generate 3 storyboards →</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">URL scrape pre-fills brand so the form is mostly review</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">2 · Pick a storyboard</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:10px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font:400 10px Kalam">
+<div style="border:1.5px solid #222;border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:4px"><b>A · Punchy</b><span>follows Ref 1</span><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><span>6 scenes · 24s</span><div style="margin-top:auto;border:1.5px solid #222;border-radius:3px;text-align:center">Pick</div></div>
+<div style="border:2.5px solid oklch(0.55 0.17 35);border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:4px"><b>B · Demo-led</b><span>follows Ref 2</span><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><span>5 scenes · 30s</span><div style="margin-top:auto;background:#222;color:#fff;border-radius:3px;text-align:center">Pick</div></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:4px"><b>C · Story</b><span>mix 1 + 2</span><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><div style="height:28px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div><span>7 scenes · 35s</span><div style="margin-top:auto;border:1.5px solid #222;border-radius:3px;text-align:center">Pick</div></div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">each card names its reference, so the choice is about style, not wording</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">3 · Scene stills</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 10px Kalam">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>1 · Logo sting ✓</div>
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>2 · Problem ✓</div>
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:2px solid oklch(0.55 0.17 35)"></div>3 · Dashboard ✎</div>
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>4 · Button ✓</div>
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>5 · Result ✓</div>
+<div><div style="height:46px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>6 · CTA ✓</div>
+</div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:4px 6px">Note on 3: "use my real screenshot, not a mock"  <b>Redraw</b></div>
+<div style="align-self:flex-end;background:#222;color:#fff;border-radius:4px;padding:4px 10px;margin-top:auto">Approve 6/6 → build video</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">build is locked until every still is approved</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">4 · Video + director notes</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 10px Kalam">
+<div style="height:96px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222;display:flex;align-items:center;justify-content:center;font:400 10px ui-monospace,monospace">video preview ▶</div>
+<div style="display:flex;gap:3px"><div style="flex:2;height:14px;border:1px solid #222"></div><div style="flex:3;height:14px;border:1px solid #222"></div><div style="flex:3;height:14px;border:2px solid oklch(0.55 0.17 35);background:oklch(0.95 0.03 35)"></div><div style="flex:2;height:14px;border:1px solid #222"></div><div style="flex:3;height:14px;border:1px solid #222"></div><div style="flex:2;height:14px;border:1px solid #222"></div></div>
+<div style="display:flex;gap:4px;flex-wrap:wrap"><span style="border:1px solid #222;border-radius:9px;padding:0 6px">slow zoom 0.7x</span><span style="border:1px solid #222;border-radius:9px;padding:0 6px">hard cut</span><span style="border:1px solid #222;border-radius:9px;padding:0 6px">push in</span><span style="border:1px solid #222;border-radius:9px;padding:0 6px">hold longer</span></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:4px 6px">Scene 3: "show the actual button"  <b>Re-render scene</b></div>
+<div style="color:#666">v3 · scene 3 changed · 12s ago</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">note chips teach camera words; notes attach to the selected scene</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">5 · Export</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:10px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;font:400 11px Kalam">
+<div style="display:flex;gap:6px"><span style="border:2px solid #222;padding:2px 8px">16:9</span><span style="border:1px solid #999;padding:2px 8px">1:1</span><span style="border:1px solid #999;padding:2px 8px">9:16</span><span style="border:1px solid #999;padding:2px 8px">1080p ▾</span></div>
+<div style="height:70px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222"></div>
+<div style="background:#222;color:#fff;border-radius:4px;padding:5px 10px;align-self:flex-start">Download MP4</div>
+<div style="border-top:1.5px dashed #999;padding-top:6px">Would you post this as-is?<div style="display:flex;gap:6px;margin-top:4px"><span style="border:1px solid #222;padding:1px 8px">Yes</span><span style="border:1px solid #222;padding:1px 8px">After edits</span><span style="border:1px solid #222;padding:1px 8px">No</span></div></div>
+<div>vs your usual process: <span style="border-bottom:1px solid #222">faster / same / slower</span></div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">the MVP test question lives at the moment of export</div></div>
+
+</div></div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Director chat: agent conversation left, artifact pane right</div>
+<div class="dv-card" style="width:1860px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 20px Kalam;margin:0 0 16px">Feels like working with an editor. Notes are just messages, scoped by clicking a scene first.</div>
+<div style="display:flex;gap:14px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">1 · Dump context</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:1.3fr 1fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">Agent: Drop your URL, brand, screenshots and 1–2 videos you want to copy.</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:5px;max-width:85%">acme.io + +4 files + 2 links. Launch for our new API…</div>
+<div style="margin-top:auto;border:1.5px solid #222;border-radius:4px;padding:4px">Message…  +</div>
+</div>
+<div style="padding:8px;display:flex;flex-direction:column;gap:5px"><b>Context</b>
+<div>✓ URL</div><div>✓ Logo, 3 colors, font</div><div>✓ Screenshots (3)</div><div>✓ Reference 1 of 2</div><div style="color:oklch(0.55 0.17 35)">○ Braindump: who is it for?</div>
+<div style="margin-top:auto;background:#222;color:#fff;border-radius:4px;padding:3px;text-align:center">Draft storyboards</div></div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">checklist makes missing context visible before generating</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">2 · Storyboards in the pane</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1.5fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">3 directions →</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:5px">B, but open on the problem</div>
+</div>
+<div style="padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="display:flex;gap:4px"><span style="border:1px solid #999;padding:0 5px">A</span><span style="border:2px solid #222;padding:0 5px">B</span><span style="border:1px solid #999;padding:0 5px">C</span></div>
+<div style="border:1.5px solid #222;padding:4px">1. Problem line (0–3s)</div>
+<div style="border:1.5px solid #222;padding:4px">2. Logo sting (3–5s)</div>
+<div style="border:1.5px solid #222;padding:4px">3. Dashboard pan (5–12s)</div>
+<div style="border:1.5px solid #222;padding:4px">4. Push in on button</div>
+<div style="border:1.5px solid #222;padding:4px">5. CTA</div>
+<div style="margin-top:auto;background:#222;color:#fff;border-radius:4px;padding:3px;text-align:center">Use B → stills</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">tabs compare boards; chat edits the one you're on</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">3 · Stills</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1.5fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="border:1px solid oklch(0.55 0.17 35);border-radius:9px;padding:0 5px;align-self:flex-start;color:oklch(0.55 0.17 35)">re: scene 3</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:5px">crop tighter on the chart</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">Redrawn 3. Others unchanged.</div>
+</div>
+<div style="padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:5px;align-content:start">
+<div style="height:40px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="height:40px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="height:40px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:2px solid oklch(0.55 0.17 35)"></div>
+<div style="height:40px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="height:40px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="background:#222;color:#fff;border-radius:4px;padding:3px;text-align:center;align-self:end">Animate</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">click a still = scope chip on the next message</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">4 · Video + notes</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1.5fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="border:1px solid oklch(0.55 0.17 35);border-radius:9px;padding:0 5px;align-self:flex-start;color:oklch(0.55 0.17 35)">re: scene 4 @ 0:14</div>
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:5px">slow this zoom to 0.7x</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">zoom 1.0 → 0.7x. Re-rendered scene 4 (8s).</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">[before | after]</div>
+</div>
+<div style="padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="height:100px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222;display:flex;align-items:center;justify-content:center;font:400 10px ui-monospace,monospace">video ▶</div>
+<div style="display:flex;gap:2px"><div style="flex:1;height:12px;border:1px solid #222"></div><div style="flex:1;height:12px;border:1px solid #222"></div><div style="flex:1;height:12px;border:1px solid #222"></div><div style="flex:1;height:12px;border:2px solid oklch(0.55 0.17 35)"></div><div style="flex:1;height:12px;border:1px solid #222"></div></div>
+<div style="color:#666">v4 ▾</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">agent echoes the exact change it made, with a before/after</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">5 · Export</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:1fr 1.5fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px">
+<div style="align-self:flex-end;border:1.5px solid #222;border-radius:6px;padding:5px">export for X and LinkedIn</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">Rendering 16:9 + 1:1…</div>
+<div style="background:#f1f1f1;border-radius:6px;padding:5px">Would you post this? Yes · Almost · No</div>
+</div>
+<div style="padding:8px;display:flex;flex-direction:column;gap:6px">
+<div style="border:1.5px solid #222;padding:5px">launch-16x9.mp4 · 28s  ⬇</div>
+<div style="border:1.5px solid #222;padding:5px">launch-1x1.mp4 · 28s  ⬇</div>
+</div></div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">export by destination, not by settings</div></div>
+
+</div></div></div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Scene board: one persistent board where each scene card matures beat → still → clip</div>
+<div class="dv-card" style="width:1860px;padding:24px 28px;box-sizing:border-box">
+<div style="font:700 20px Kalam;margin:0 0 16px">The scene is the unit of work. You never leave the board; notes are pins dropped on the frame itself.</div>
+<div style="display:flex;gap:14px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">1 · Brief drawer + empty board</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;box-sizing:border-box;display:grid;grid-template-columns:110px 1fr;font:400 10px Kalam">
+<div style="border-right:1.5px solid #222;padding:8px;display:flex;flex-direction:column;gap:5px"><b>Brief</b>
+<div style="border:1px solid #222;padding:3px">URL</div><div style="border:1px dashed #222;padding:3px">Brand kit</div><div style="border:1px dashed #222;padding:3px">Screens ×3</div><div style="border:1px dashed #222;padding:3px">Refs ×2</div><div style="border:1px solid #222;padding:3px;flex:1">Braindump</div>
+<div style="background:#222;color:#fff;border-radius:4px;padding:3px;text-align:center">Storyboard</div></div>
+<div style="padding:8px;display:flex;align-items:center;justify-content:center;color:#999;border:1.5px dashed #ccc;margin:8px">scenes appear here</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">brief stays in a drawer: editable later, triggers rebuild of affected scenes</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">2 · Three lanes</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 10px Kalam">
+<div style="display:flex;gap:4px;align-items:center"><b style="width:40px">A</b><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><span style="border:1px solid #222;padding:0 4px">Pick</span></div>
+<div style="display:flex;gap:4px;align-items:center;background:oklch(0.96 0.03 35);padding:3px 0"><b style="width:40px">B</b><div style="flex:1;height:34px;border:1.5px solid #222"></div><div style="flex:1;height:34px;border:1.5px solid #222"></div><div style="flex:1;height:34px;border:1.5px solid #222"></div><div style="flex:1;height:34px;border:1.5px solid #222"></div><span style="background:#222;color:#fff;padding:0 4px">Pick</span></div>
+<div style="display:flex;gap:4px;align-items:center"><b style="width:40px">C</b><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><div style="flex:1;height:34px;border:1px solid #222"></div><span style="border:1px solid #222;padding:0 4px">Pick</span></div>
+<div style="color:#666">drag a card between lanes to mix boards</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">side-by-side lanes make pacing differences obvious</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">3 · Cards flip to stills</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 10px Kalam">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+<div style="height:64px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="height:64px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999;position:relative"><span style="position:absolute;top:18px;left:40px;width:16px;height:16px;border-radius:50%;background:oklch(0.55 0.17 35);color:#fff;text-align:center;line-height:16px">1</span></div>
+<div style="height:64px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+<div style="height:64px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1px solid #999"></div>
+</div>
+<div style="border:1.5px solid oklch(0.55 0.17 35);border-radius:4px;padding:4px">(1) "this should be the real Deploy button"</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">pin a spot on a still → note knows exactly which element</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">4 · Cards become clips</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 10px Kalam">
+<div style="height:100px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222;display:flex;align-items:center;justify-content:center;font:400 10px ui-monospace,monospace">scene 4 ▶ loop</div>
+<div style="display:flex;gap:4px"><div style="flex:1;height:26px;border:1px solid #222"></div><div style="flex:1;height:26px;border:1px solid #222"></div><div style="flex:1;height:26px;border:1px solid #222"></div><div style="flex:1;height:26px;border:2px solid oklch(0.55 0.17 35)"></div><div style="flex:1;height:26px;border:1px dashed #999;color:#999;text-align:center;line-height:26px">⟳</div></div>
+<div style="border:1.5px solid #222;border-radius:4px;padding:4px">@0:02 in scene 4: "hard cut here"</div>
+<div style="color:#666">scene 5 re-rendering… others playable</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">only the noted card re-renders; the rest stay live</div></div>
+
+<div style="font:700 22px Kalam;padding-top:130px">→</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:320px"><div style="font:700 14px Kalam">5 · Play all + export</div>
+<div style="width:320px;height:260px;border:2px solid #222;border-radius:6px;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;font:400 11px Kalam">
+<div style="height:110px;background:repeating-linear-gradient(45deg,#eee 0 4px,#fff 4px 8px);border:1.5px solid #222;display:flex;align-items:center;justify-content:center;font:400 10px ui-monospace,monospace">full video ▶ 0:28</div>
+<div style="display:flex;gap:6px"><span style="border:2px solid #222;padding:1px 6px">16:9</span><span style="border:1px solid #999;padding:1px 6px">1:1</span><span style="border:1px solid #999;padding:1px 6px">9:16</span></div>
+<div style="background:#222;color:#fff;border-radius:4px;padding:4px 10px;align-self:flex-start">Export MP4</div>
+<div>Post it? yes / not yet — why?</div>
+</div>
+<div style="font:700 17px/1.1 Caveat;color:oklch(0.55 0.17 35)">"play all" is the final review before export</div></div>
+
+</div></div></div>
+
+</div>
+<p class="dv-next">Try next: "go deeper on <a class="dv-oid" href="#1a">1a</a> step 4, 3 ways to give notes" · "combine <a class="dv-oid" href="#1b">1b</a> chat with <a class="dv-oid" href="#1c">1c</a> pins" · "wireframe the storyboard card in detail"</p>
+</section>
+</x-dc>
+</body>
+</html>
