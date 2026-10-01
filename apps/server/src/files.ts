@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { workspaceDir } from "./projects.js";
+import { validate as skillValidate } from "./harness.js";
 
 // The agent never touches the disk. Every read and write goes through these functions (via MCP tools), so we can
 // restrict where it writes and validate what it writes. Locally the store is a folder; in the cloud it is a
@@ -13,7 +14,7 @@ const Babel = require("@babel/standalone") as { transform: (code: string, opts: 
 export type WriteResult = { ok: true; warnings: string[] } | { ok: false; error: string };
 
 // What the agent may create or change. Everything else (engine, templates, bridge) is read-only to it.
-const WRITABLE = [/^(brief|directions|storyboard|video)\.html$/, /^scenes\/[\w.-]+\.jsx$/, /^assets\/[\w./-]+$/];
+const WRITABLE = [/^[\w-]+\.html$/, /^scenes\/[\w.-]+\.jsx$/, /^assets\/[\w./-]+$/];
 
 function resolve(id: string, rel: string): string | null {
   if (!rel || path.isAbsolute(rel) || rel.split("/").some((p) => p === ".." || p === ".git")) return null;
@@ -54,9 +55,9 @@ export function writeFile(id: string, rel: string, content: string): WriteResult
   const abs = resolve(id, rel);
   if (!abs) return { ok: false, error: `Invalid path: ${rel}` };
   if (!WRITABLE.some((re) => re.test(rel))) {
-    return { ok: false, error: `You can only write brief.html, directions.html, storyboard.html, video.html, scenes/*.jsx and assets/*. "${rel}" is not allowed (the _lva/ folder is read-only).` };
+    return { ok: false, error: `You can only write top-level .html pages, scenes/*.jsx and assets/*. "${rel}" is not allowed (the _lva/ folder is read-only).` };
   }
-  const check = validate(rel, content);
+  const check = validate(id, rel, content);
   if (!check.ok) return check;
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, content);
@@ -75,9 +76,8 @@ export function editFile(id: string, rel: string, oldStr: string, newStr: string
 }
 
 // Validation on write: syntax errors are rejected (so a broken scene never reaches the user's screen);
-// contract problems are saved with a warning so the agent can fix them on its next call.
-function validate(rel: string, content: string): WriteResult {
-  const warnings: string[] = [];
+// contract problems, which belong to the loaded skills, are saved with a warning so the agent can fix them.
+function validate(id: string, rel: string, content: string): WriteResult {
   if (rel.endsWith(".jsx")) {
     try {
       Babel.transform(content, { presets: ["react"], filename: rel });
@@ -85,32 +85,5 @@ function validate(rel: string, content: string): WriteResult {
       return { ok: false, error: `Syntax error in ${rel}, not saved: ${e instanceof Error ? e.message : String(e)}` };
     }
   }
-  if (rel === "brief.html" && !/<meta[^>]*name=["']lva:product["'][^>]*content=["'][^"']+["']/i.test(content)) {
-    warnings.push('brief.html is missing <meta name="lva:product" content="Product name">, so the app will not recognize the brief.');
-  }
-  if (rel === "directions.html") {
-    const dirs = new Set([...content.matchAll(/data-lva-direction=["']([^"']+)["']/g)].map((m) => m[1]));
-    if (dirs.size < 3) warnings.push(`directions.html has ${dirs.size} data-lva-direction cards; it needs exactly three (A, B, C).`);
-    if (!/data-lva-send=["']Go with direction/.test(content)) warnings.push('Each direction needs a Pick button with data-lva-send="Go with direction X. Build the storyboard."');
-    if (content.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length > 140) warnings.push("directions.html has too much text. It must be looked at, not read: name, one line, and a meta line per card.");
-  }
-  if (rel === "storyboard.html") {
-    if (!/data-lva-frame/.test(content)) warnings.push("storyboard.html has no data-lva-frame figures.");
-    if (!/video\.html\?still=/.test(content)) warnings.push("Each frame should be an iframe of video.html?still=<seconds>.");
-  }
-  if (rel === "video.html") {
-    const m = content.match(/window\.LVA_SCENES\s*=\s*'([^']*)'/);
-    if (!m) warnings.push("video.html must declare window.LVA_SCENES as a JSON string literal in a plain inline script.");
-    else {
-      try {
-        const scenes = JSON.parse(m[1]);
-        if (!Array.isArray(scenes) || scenes.some((s) => !s.name || !(Number(s.dur) > 0))) warnings.push("LVA_SCENES entries need a name and a positive dur.");
-      } catch {
-        warnings.push("window.LVA_SCENES is not valid JSON.");
-      }
-    }
-    if (!/<Composition/.test(content)) warnings.push("video.html does not mount <Composition>.");
-    if (!/_lva\/engine\.js/.test(content)) warnings.push('video.html must load <script src="_lva/engine.js">.');
-  }
-  return { ok: true, warnings };
+  return { ok: true, warnings: skillValidate(id, rel, content) };
 }

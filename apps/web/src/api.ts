@@ -1,6 +1,7 @@
+export type Chips = [label: string, message: string][];
 export type Scope =
-  | { kind?: "scene"; board?: string; scene: number; title?: string }
-  | { kind: "video"; scene: string; time: number; x: number; y: number };
+  | { kind?: "scene"; board?: string; scene: number; title?: string; chips?: Chips | null }
+  | { kind: "video"; scene: string; time: number; x: number; y: number; chips?: Chips | null };
 
 export const scopeLabel = (s: Scope) =>
   s.kind === "video" ? `Video · ${s.scene} @ ${fmtTime(s.time)} · pin` : `${s.board ? `Board ${s.board} · ` : ""}scene ${s.scene}${s.title ? ` · ${s.title}` : ""}`;
@@ -18,17 +19,16 @@ export type AskQuestion = {
 };
 export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
 
-export const STAGES = ["brief", "directions", "storyboard", "video", "export"] as const;
-export type Stage = (typeof STAGES)[number];
-
+export type PageInfo = { file: string; title: string; kind: "video" | "page" };
 export type ProjectState = {
   id: string;
   title: string;
   running: boolean;
   exporting: boolean;
-  stage: Stage;
-  ready: Record<Stage, boolean>;
-  missing: string[];
+  skills: string[];
+  pages: PageInfo[];
+  canvas: string | null;
+  canvasSeq: number;
   renders: string[];
 };
 

@@ -20,7 +20,7 @@ Why this shape (from the X cluster): one-prompt output is mediocre. What makes t
 
 > **The agent has no filesystem. It is a CLI process (later: any hosted agent) that connects over MCP to a tool server inside our control plane. The control plane owns all project state, validates every write, enforces the stage gates, and renders what the agent writes.**
 
-The agent can read the web and call our tools: `list_files`, `read_file`, `write_file`, `edit_file`, `ask_questions`, `view_page` (a real screenshot, so it can check its own work). Locally the CLI is a child process and the tool server is an HTTP endpoint on localhost. In the cloud it is the same MCP endpoint behind a real credential, with the agent running anywhere (a sandbox, the Agent SDK, a hosted agent API). The agent runner changes; the tool surface and the state do not.
+The agent can read the web and call our tools: `load_skill`, `list_files`, `read_file`, `write_file`, `edit_file`, `ask_questions`, `show_page` (the agent chooses what the canvas shows), `view_page` (a real screenshot, so it can check its own work). Locally the CLI is a child process and the tool server is an HTTP endpoint on localhost. In the cloud it is the same MCP endpoint behind a real credential, with the agent running anywhere (a sandbox, the Agent SDK, a hosted agent API). The agent runner changes; the tool surface and the state do not.
 
 ```
 Browser (React SPA)
@@ -100,6 +100,22 @@ The agent runs with `--tools "WebFetch,WebSearch"` plus our MCP server; its work
 - **Instructions are server-side** (`templates/director.md`), so a prompt change applies to every project, and nothing about the agent depends on a file in its folder.
 - **Harness-agnostic.** Any MCP-capable agent (Codex, a hosted agent) gets the same tools.
 - **Future:** per-turn scope can be enforced at the tool (reject writes outside the scene the note targets), plus `capture_site`, `analyze_reference`, `render_frame` as further tools.
+
+### 6b. The shell is generic; use cases are skills (harness packs)  (decided, implemented)
+The shell knows pages, files, forms, `show_page`, export and skill loading. It does not know what a launch video is. A use case is a folder in `harnesses/<name>/`:
+
+```
+harnesses/launch-video/
+  skill.md       frontmatter (name, description) + the flow the agent follows
+  starters/      engine, bridge, page templates → copied into the project's read-only _lva/ on load
+  references/    craft notes the agent reads on demand (craft, motion, story)
+  validate.ts    optional contract checks run on every write
+```
+- **Routing is the model's job, not a classifier's.** The system prompt carries a catalog (name + description per skill); the agent's first call for a new request is `load_skill`. This is what Claude Design does ("Reading skill prompt: Animated video"). A second skill (for example social assets) is a new folder, nothing else.
+- **The flow lives in the skill.** The form's questions, including whether to just build or to sketch the story first, the storyboard format and the feedback chips are all in `skill.md` and its templates, not in app code. Pages can define their own one-click chips (`<meta name="lva:chips">`, `data-lva-chips`).
+- **Instructions are assembled per turn on the server:** the generic shell prompt + the bodies of the project's loaded skills + a catalog of the rest + a snapshot of the project (pages, what the canvas shows).
+- **The canvas is agent-controlled** (`show_page`). The page dropdown lists whatever top-level `.html` files exist; the user can browse until the agent shows something again.
+- **Story before polish.** The optional storyboard is a deliberately low-fidelity wireframe (grayscale, dashed boxes, bracketed labels, a beat map), so review goes to the story: hook, order, payoff. Hi-fi only starts when the video is built.
 
 ### 7. Gates and scope live in the harness, not the prompt
 - The server derives stage state from workspace files (what exists, what's approved) and **injects it into every turn**: current stage, what's missing, and the scope (`scene 4 @ 0:14, pin (x,y)`, from the clicked still or paused frame).

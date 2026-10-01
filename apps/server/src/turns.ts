@@ -2,9 +2,10 @@ import fs from "node:fs";
 import { log, type Scope } from "./events.js";
 import { ClaudeCliRunner } from "./runner/claude.js";
 import type { AgentRunner } from "./runner/types.js";
-import { agentDir, commitTurn, DIRECTOR_PROMPT, readMeta, workspaceDir, writeMeta } from "./projects.js";
+import { agentDir, commitTurn, readMeta, SHELL_PROMPT, workspaceDir, writeMeta } from "./projects.js";
+import { listSkills, skillBody } from "./harness.js";
+import { canvasPage, listPages } from "./pages.js";
 import { issueToken, revokeToken } from "./mcp/http.js";
-import { stageContext } from "./stage.js";
 
 const runner: AgentRunner = new ClaudeCliRunner();
 const active = new Map<string, AbortController>();
@@ -24,10 +25,6 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   const l = log(id);
   const meta = readMeta(id);
   const turn = meta.turns + 1;
-  // The page buttons send fixed phrases; they are the gates between stages.
-  if (/^Go with direction|^None of these fit/i.test(text)) meta.storyboardApproved = false;
-  if (/^Storyboard approved/i.test(text)) meta.storyboardApproved = true;
-  writeMeta(meta);
   l.emit({ type: "user", text, scope });
   l.emit({ type: "turn.start" });
 
@@ -37,19 +34,19 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   const watcher = watchWorkspace(id);
   const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });
   try {
-    // Instructions are served from the control plane (not a file in the project), so updating them applies to every project.
-    const instructions = fs.readFileSync(DIRECTOR_PROMPT, "utf8");
+    const instructions = buildInstructions(id);
     for await (const e of runner.run({
       cwd: agentDir(id),
       mcp: { url: `http://localhost:${process.env.PORT ?? 8787}/mcp`, token },
       prompt,
       sessionId: meta.sessionId,
-      context: `${instructions}\n\n${stageContext(id)}`,
+      context: instructions,
       signal: ac.signal,
     })) {
       if (e.type === "session" && e.sessionId !== meta.sessionId) {
         meta.sessionId = e.sessionId;
-        writeMeta(meta);
+        // Re-read before writing: tools (load_skill) update the metadata during the turn.
+        writeMeta({ ...readMeta(id), sessionId: e.sessionId });
       }
       l.emit(e);
     }
@@ -59,12 +56,26 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
     revokeToken(token);
     watcher.close();
     active.delete(id);
-    meta.turns = turn;
-    writeMeta(meta);
+    writeMeta({ ...readMeta(id), turns: turn });
     const tag = commitTurn(id, turn, text);
     if (tag) l.emit({ type: "version", tag });
     l.emit({ type: "file.changed", path: "*" }, false);
   }
+}
+
+/** Shell prompt + the skills this project has loaded (+ a catalog of the rest) + a snapshot of the project. Served from the control plane, so edits apply to every project. */
+function buildInstructions(id: string): string {
+  const loaded = readMeta(id).skills ?? [];
+  const catalog = listSkills().filter((s) => !loaded.includes(s.name));
+  const pages = listPages(id);
+  return [
+    fs.readFileSync(SHELL_PROMPT, "utf8").trim(),
+    ...loaded.map((n) => `## Loaded skill: ${n}\n\n${skillBody(n) ?? ""}`),
+    catalog.length ? `## Skill catalog (call load_skill to use one)\n${catalog.map((s) => `- ${s.name}: ${s.description}`).join("\n")}` : "",
+    `## Project snapshot\nPages: ${pages.map((p) => p.file).join(", ") || "(none yet)"}. Canvas shows: ${canvasPage(id)?.page ?? "(nothing yet)"}.`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function scopePrefix(scope: Scope): string {

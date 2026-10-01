@@ -4,13 +4,12 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 export const DATA_DIR = process.env.LVA_DATA_DIR ?? path.join(REPO_ROOT, "data", "projects");
-const TEMPLATE_DIR = path.join(REPO_ROOT, "templates", "project");
 
 // Layout: <DATA_DIR>/<id>/{meta.json, events.jsonl, workspace/}
 // The workspace is the agent's cwd and its own git repo (one commit per turn = a version).
-export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string; storyboardApproved?: boolean };
+export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string; skills?: string[] };
 
 export const projectDir = (id: string) => path.join(DATA_DIR, safeId(id));
 export const workspaceDir = (id: string) => path.join(projectDir(id), "workspace");
@@ -20,7 +19,7 @@ export const agentDir = (id: string) => {
   fs.mkdirSync(d, { recursive: true });
   return d;
 };
-export const DIRECTOR_PROMPT = path.join(REPO_ROOT, "templates", "director.md");
+export const SHELL_PROMPT = path.join(REPO_ROOT, "templates", "shell.md");
 const metaPath = (id: string) => path.join(projectDir(id), "meta.json");
 export const eventsPath = (id: string) => path.join(projectDir(id), "events.jsonl");
 
@@ -33,10 +32,8 @@ export function createProject(prompt: string): ProjectMeta {
   const id = randomUUID().slice(0, 8);
   const meta: ProjectMeta = { id, createdAt: new Date().toISOString(), turns: 0, prompt };
   fs.mkdirSync(workspaceDir(id), { recursive: true });
-  fs.cpSync(TEMPLATE_DIR, workspaceDir(id), { recursive: true });
   git(id, "init", "-q", "-b", "main");
-  git(id, "add", "-A");
-  git(id, "commit", "-q", "-m", "Project created");
+  git(id, "commit", "-q", "--allow-empty", "-m", "Project created");
   writeMeta(meta);
   return meta;
 }

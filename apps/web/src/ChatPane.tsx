@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { api, scopeLabel, type Scope } from "./api";
+import { api, scopeLabel, type Chips, type Scope } from "./api";
 import type { Item, useProject } from "./useProject";
 
 type Tool = Extract<Item, { kind: "tool" }>;
@@ -19,15 +19,15 @@ function groupRows(items: Item[]): Row[] {
   return rows;
 }
 
-// One-click feedback for the selected frame or video moment.
-const SCENE_CHIPS: [string, string][] = [
+// Fallback one-click feedback; pages normally define their own chips (lva:chips).
+const SCENE_CHIPS: Chips = [
   ["Tighter", "Make this tighter: fewer elements, shorter text."],
   ["Bigger text", "Make the text bigger and bolder."],
   ["Show real UI", "Show more of the actual product UI here."],
   ["Other color", "Try a different color treatment for this."],
   ["Simpler", "Simplify this: one focal point, less clutter."],
 ];
-const VIDEO_CHIPS: [string, string][] = [
+const VIDEO_CHIPS: Chips = [
   ["Slower", "Slow this down (about 0.7x)."],
   ["Faster", "Speed this up (about 1.4x)."],
   ["Hard cut", "Use a hard cut here instead of a transition."],
@@ -93,7 +93,7 @@ export function ChatPane(props: {
         {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
         {scope && !chat.running && (
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {(scope.kind === "video" ? VIDEO_CHIPS : SCENE_CHIPS).map(([label, msg]) => (
+            {(scope.chips ?? (scope.kind === "video" ? VIDEO_CHIPS : SCENE_CHIPS)).map(([label, msg]) => (
               <button
                 key={label}
                 onClick={() => {

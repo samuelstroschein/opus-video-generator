@@ -26,6 +26,7 @@ export type StoredEvent =
   | { type: "turn.start" }
   | { type: "version"; tag: string }
   | { type: "ask"; form: AskForm }
+  | { type: "canvas"; page: string }
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };

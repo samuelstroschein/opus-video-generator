@@ -21,6 +21,12 @@
 //   Motion: Easing.{linear, easeIn|Out|InOutQuad/Cubic/Expo/Sine, easeIn|Out|InOutBack, easeOutElastic}
 //     tw(T, start, end, from=0, to=1, ease=Easing.easeInOutCubic)   -> value at T (clamped outside [start,end])
 //     animate({from,to,start,end,ease}) -> fn(T);  interpolate(input[], output[], ease) -> fn(T);  clamp(v,a,b)
+//   Springs (closed form, still a pure function of T): spring(T, t0, from, to, SPRING.snappy|soft|pop) settles a value
+//     toward `to` starting at t0 with a slight overshoot. springs(T, [[t1,v1],[t2,v2],…], initial, opts) sums one spring
+//     per change for a value with many targets (a cursor, a camera). Use springs for everything that lands.
+//   Camera: container style {position:'absolute', left:0, top:0, width:W, height:H, transformOrigin:'0 0',
+//     transform: camera(T, [[t, zoom, x, y], …], W, H)}. (x,y) is the scene point at the center of the frame; zoom is
+//     interpolated in log space and segments are eased. One move per scene.
 //
 // THE SCENE LIST (the video's outline and its single source of structure)
 //   Declare it FIRST, as a JSON string literal in a plain inline <script> of video.html (NOT text/babel, NOT in a
@@ -49,7 +55,8 @@
 //
 // HOST PROTOCOL (the host owns playback chrome; the engine owns the clock)
 //   engine -> host: {type:'lva.state', time, duration, playing, scenes:[{name,dur,start,desc}]}
-//                   {type:'lva.pin', x, y, time, scene}   (click on the stage while paused; x,y are 0..1)
+//                   {type:'lva.pin', x, y, time, scene, chips}   (click on the stage while paused; x,y are 0..1;
+//                   chips comes from <meta name="lva:chips"> if the page defines it)
 //   host -> engine: {type:'lva.cmd', action:'play'|'pause'|'seek', time}
 /* END USAGE */
 (function () {
@@ -86,6 +93,28 @@
     easeOutElastic: (t) => (t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1),
   };
   const M = { enter: Easing.easeOutCubic, draw: Easing.easeInOutCubic, pop: Easing.easeOutBack };
+  // Closed-form damped spring step response (mass 1): 0 -> 1 over the time t since the change.
+  function springStep(t, k, c) {
+    if (t <= 0) return 0;
+    const w0 = Math.sqrt(k), z = c / (2 * w0);
+    if (z < 1) {
+      const wd = w0 * Math.sqrt(1 - z * z);
+      return 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + ((z * w0) / wd) * Math.sin(wd * t));
+    }
+    if (z === 1) return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+    const wd = w0 * Math.sqrt(z * z - 1);
+    return 1 - Math.exp(-z * w0 * t) * (Math.cosh(wd * t) + ((z * w0) / wd) * Math.sinh(wd * t));
+  }
+  const SPRING = { snappy: { k: 320, c: 28 }, soft: { k: 110, c: 15 }, pop: { k: 420, c: 27 } };
+  const spring = (T, t0, from, to, o = SPRING.snappy) => from + (to - from) * springStep(T - t0, o.k, o.c);
+  const springs = (T, changes, initial, o = SPRING.snappy) => {
+    let v = initial, prev = initial;
+    for (const [t, target] of changes) {
+      v += (target - prev) * springStep(T - t, o.k, o.c);
+      prev = target;
+    }
+    return v;
+  };
   const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
   const tw = (T, s, e, from = 0, to = 1, ease = Easing.easeInOutCubic) => from + (to - from) * ease(clamp((T - s) / (e - s)));
   const animate = ({ from = 0, to = 1, start = 0, end = 1, ease = Easing.easeInOutCubic }) => (T) => tw(T, start, end, from, to, ease);
@@ -98,6 +127,24 @@
   };
 
   // ── Composition ─────────────────────────────────────────────────────────────
+  // Camera keys [[time, zoom, x, y], …] -> a CSS transform that centers (x, y) and scales by zoom (log-space interpolation).
+  const camera = (T, keys, W = 1920, H = 1080) => {
+    let i = 0;
+    while (i < keys.length - 2 && T > keys[i + 1][0]) i++;
+    const a = keys[i], b = keys[Math.min(i + 1, keys.length - 1)];
+    const e = b[0] === a[0] ? 1 : Easing.easeInOutCubic(clamp((T - a[0]) / (b[0] - a[0])));
+    const zoom = Math.exp(Math.log(a[1]) + (Math.log(b[1]) - Math.log(a[1])) * e);
+    const x = a[2] + (b[2] - a[2]) * e, y = a[3] + (b[3] - a[3]) * e;
+    return `translate(${W / 2}px, ${H / 2}px) scale(${zoom}) translate(${-x}px, ${-y}px)`;
+  };
+  const pageChips = () => {
+    try {
+      return JSON.parse(document.querySelector('meta[name="lva:chips"]')?.getAttribute("content") || "null");
+    } catch {
+      return null;
+    }
+  };
+
   const Ctx = createContext({ T: 0, CUES: {}, duration: 0, width: 1920, height: 1080 });
   const useComposition = () => useContext(Ctx);
 
@@ -214,7 +261,7 @@
       const r = e.currentTarget.getBoundingClientRect();
       const p = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
       setPin(p);
-      if (parent !== window) parent.postMessage({ type: "lva.pin", ...p, time: timeRef.current, scene: sceneAt(timeRef.current) }, "*");
+      if (parent !== window) parent.postMessage({ type: "lva.pin", ...p, time: timeRef.current, scene: sceneAt(timeRef.current), chips: pageChips() }, "*");
     };
 
     return h(
@@ -243,5 +290,5 @@
     return h("div", { style: { position: "absolute", inset: 0, visibility: on ? "visible" : "hidden" } }, children);
   }
 
-  Object.assign(window, { Composition, useComposition, Shot, Easing, M, tw, animate, interpolate, clamp });
+  Object.assign(window, { Composition, useComposition, Shot, Easing, M, SPRING, spring, springs, camera, tw, animate, interpolate, clamp });
 })();

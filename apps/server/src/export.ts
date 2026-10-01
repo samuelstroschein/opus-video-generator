@@ -3,7 +3,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright-core";
 import { log } from "./events.js";
-import { rendersDir } from "./stage.js";
+import { rendersDir } from "./pages.js";
 import { readMeta } from "./projects.js";
 
 // Export = open video.html?export=1 in headless Chrome, seek each frame (window.__lva.seekSync), screenshot it,
@@ -87,10 +87,10 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
 }
 
 /** One screenshot of a page (or of the video at time t), for the agent to look at. Returns a JPEG buffer. */
-export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; time?: number }): Promise<Buffer> {
+export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; video: boolean; time?: number }): Promise<Buffer> {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
   try {
-    const isVideo = opts.page === "video.html";
+    const isVideo = opts.video;
     const page = await browser.newPage({ viewport: isVideo ? { width: 1920, height: 1080 } : { width: 1280, height: 800 }, deviceScaleFactor: 1 });
     await page.goto(`${artifactOrigin}/p/${id}/${opts.page}${isVideo ? "?export=1" : ""}`, { waitUntil: "load" });
     if (isVideo) {

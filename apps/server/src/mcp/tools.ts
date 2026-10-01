@@ -3,6 +3,8 @@ import { z } from "zod";
 import { log, type AskForm, type Scope } from "../events.js";
 import { screenshotPage } from "../export.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
+import { listSkills, loadSkill } from "../harness.js";
+import { listPages } from "../pages.js";
 
 export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string };
 
@@ -26,6 +28,32 @@ export function buildServer(ctx: ToolContext): McpServer {
   const id = ctx.projectId;
 
   server.registerTool(
+    "load_skill",
+    {
+      description:
+        "Load a skill: returns its instructions and copies its starter files and references into the project's read-only _lva/ folder. Call this first for any new request, choosing from the skill catalog. Follow the returned instructions.",
+      inputSchema: { name: z.string().describe(`One of: ${listSkills().map((s) => s.name).join(", ")}`) },
+    },
+    async ({ name }) => {
+      const body = loadSkill(id, name);
+      return body === null ? text(`No skill named "${name}". Available: ${listSkills().map((s) => s.name).join(", ")}`, true) : text(body);
+    },
+  );
+
+  server.registerTool(
+    "show_page",
+    {
+      description: "Switch the user's canvas to one of the project's pages (a top-level .html file). Call it whenever the user should look at something: after a form is answered and a page is ready, after you finish a page, or to go back to an earlier one.",
+      inputSchema: { page: z.string().describe("File name, e.g. storyboard.html") },
+    },
+    async ({ page }) => {
+      if (!listPages(id).some((p) => p.file === page)) return text(`No page named ${page}. Pages: ${listPages(id).map((p) => p.file).join(", ") || "(none yet)"}`, true);
+      log(id).emit({ type: "canvas", page });
+      return text(`The canvas now shows ${page}.`);
+    },
+  );
+
+  server.registerTool(
     "list_files",
     { description: "List the project's files (paths relative to the project root). Includes the read-only _lva/ folder with the engine and templates.", inputSchema: { dir: z.string().optional().describe("Limit to a folder, e.g. scenes") } },
     async ({ dir }) => text(listFiles(id, dir).join("\n") || "(empty)"),
@@ -47,7 +75,7 @@ export function buildServer(ctx: ToolContext): McpServer {
     "write_file",
     {
       description:
-        "Create or overwrite a file. Writable: brief.html, directions.html, storyboard.html, video.html, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; page contract problems come back as warnings.",
+        "Create or overwrite a file. Writable: top-level .html pages, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; contract problems from the loaded skill come back as warnings.",
       inputSchema: { path: z.string(), content: z.string() },
     },
     async ({ path, content }) => fmt(writeFile(id, path, content), `Saved ${path}.`),
@@ -79,12 +107,14 @@ export function buildServer(ctx: ToolContext): McpServer {
     "view_page",
     {
       description:
-        "Take a screenshot to check your own work. page is one of brief.html, directions.html, storyboard.html, video.html. For video.html pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
-      inputSchema: { page: z.enum(["brief.html", "directions.html", "storyboard.html", "video.html"]), time: z.number().optional() },
+        "Take a screenshot to check your own work: any top-level page. For a video page (one that mounts <Composition>) pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
+      inputSchema: { page: z.string().describe("File name, e.g. video.html"), time: z.number().optional() },
     },
     async ({ page, time }) => {
       try {
-        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, time });
+        const info = listPages(id).find((p) => p.file === page);
+        if (!info) return text(`No page named ${page}.`, true);
+        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, video: info.kind === "video", time });
         return { content: [{ type: "image" as const, data: buf.toString("base64"), mimeType: "image/jpeg" }] };
       } catch (e) {
         return text(`Could not render ${page}: ${e instanceof Error ? e.message : String(e)}`, true);

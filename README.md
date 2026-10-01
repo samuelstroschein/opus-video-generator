@@ -2,9 +2,7 @@
 
 Browser app that turns a real product (URL, brand, screenshots, reference videos) into a launch video through a guided agent harness: Brief → 3 storyboards → scene stills → video with scoped notes → export.
 
-**Status:** prototype 3. The flow: prompt → a short pre-filled form (after the agent researches your site) → **Directions** (three visual hero frames, pick one) → **Storyboard** (a filmstrip of real frames from the video; click a frame and use one-click chips like "Bigger text" or "Show real UI") → approve → **Video** (play, scrub, pin a note on a frame) → Export a 1080p MP4. Every page is HTML the agent writes, and the agent checks its own frames with screenshots. Not built yet: screenshot/reference-video uploads, section trim/speed write-back, a style reference shelf, scope enforcement at the tool, Codex.
-
-## Run it
+**Status:** prototype 4. A generic shell (chat + canvas + file store + tools) with use cases as skills in `harnesses/`. One skill so far, `launch-video`: paste a prompt like "generate me a launch video for linear.app" → the agent loads the skill and researches the site → a short pre-filled form (including "just build it" or "show me the story first", defined by the skill) → optionally a low-fidelity story wireframe with one-click story feedback → the video (play, scrub, pin notes) → Export a 1080p MP4. The agent checks its own frames with screenshots and decides what the canvas shows. Not built yet: uploads and screenshot capture, audio, motion-blur/60fps export, section trim write-back, a second skill, scope enforcement at the tool, Codex.
 
 The agent has no filesystem: it connects over MCP to a tool server in the API (list/read/write/edit files, ask a form, screenshot a page), which is also how the cloud version will work.
 

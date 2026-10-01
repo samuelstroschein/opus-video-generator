@@ -5,12 +5,11 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
-import { stageState } from "./stage.js";
 import { isRunning, startTurn, stopTurn } from "./turns.js";
 import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
-import { listRenders, rendersDir } from "./stage.js";
+import { canvasPage, listPages, listRenders, rendersDir } from "./pages.js";
 
 const app = new Hono();
 
@@ -45,7 +44,7 @@ app.get("/api/projects/:id", (c) => {
   } catch {
     return c.json({ error: "not found" }, 404);
   }
-  return c.json({ id, title: projectTitle(id), running: isRunning(id), exporting: isExporting(id), ...stageState(id) });
+  return c.json({ id, title: projectTitle(id), running: isRunning(id), exporting: isExporting(id), skills: readMeta(id).skills ?? [], pages: listPages(id), canvas: canvasPage(id)?.page ?? null, canvasSeq: canvasPage(id)?.seq ?? 0, renders: listRenders(id) });
 });
 
 app.post("/api/projects/:id/messages", async (c) => {

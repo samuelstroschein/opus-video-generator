@@ -27,6 +27,7 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "turn.start":
       return { ...state, running: true };
     case "text.delta": {
+      if (state.ask) return state; // the form speaks for itself: drop any chat text the agent adds after ask_questions
       const last = items.at(-1);
       if (last?.kind === "assistant" && last.id === e.messageId) items[items.length - 1] = { ...last, text: last.text + e.text };
       else items.push({ kind: "assistant", id: e.messageId, text: e.text });
@@ -85,7 +86,7 @@ export function useProject(id: string) {
     es.onopen = () => dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
     es.onmessage = (m) => {
       const e = JSON.parse(m.data) as ServerEvent;
-      if (e.type === "file.changed") refresh();
+      if (e.type === "file.changed" || e.type === "canvas") refresh();
       else {
         dispatch(e);
         if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh();
