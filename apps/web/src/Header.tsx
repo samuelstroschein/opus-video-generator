@@ -1,0 +1,95 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Star } from "lucide-react";
+
+// Where the code lives. A placeholder until the public repo exists: change it here and everything follows.
+export const GITHUB_REPO = "launch-video-agent/launch-video-agent";
+const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
+
+/** GitHub's mark (lucide no longer ships brand icons). */
+function GitHubMark({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
+
+/** The repo's star count, or null until it is known (or if the repo is not public yet). Cached for the session. */
+function useStars(): number | null {
+  const [stars, setStars] = useState<number | null>(() => {
+    try {
+      const v = sessionStorage.getItem(`stars:${GITHUB_REPO}`);
+      return v === null ? null : Number(v);
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (stars !== null) return;
+    fetch(`https://api.github.com/repos/${GITHUB_REPO}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { stargazers_count?: number } | null) => {
+        if (typeof d?.stargazers_count !== "number") return;
+        setStars(d.stargazers_count);
+        try {
+          sessionStorage.setItem(`stars:${GITHUB_REPO}`, String(d.stargazers_count));
+        } catch {}
+      })
+      .catch(() => {});
+  }, [stars]);
+  return stars;
+}
+
+const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
+
+/** "Star on GitHub" with the live count: the most visible action in the header, on every page. */
+export function StarButton({ tone }: { tone: "dark" | "light" }) {
+  const stars = useStars();
+  return (
+    <a
+      href={GITHUB_URL}
+      target="_blank"
+      rel="noreferrer"
+      className={[
+        "group flex h-9 items-center gap-2 rounded-[10px] border pl-3 text-[13px] font-medium transition-colors",
+        stars === null ? "pr-3" : "pr-1.5",
+        tone === "dark" ? "border-white bg-white text-ink shadow-[0_0_24px_rgba(255,255,255,.18)] hover:bg-white/90" : "border-line-3 bg-white text-ink hover:bg-bubble",
+      ].join(" ")}
+    >
+      <GitHubMark />
+      <Star size={14} strokeWidth={2} className="text-[#e8a33d] transition-transform group-hover:scale-110" fill="currentColor" aria-hidden />
+      Star on GitHub
+      {stars !== null && (
+        <span className="rounded-md bg-bubble px-1.5 py-0.5 font-mono text-[11px] text-mute">{fmt(stars)}</span>
+      )}
+    </a>
+  );
+}
+
+/**
+ * The app header on every page: the product on the left (back to the start), the current place next to it, and
+ * "Star on GitHub" on the right. Dark over the landing's space scene, light in the editor.
+ */
+export function AppHeader({ tone, children }: { tone: "dark" | "light"; children?: ReactNode }) {
+  return (
+    <header
+      className={[
+        "flex h-14 shrink-0 items-center gap-3 px-4",
+        tone === "dark" ? "text-white" : "border-b border-line bg-white text-ink",
+      ].join(" ")}
+    >
+      <a href="#/" className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]" title="All projects">
+        <img src="/claude-icon.png" alt="" className="h-5 w-5" />
+        Launch Video Agent
+      </a>
+      {children && (
+        <>
+          <span className={tone === "dark" ? "text-white/30" : "text-line-3"}>/</span>
+          <div className="min-w-0 flex-1 truncate text-sm font-medium">{children}</div>
+        </>
+      )}
+      {!children && <div className="flex-1" />}
+      <StarButton tone={tone} />
+    </header>
+  );
+}

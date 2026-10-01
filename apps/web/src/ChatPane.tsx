@@ -116,12 +116,6 @@ export function ChatPane(props: {
 
   return (
     <section className="flex min-h-0 flex-col border-r border-line bg-white">
-      <header className="flex h-14 shrink-0 items-center gap-2.5 border-b border-line px-4">
-        <a href="#/" className="text-lg leading-none text-mute hover:text-ink" title="All projects">
-          ←
-        </a>
-        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">{title ?? "…"}</h1>
-      </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
         <div className="mt-auto flex flex-col gap-4 text-sm leading-[1.55]">

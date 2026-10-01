@@ -3,6 +3,7 @@ import { api, type Example, type ProjectSummary } from "./api";
 import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
 import { SpaceBackground } from "./SpaceBackground";
+import { AppHeader } from "./Header";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -118,7 +119,10 @@ function Home() {
   return (
     <div className="landing relative isolate min-h-full bg-[#05060c] text-white">
       <SpaceBackground />
-      <div className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[120px] max-sm:pt-16">
+      <div className="relative z-30 px-2">
+        <AppHeader tone="dark" />
+      </div>
+      <div className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[72px] max-sm:pt-10">
         <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#f5f3ef] max-sm:text-4xl">
           Generate videos with{" "}
           <span className="whitespace-nowrap">

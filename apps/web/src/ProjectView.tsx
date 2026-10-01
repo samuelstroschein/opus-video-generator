@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Scope } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
+import { AppHeader } from "./Header";
 import { lastActivity, useProject } from "./useProject";
 import { ExportMenu, PageTabs } from "./Toolbar";
 import { ProgressView } from "./Steps";
@@ -108,7 +109,9 @@ export function ProjectView({ id }: { id: string }) {
   };
 
   return (
-    <div className="grid h-full grid-cols-[400px_minmax(0,1fr)] bg-paper">
+    <div className="flex h-full flex-col">
+    <AppHeader tone="light">{state?.title ?? "…"}</AppHeader>
+    <div className="grid min-h-0 flex-1 grid-cols-[400px_minmax(0,1fr)] bg-paper">
       <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
       <section className="flex min-h-0 min-w-0 flex-col">
         <nav className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
@@ -132,6 +135,7 @@ export function ProjectView({ id }: { id: string }) {
           )}
         </div>
       </section>
+    </div>
     </div>
   );
 }
