@@ -55,7 +55,7 @@ Control plane (Node/TS, Hono)  ────────────────�
 - Both normalize into one event schema: `text.delta`, `tool.start/end`, `file.changed`, `turn.done`, `session.id`, `error`. The UI only sees that schema.
 - Claude is primary. Codex is the second adapter, to prove the abstraction and let us compare output quality per stage.
 
-### 2. Video engine: a seekable HTML page with a thin contract  (**under revision, see [OPEN] below**)
+### 2. Video engine: a seekable HTML page with a thin contract  (decided, implemented)
 Reference: a Claude Design run for "launch video for linear.app" (files: `Launch Video.dc.html`, `launch-video.jsx`, `animations-v3.jsx`, `tweaks-panel.jsx`). What it shows:
 - **The video is an HTML page.** One React element tree rendered as a **pure function of one time value `T`**. Nothing mounts or unmounts at scene boundaries; everything is keyed to named cues.
 - **The scene list is a JSON string in an inline script** (`window.OM_SCENES = '[{"name":"Chaos","dur":4.5,"desc":"…"}, …]'`). It is the outline and the single source of structure. The host's timeline UI trims or speeds a section by **writing that literal back into the file**. The same trick is used for a `TWEAK_DEFAULTS` block (accent color, glow) that a host "Tweaks" panel edits.
@@ -64,7 +64,7 @@ Reference: a Claude Design run for "launch video for linear.app" (files: `Launch
 - Because the page is a function of `T`, **rendering any time range is free**. Re-rendering only scene 3 means rendering frames from that scene's cue range. This removes the partial-rendering worry we had with HyperFrames.
 
 Proposal: define our own small contract modeled on this (seekable stage root, `LVA_SCENES` literal, render-from-`T`, a starter engine with a USAGE block), and export with **Playwright + ffmpeg**: load the page, seek each frame, screenshot, encode, and split by frame range for per-scene re-render and (later) parallel workers. Real Chrome screenshots avoid the fidelity limits of serializing the DOM into SVG `foreignObject`. We write our own engine rather than copying Claude Design's starter files.
-- **[OPEN]** Own contract + Playwright export (above) vs HyperFrames (Apache 2.0, its own GSAP-timeline contract, CLI renderer, Lambda support, skills). HyperFrames remains a source of ideas and skills either way.
+Decided: own contract + Playwright export. HyperFrames (Apache 2.0) remains a source of ideas and skills. Implemented in `templates/project/_lva/engine.js` (the USAGE block at its top is the agent's "skill") and `apps/server/src/export.ts`. Measured: a 35 s, 1080p30 video (1050 frames) renders in about 30 s on a laptop.
 
 ### 3. Scene is the unit of work (this is what makes "scoped notes" enforceable)
 ```

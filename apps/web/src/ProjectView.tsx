@@ -17,14 +17,15 @@ export function ProjectView({ id }: { id: string }) {
   const iframe = useRef<HTMLIFrameElement>(null);
   const lastStage = useRef<Stage | null>(null);
 
-  // Follow the project's current stage as it advances (and open on it).
+  // Follow the latest FINISHED stage as it advances (an unfinished stage has nothing to show, and the
+  // previous page is where the user's next action, like picking a board, happens).
+  const latestReady = state ? ([...STAGES].reverse().find((s) => state.ready[s]) ?? "brief") : null;
   useEffect(() => {
-    if (!state) return;
-    if (lastStage.current !== state.stage) {
-      lastStage.current = state.stage;
-      setTab(state.stage);
+    if (latestReady && lastStage.current !== latestReady) {
+      lastStage.current = latestReady;
+      setTab(latestReady);
     }
-  }, [state?.stage]);
+  }, [latestReady]);
 
   const send = useCallback(
     async (text: string, sc?: Scope) => {

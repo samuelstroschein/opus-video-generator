@@ -2,11 +2,11 @@
 
 Browser app that turns a real product (URL, brand, screenshots, reference videos) into a launch video through a guided agent harness: Brief → 3 storyboards → scene stills → video with scoped notes → export.
 
-**Status:** prototype 1. You paste a product URL and a prompt; a local `claude` run reads the site, writes `brief.json` and three storyboards, and the UI shows them live. You can click a scene and send a note scoped to just that scene. Stills, video and export are not built yet.
+**Status:** prototype 2. All five stages work end to end, and every stage is an HTML page the agent writes: paste a product URL and prompt → brief → three storyboards → pick a board → stills (frozen frames of the real video) → approve → video (play, scrub, pin a note on a frame) → render a 1080p MP4. Not built yet: screenshot/reference-video uploads, the agent looking at its own frames, section trim/speed write-back, the clarifying-questions form, Codex.
 
 ## Run it
 
-Requires Node 22+, pnpm, and a logged-in `claude` CLI (uses your subscription; `ANTHROPIC_API_KEY` is deliberately ignored).
+Requires Node 22+, pnpm, ffmpeg, Google Chrome (used headless for export; set `LVA_CHROME` to use another binary), and a logged-in `claude` CLI (uses your subscription; `ANTHROPIC_API_KEY` is deliberately ignored).
 
 ```bash
 pnpm install
