@@ -55,12 +55,18 @@ function Home() {
           autoFocus
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && (e.metaKey || e.ctrlKey) && start()}
+          onKeyDown={(e) => {
+            // Enter sends, Shift+Enter inserts a newline. Ignore Enter that confirms an IME composition.
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void start();
+            }
+          }}
           placeholder="https://acme.io — we're launching our new API. Audience: backend devs. Show the one-line deploy."
           className="h-28 w-full resize-none bg-transparent p-1 outline-none placeholder:text-neutral-400"
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-neutral-500">⌘↵ to start</span>
+          <span className="text-xs text-neutral-500">↵ to start · ⇧↵ for a new line</span>
           <button
             onClick={start}
             disabled={!prompt.trim() || busy}
