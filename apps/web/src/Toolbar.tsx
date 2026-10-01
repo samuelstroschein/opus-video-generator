@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AudioLines, ChartColumn, ChevronDown, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
 import { api, type PageInfo } from "./api";
+import { SHARE_TEXT } from "./Header";
 
 /** Small click-outside popover. */
 function Popover({ button, children, align = "left" }: { button: (toggle: () => void, open: boolean) => ReactNode; children: ReactNode; align?: "left" | "right" }) {
@@ -182,6 +183,58 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
               </div>
             ))}
           </div>
+        )}
+      </div>
+    </Popover>
+  );
+}
+
+const XMark = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+const LinkedInMark = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />
+  </svg>
+);
+
+/**
+ * One click to post about the video: X and LinkedIn open with the text filled in. Neither lets a site attach a file,
+ * so the menu also offers the latest MP4 to download and attach.
+ */
+export function ShareMenu({ id, renders }: { id: string; renders: string[] }) {
+  const text = encodeURIComponent(SHARE_TEXT);
+  const targets = [
+    { label: "Share on X", icon: <XMark />, href: `https://x.com/intent/post?text=${text}` },
+    { label: "Share on LinkedIn", icon: <LinkedInMark />, href: `https://www.linkedin.com/feed/?shareActive=true&text=${text}` },
+  ];
+  const latest = renders[0];
+  return (
+    <Popover
+      align="right"
+      button={(toggle, open) => (
+        <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} className="rounded-lg border border-line-3 bg-white px-4 py-2 text-[13px] font-medium text-ink hover:bg-bubble">
+          Share
+        </button>
+      )}
+    >
+      <div className="flex w-72 flex-col gap-px" role="menu">
+        {targets.map((t) => (
+          <a key={t.label} role="menuitem" href={t.href} target="_blank" rel="noreferrer" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium hover:bg-bubble">
+            {t.icon}
+            {t.label}
+          </a>
+        ))}
+        <div className="mx-2.5 my-1 border-t border-line" />
+        {latest ? (
+          <a role="menuitem" href={api.renderUrl(id, latest, true)} className="rounded-lg px-2.5 py-2 text-[13px] hover:bg-bubble">
+            Download the MP4 to attach
+            <span className="block text-[11px] text-faint">{latest}</span>
+          </a>
+        ) : (
+          <div className="px-2.5 py-2 text-xs leading-snug text-faint">Export the video first to attach the MP4 to your post.</div>
         )}
       </div>
     </Popover>

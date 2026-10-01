@@ -4,6 +4,9 @@ import { Star } from "lucide-react";
 // Where the code lives. A placeholder until the public repo exists: change it here and everything follows.
 export const GITHUB_REPO = "launch-video-agent/launch-video-agent";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
+// The link people share with their video. A placeholder until there is a public site.
+export const SHARE_LINK = "https://example.com/launch-video-agent";
+export const SHARE_TEXT = `I just generated this video with Opus 5.5 and ${SHARE_LINK}`;
 
 /** GitHub's mark (lucide no longer ships brand icons). */
 function GitHubMark({ size = 16 }: { size?: number }) {

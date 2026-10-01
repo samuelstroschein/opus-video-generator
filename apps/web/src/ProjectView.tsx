@@ -4,7 +4,7 @@ import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { AppHeader } from "./Header";
 import { lastActivity, useProject } from "./useProject";
-import { ExportMenu, PageTabs } from "./Toolbar";
+import { ExportMenu, PageTabs, ShareMenu } from "./Toolbar";
 import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
 
@@ -151,6 +151,7 @@ export function ProjectView({ id }: { id: string }) {
         <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
           <div className="flex-1" />
+          <ShareMenu id={id} renders={state?.renders ?? []} />
           <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
         </nav>
         <div className="relative min-h-0 flex-1 bg-paper">
