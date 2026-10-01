@@ -21,6 +21,9 @@ export type RunOptions = {
   signal: AbortSignal;
   /** Default true. A reviewer sub-agent gets no web tools, only the MCP tools it is granted. */
   webTools?: boolean;
+  /** Model and thinking effort for this run; default to LVA_CLAUDE_MODEL / LVA_EFFORT, else the harness default. */
+  model?: string;
+  effort?: string;
 };
 
 export interface AgentRunner {

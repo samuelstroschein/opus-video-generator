@@ -9,7 +9,7 @@ const TOOLS = "WebFetch,WebSearch";
 type Json = Record<string, any>;
 
 export class ClaudeCliRunner implements AgentRunner {
-  async *run({ cwd, mcp, prompt, sessionId, context, signal, webTools = true }: RunOptions): AsyncIterable<AgentEvent> {
+  async *run({ cwd, mcp, prompt, sessionId, context, signal, webTools = true, model, effort }: RunOptions): AsyncIterable<AgentEvent> {
     const args = [
       "-p",
       "--output-format", "stream-json",
@@ -26,10 +26,11 @@ export class ClaudeCliRunner implements AgentRunner {
       "--setting-sources", "project",
       "--append-system-prompt", context,
     ];
-    if (process.env.LVA_CLAUDE_MODEL) args.push("--model", process.env.LVA_CLAUDE_MODEL);
-    // Optional thinking effort (low | medium | high | ...): less planning before the first write, at some cost in quality. Reviewers can differ.
-    const effort = webTools ? process.env.LVA_EFFORT : process.env.LVA_REVIEWER_EFFORT ?? process.env.LVA_EFFORT;
-    if (effort) args.push("--effort", effort);
+    const m = model ?? process.env.LVA_CLAUDE_MODEL;
+    if (m) args.push("--model", m);
+    // Thinking effort (low | medium | high | xhigh | max): less planning before the first write, at some cost in quality.
+    const e = effort ?? process.env.LVA_EFFORT;
+    if (e) args.push("--effort", e);
     if (sessionId) args.push("--resume", sessionId);
 
     // An API key in the environment would bill the API instead of the logged-in subscription.
