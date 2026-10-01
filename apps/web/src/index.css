@@ -9,7 +9,7 @@
   --color-line-3: #dcd9d4;
   --color-ink: #191817;
   --color-mute: #77736d;
-  --color-faint: #9a968f;
+  --color-faint: #7c7871; /* 4.5:1 on white for small text */
   --color-ok: #3f8f55;
   --color-accent: oklch(0.55 0.17 35);
   --color-accent-soft: oklch(0.96 0.03 35);
@@ -29,3 +29,8 @@ textarea:focus { outline: none; }
 
 /* On the dark landing the ink focus ring disappears: use a light one there. */
 .landing :where(button, a, [tabindex], video):focus-visible { outline: 2px solid rgb(255 255 255 / 0.75); outline-offset: 2px; }
+
+/* Honour reduced motion everywhere: no spinners spinning, no zooming cards, no sliding bars. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

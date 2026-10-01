@@ -29,9 +29,10 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
             <div key={q.id} className="py-4">
               <div className="text-sm font-semibold">{q.label}</div>
               {q.hint && <div className="mt-0.5 text-xs text-faint">{q.hint}</div>}
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={q.label}>
                 {q.type === "text" ? (
                   <textarea
+                    aria-label={q.label}
                     value={values[q.id] as string}
                     onChange={(e) => set(q.id, e.target.value)}
                     rows={2}
@@ -44,6 +45,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                       return (
                         <button
                           key={o.value}
+                          aria-pressed={on}
                           onClick={() => (q.type === "multi" ? set(q.id, on ? (values[q.id] as string[]).filter((x) => x !== o.value) : [...(values[q.id] as string[]), o.value]) : set(q.id, o.value))}
                           className={["rounded-full border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
                         >
@@ -69,13 +71,14 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                   value={other[q.id] ?? ""}
                   onChange={(e) => setOther((s) => ({ ...s, [q.id]: e.target.value }))}
                   placeholder="Tell me more"
+                  aria-label={`${q.label}: something else`}
                   className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none focus:border-mute"
                 />
               )}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-1 border-t border-line pt-4">
+        <div className="sticky bottom-0 -mx-7 -mb-7 flex items-center gap-1 rounded-b-2xl border-t border-line bg-white px-7 py-4">
           <button disabled={busy} onClick={() => onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
             Decide for me
           </button>

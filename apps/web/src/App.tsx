@@ -38,6 +38,7 @@ function Home() {
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [examples, setExamples] = useState<Example[]>([]);
+  const [offline, setOffline] = useState(false);
   const [using, setUsing] = useState<string | null>(null);
   // Example filters: toggle category tags (none selected = all). Four rows at a time.
   const [cats, setCats] = useState<Set<string>>(new Set());
@@ -56,8 +57,8 @@ function Home() {
   const box = useRef<HTMLTextAreaElement>(null);
   const mirror = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    api.list().then(setProjects).catch(() => {});
-    api.examples().then(setExamples).catch(() => {});
+    api.list().then(setProjects, () => setOffline(true));
+    api.examples().then(setExamples, () => setOffline(true));
   }, []);
 
   const select = (range: [number, number] | null) => {
@@ -186,6 +187,7 @@ function Home() {
           </div>
         </div>
         {error && <p className="-mt-6 text-sm text-red-300">{error}</p>}
+        {offline && <p className="-mt-4 text-sm text-white/70">Can't reach the server right now. Your projects and the examples will show when it's back.</p>}
 
         {projects.length > 0 && (
           <section className="mt-6 flex w-full flex-col gap-3">
@@ -209,8 +211,9 @@ function Home() {
           </section>
         )}
 
+        {examples.length > 0 && (
         <section className="mt-6 flex w-full flex-col gap-4">
-          <div className="flex items-baseline justify-between gap-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <div className="text-[13px] font-medium text-white/70">Examples</div>
             <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-white/60 hover:text-white">
               Most-liked Opus 5.5 videos, via awesome-opus-5-5-videos ↗
@@ -251,6 +254,7 @@ function Home() {
             </button>
           )}
         </section>
+        )}
       </div>
       {playing && (
         <Player
@@ -299,7 +303,7 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
   }, []);
   return (
     <div className="group flex flex-col gap-3">
-      <button onClick={onOpen} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
+      <button onClick={onOpen} aria-label={`Play ${x.title} by @${x.by}`} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
         <video
           ref={video}
           src={x.preview}
@@ -307,12 +311,12 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
           muted
           loop
           playsInline
-          preload="auto"
+          preload={matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "auto"}
           onError={(e) => (e.currentTarget.poster = x.img)}
           className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
         <span className="absolute left-2 top-2 flex gap-1">
-          {x.launch && <span className="rounded-md bg-[#d97757] px-1.5 py-0.5 text-[11px] font-medium text-white">Launch</span>}
+          {x.launch && <span className="rounded-md bg-[#b4532f] px-1.5 py-0.5 text-[11px] font-medium text-white">Launch</span>}
           <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
         </span>
         <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-90">

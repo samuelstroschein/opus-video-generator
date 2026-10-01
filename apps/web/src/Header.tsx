@@ -51,14 +51,15 @@ export function StarButton({ tone }: { tone: "dark" | "light" }) {
       target="_blank"
       rel="noreferrer"
       className={[
-        "group flex h-9 items-center gap-2 rounded-[10px] border pl-3 text-[13px] font-medium transition-colors",
+        "group flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] border pl-3 text-[13px] font-medium transition-colors",
         stars === null ? "pr-3" : "pr-1.5",
         tone === "dark" ? "border-white bg-white text-ink shadow-[0_0_24px_rgba(255,255,255,.18)] hover:bg-white/90" : "border-line-3 bg-white text-ink hover:bg-bubble",
       ].join(" ")}
     >
       <GitHubMark />
       <Star size={14} strokeWidth={2} className="text-[#e8a33d] transition-transform group-hover:scale-110" fill="currentColor" aria-hidden />
-      Star on GitHub
+      <span className="max-sm:hidden">Star on GitHub</span>
+      <span className="sm:hidden">Star</span>
       {stars !== null && (
         <span className="rounded-md bg-bubble px-1.5 py-0.5 font-mono text-[11px] text-mute">{fmt(stars)}</span>
       )}
@@ -78,9 +79,9 @@ export function AppHeader({ tone, children }: { tone: "dark" | "light"; children
         tone === "dark" ? "text-white" : "border-b border-line bg-white text-ink",
       ].join(" ")}
     >
-      <a href="#/" className="flex items-center gap-2 rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]" title="All projects">
+      <a href="#/" className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]" title="All projects" aria-label="Launch Video Agent, all projects">
         <img src="/claude-icon.png" alt="" className="h-5 w-5" />
-        Launch Video Agent
+        <span className={children ? "max-sm:hidden" : ""}>Launch Video Agent</span>
       </a>
       {children && (
         <>

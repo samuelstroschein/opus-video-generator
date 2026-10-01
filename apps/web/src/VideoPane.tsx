@@ -1,13 +1,13 @@
-import { forwardRef, useRef, type PointerEvent, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 
 export type VideoState = { time: number; duration: number; playing: boolean; scenes: { name: string; dur: number; start: number; desc: string }[] };
 type Cmd = { action: "play" | "pause" | "seek"; time?: number };
 
 const fmt = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
 
-/** Ruler step that keeps roughly 4 to 10 labelled ticks. */
-function tickStep(duration: number) {
-  for (const s of [1, 2, 5, 10, 15, 30, 60]) if (duration / s <= 10) return s;
+/** The smallest ruler step whose labels stay at least 56px apart on a track this wide. */
+function tickStep(duration: number, width: number) {
+  for (const s of [1, 2, 5, 10, 15, 30, 60]) if ((width / duration) * s >= 56) return s;
   return 60;
 }
 
@@ -40,8 +40,19 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
   const move = (e: PointerEvent) => dragging.current && seekTo(e.clientX);
   const up = () => (dragging.current = false);
 
-  const step = tickStep(duration);
-  const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => t < duration - step * 0.4);
+  // Measure the track so the ruler labels never collide, however narrow the player is.
+  const [trackW, setTrackW] = useState(800);
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setTrackW(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const step = tickStep(duration, trackW);
+  const pxPerSec = trackW / duration;
+  // Drop the last tick if it would run into the end label.
+  const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => (duration - t) * pxPerSec > 52);
   const pct = (t: number) => `${(t / duration) * 100}%`;
 
   return (

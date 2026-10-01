@@ -121,6 +121,8 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
 export function useProject(id: string) {
   const [chat, dispatch] = useReducer(reduce, initial);
   const [state, setState] = useState<ProjectState | null>(null);
+  /** The project id is unknown (or the API refused it): the view shows a not-found page instead of an empty editor. */
+  const [missing, setMissing] = useState(false);
   const [fileTick, setFileTick] = useState(0);
   /** When each page last changed (scene files count as the video page). Drives the "unseen change" dots on tabs. */
   const [changed, setChanged] = useState<Record<string, number>>({});
@@ -136,7 +138,7 @@ export function useProject(id: string) {
 
   useEffect(() => {
     dispatch({ type: "reset" });
-    api.get(id).then(setState).catch(() => {});
+    api.get(id).then(setState, (e) => /not found/i.test(String(e?.message)) && setMissing(true));
     const es = new EventSource(`/api/projects/${id}/events`);
     es.onopen = () => dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
     es.onmessage = (m) => {
@@ -155,7 +157,7 @@ export function useProject(id: string) {
     return () => es.close();
   }, [id, refresh]);
 
-  return { chat, state, fileTick, changed };
+  return { chat, state, fileTick, changed, missing };
 }
 
 /** The tool the agent is running right now, as a short label ("Writing scenes/02-gin.jsx"), if one is in flight. */

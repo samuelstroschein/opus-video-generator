@@ -9,8 +9,13 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     addEventListener("mousedown", on);
-    return () => removeEventListener("mousedown", on);
+    addEventListener("keydown", key);
+    return () => {
+      removeEventListener("mousedown", on);
+      removeEventListener("keydown", key);
+    };
   }, [open]);
   return (
     <div ref={ref} className="relative">
@@ -96,6 +101,7 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
           key={p.file}
           onClick={() => onPick(p.file)}
           title={p.title}
+          aria-current={p.file === active ? "page" : undefined}
           className={[
             "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px]",
             p.file === active ? "bg-bubble font-medium text-ink" : "text-mute hover:bg-bubble/70 hover:text-ink",
@@ -108,8 +114,8 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
       ))}
       {hidden.length > 0 && (
         <Popover
-          button={(toggle) => (
-            <button onClick={toggle} className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-mute hover:bg-bubble/70 hover:text-ink">
+          button={(toggle, open) => (
+            <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-mute hover:bg-bubble/70 hover:text-ink">
               {hidden.length} more
               {hidden.some((p) => dot(p.file)) && <Dot />}
               <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
@@ -139,8 +145,8 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
   return (
     <Popover
       align="right"
-      button={(toggle) => (
-        <button onClick={toggle} disabled={!canExport && renders.length === 0} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
+      button={(toggle, open) => (
+        <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} disabled={!canExport && renders.length === 0} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
           {exporting ? `Rendering ${pct}%` : "Export"}
         </button>
       )}

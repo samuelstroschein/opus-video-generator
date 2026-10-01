@@ -115,10 +115,10 @@ export function ChatPane(props: {
   };
 
   return (
-    <section className="flex min-h-0 flex-col border-r border-line bg-white">
+    <section className="flex min-h-0 flex-1 flex-col border-r border-line bg-white">
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
-        <div className="mt-auto flex flex-col gap-4 text-sm leading-[1.55]">
+        <div className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
           {groupRows(chat.items).map((row, i, all) =>
             row.kind === "tools" ? (
               <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />

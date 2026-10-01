@@ -37,7 +37,13 @@ function DraftFrame({ id, path, n }: { id: string; path: string; n: number }) {
 }
 
 export function ProjectView({ id }: { id: string }) {
-  const { chat, state, fileTick, changed } = useProject(id);
+  const { chat, state, fileTick, changed, missing } = useProject(id);
+  // Below 768px there is room for one column: the user switches between the chat and the canvas.
+  const [pane, setPane] = useState<"chat" | "canvas">("chat");
+  useEffect(() => {
+    document.title = state?.title ? `${state.title} · Launch Video Agent` : "Launch Video Agent";
+    return () => void (document.title = "Launch Video Agent");
+  }, [state?.title]);
   const [override, setOverride] = useState<string | null>(null);
   const [scope, setScope] = useState<Scope | null>(null);
   const [error, setError] = useState("");
@@ -108,13 +114,41 @@ export function ProjectView({ id }: { id: string }) {
     if (t > 0.05) setTimeout(() => cmd({ action: "seek", time: t }), 400);
   };
 
+  if (missing) {
+    return (
+      <div className="flex h-full flex-col">
+        <AppHeader tone="light">Not found</AppHeader>
+        <main className="flex flex-1 flex-col items-center justify-center gap-3 bg-paper px-6 text-center">
+          <h1 className="m-0 text-xl font-semibold">This project doesn't exist</h1>
+          <p className="m-0 text-sm text-mute">The link may be wrong, or the project was deleted.</p>
+          <a href="#/" className="mt-2 rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">Go to your projects</a>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col">
     <AppHeader tone="light">{state?.title ?? "…"}</AppHeader>
-    <div className="grid min-h-0 flex-1 grid-cols-[400px_minmax(0,1fr)] bg-paper">
-      <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
-      <section className="flex min-h-0 min-w-0 flex-col">
-        <nav className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
+    <div className="flex shrink-0 gap-1 border-b border-line bg-white p-1.5 md:hidden" role="tablist" aria-label="View">
+      {(["chat", "canvas"] as const).map((p) => (
+        <button
+          key={p}
+          role="tab"
+          aria-selected={pane === p}
+          onClick={() => setPane(p)}
+          className={["flex-1 rounded-lg py-2 text-[13px] font-medium", pane === p ? "bg-bubble text-ink" : "text-mute"].join(" ")}
+        >
+          {p === "chat" ? "Chat" : "Canvas"}
+        </button>
+      ))}
+    </div>
+    <main className="grid min-h-0 flex-1 bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
+      <div className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
+        <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
+      </div>
+      <section className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
+        <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
           <div className="flex-1" />
           <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
@@ -135,7 +169,7 @@ export function ProjectView({ id }: { id: string }) {
           )}
         </div>
       </section>
-    </div>
+    </main>
     </div>
   );
 }
