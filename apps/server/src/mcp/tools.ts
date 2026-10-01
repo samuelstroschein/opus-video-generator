@@ -3,7 +3,9 @@ import { z } from "zod";
 import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
 import { runJudge } from "../judge.js";
-import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
+import { editFile, listFiles, readFile, resolve as resolvePath, writeFile, type WriteResult } from "../files.js";
+import { readUpload } from "../uploads.js";
+import fs from "node:fs";
 import { listSkills, loadSkill } from "../skills.js";
 import { listRepoFiles, listRepoImages, parseRepo, readRepoFile, relatedRepos } from "../github.js";
 import { readMeta } from "../projects.js";
@@ -97,10 +99,17 @@ export function buildServer(ctx: ToolContext): McpServer {
   reg(
     "read_file",
     {
-      description: "Read a project file. Optionally a line range (lines are returned with line numbers).",
+      description:
+        "Read a project file. Optionally a line range (lines are returned with line numbers). Images the user attached (assets/uploads/…) come back as images you can see.",
       inputSchema: { path: z.string(), start_line: z.number().int().optional(), end_line: z.number().int().optional() },
     },
     async ({ path, start_line, end_line }) => {
+      const abs = resolvePath(id, path);
+      if (abs && fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+        const b = readUpload(id, abs, path);
+        if (b?.kind === "image") return { content: [{ type: "image" as const, data: b.data, mimeType: b.mimeType }] };
+        if (b?.kind === "info") return text(b.message);
+      }
       const r = readFile(id, path, start_line, end_line);
       return r.ok ? text(r.text) : text(r.error, true);
     },

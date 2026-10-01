@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type ProjectSummary } from "./api";
+import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
 
 function useHashRoute() {
@@ -24,17 +25,18 @@ function Home() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const att = useAttachments(setError);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   useEffect(() => {
     api.list().then(setProjects).catch(() => {});
   }, []);
 
   async function start() {
-    if (!prompt.trim() || busy) return;
+    if ((!prompt.trim() && !att.files.length) || busy) return;
     setBusy(true);
     setError("");
     try {
-      const { id } = await api.create(prompt);
+      const { id } = await api.create(prompt, att.files);
       location.hash = `#/p/${id}`;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -47,10 +49,11 @@ function Home() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Launch video from your product</h1>
         <p className="mt-2 text-neutral-600">
-          Paste your product URL and say what you're launching. The agent reads your site, writes a brief, and shows you three directions to pick from.
+          Paste your product URL and say what you're launching. The agent reads your site and repo, asks a few questions, then storyboards the video. Attach screenshots or a zip of your app to make it match.
         </p>
       </div>
-      <div className="rounded-xl border-[1.5px] border-line bg-white p-3 shadow-sm">
+      <div {...att.dropProps} className={["rounded-xl border-[1.5px] bg-white p-3 shadow-sm", att.dragging ? "border-neutral-900 bg-paper" : "border-line"].join(" ")}>
+        <PendingFiles files={att.files} remove={att.remove} />
         <textarea
           autoFocus
           value={prompt}
@@ -66,10 +69,13 @@ function Home() {
           className="h-28 w-full resize-none bg-transparent p-1 outline-none placeholder:text-neutral-400"
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-neutral-500">↵ to start · ⇧↵ for a new line</span>
+          <div className="flex items-center gap-2">
+            <AttachButton onPick={att.add} />
+            <span className="text-xs text-neutral-500">↵ to start · ⇧↵ for a new line · drop screenshots or zips</span>
+          </div>
           <button
             onClick={start}
-            disabled={!prompt.trim() || busy}
+            disabled={(!prompt.trim() && !att.files.length) || busy}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
           >
             {busy ? "Starting…" : "Start"}

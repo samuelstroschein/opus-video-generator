@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import type { AgentEvent } from "./runner/types.js";
 import { eventsPath } from "./projects.js";
+import type { Attachment } from "./uploads.js";
 
 // The plan the agent reports for the current job. It can rewrite it at any time as the work changes.
 export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
@@ -25,7 +26,7 @@ export type Scope =
 // Persisted events (replayed to the browser on connect) vs live-only ones.
 export type StoredEvent =
   | AgentEvent
-  | { type: "user"; text: string; scope?: Scope }
+  | { type: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
   | { type: "turn.start" }
   | { type: "version"; tag: string }
   | { type: "ask"; form: AskForm }

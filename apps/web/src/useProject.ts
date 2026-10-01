@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { api, type AskForm, type ProjectState, type Scope, type Step } from "./api";
+import { api, type Attachment, type AskForm, type ProjectState, type Scope, type Step } from "./api";
 
 export type Item =
-  | { kind: "user"; text: string; scope?: Scope }
+  | { kind: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
   | { kind: "assistant"; id: string; text: string }
   | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean }
   | { kind: "error"; message: string }
@@ -21,7 +21,7 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "reset":
       return initial;
     case "user":
-      items.push({ kind: "user", text: e.text, scope: e.scope });
+      items.push({ kind: "user", text: e.text, scope: e.scope, attachments: e.attachments });
       return { ...state, items, ask: null }; // any reply answers the open form
     case "ask":
       return { ...state, ask: e.form };

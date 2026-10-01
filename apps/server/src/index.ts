@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
 import { isRunning, startTurn, stopTurn } from "./turns.js";
+import { saveUploads } from "./uploads.js";
 import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
@@ -21,19 +22,57 @@ const MIME: Record<string, string> = {
   ".jsx": "text/javascript",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
   ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
   ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".mov": "video/quicktime",
+  ".webm": "video/webm",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".m4a": "audio/mp4",
+  ".pdf": "application/pdf",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".txt": "text/plain; charset=utf-8",
+  ".md": "text/plain; charset=utf-8",
+  ".csv": "text/csv; charset=utf-8",
 };
 
 mountMcp(app);
 
 app.get("/api/projects", (c) => c.json(listProjects()));
 
+/** A JSON body, or multipart form data (text, scope, files) when the user attached files. */
+async function readMessage(c: Context): Promise<{ text: string; scope?: Scope; files: { name: string; data: Buffer }[] }> {
+  if (c.req.header("content-type")?.includes("multipart/form-data")) {
+    const form = await c.req.formData();
+    const files = await Promise.all(
+      form.getAll("files").filter((f): f is File => typeof f !== "string").map(async (f) => ({ name: f.name, data: Buffer.from(await f.arrayBuffer()) })),
+    );
+    const scope = form.get("scope");
+    return { text: String(form.get("text") ?? form.get("prompt") ?? ""), scope: typeof scope === "string" && scope ? JSON.parse(scope) : undefined, files };
+  }
+  const body = await c.req.json<{ text?: string; prompt?: string; scope?: Scope }>();
+  return { text: body.text ?? body.prompt ?? "", scope: body.scope, files: [] };
+}
+
 app.post("/api/projects", async (c) => {
-  const { prompt } = await c.req.json<{ prompt: string }>();
-  if (!prompt?.trim()) return c.json({ error: "prompt required" }, 400);
-  const meta = createProject(prompt.trim());
-  startTurn(meta.id, prompt.trim());
+  const { text, files } = await readMessage(c);
+  if (!text.trim() && !files.length) return c.json({ error: "prompt required" }, 400);
+  const prompt = text.trim() || "See the attached files.";
+  const meta = createProject(prompt);
+  try {
+    startTurn(meta.id, prompt, undefined, saveUploads(meta.id, files));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
+  }
   return c.json({ id: meta.id });
 });
 
@@ -49,10 +88,14 @@ app.get("/api/projects/:id", (c) => {
 
 app.post("/api/projects/:id/messages", async (c) => {
   const id = c.req.param("id");
-  const { text, scope } = await c.req.json<{ text: string; scope?: Scope }>();
-  if (!text?.trim()) return c.json({ error: "text required" }, 400);
+  const { text, scope, files } = await readMessage(c);
+  if (!text.trim() && !files.length) return c.json({ error: "text required" }, 400);
   if (isRunning(id)) return c.json({ error: "A turn is already running" }, 409);
-  startTurn(id, text.trim(), scope);
+  try {
+    startTurn(id, text.trim() || "See the attached files.", scope, saveUploads(id, files));
+  } catch (e) {
+    return c.json({ error: e instanceof Error ? e.message : String(e) }, 400);
+  }
   return c.json({ ok: true });
 });
 

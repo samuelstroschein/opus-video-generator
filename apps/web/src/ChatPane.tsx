@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
 import { api, scopeLabel, type Chips, type Scope } from "./api";
 import { StepsStrip } from "./Steps";
 import type { Item, useProject } from "./useProject";
@@ -47,17 +48,19 @@ export function ChatPane(props: {
 }) {
   const { id, chat, title, scope, clearScope, error, setError } = props;
   const [text, setText] = useState("");
+  const att = useAttachments(setError);
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [chat.items, chat.running]);
 
   async function send() {
-    if (!text.trim() || chat.running) return;
+    if ((!text.trim() && !att.files.length) || chat.running) return;
     setError("");
     try {
-      await api.send(id, text, scope ?? undefined);
+      await api.send(id, text, scope ?? undefined, att.files);
       setText("");
+      att.clear();
       clearScope();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -117,13 +120,19 @@ export function ChatPane(props: {
             </button>
           </div>
         )}
-        <div className="flex items-end gap-2 rounded-lg border-[1.5px] border-line p-2 focus-within:border-neutral-900">
+        <div
+          {...att.dropProps}
+          className={["rounded-lg border-[1.5px] p-2 focus-within:border-neutral-900", att.dragging ? "border-neutral-900 bg-paper" : "border-line"].join(" ")}
+        >
+          <PendingFiles files={att.files} remove={att.remove} />
+          <div className="flex items-end gap-2">
+          <AttachButton onPick={att.add} disabled={chat.running} />
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKey}
             rows={2}
-            placeholder={scope ? "What should change here?" : "Message the director…"}
+            placeholder={att.dragging ? "Drop files to attach" : scope ? "What should change here?" : "Message the director…"}
             className="max-h-40 flex-1 resize-none bg-transparent outline-none placeholder:text-neutral-400"
           />
           {chat.running ? (
@@ -131,10 +140,11 @@ export function ChatPane(props: {
               Stop
             </button>
           ) : (
-            <button onClick={send} disabled={!text.trim()} className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40">
+            <button onClick={send} disabled={!text.trim() && !att.files.length} className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40">
               Send
             </button>
           )}
+          </div>
         </div>
       </div>
     </section>
@@ -207,7 +217,8 @@ function ChatItem({ item, id }: { item: Exclude<Item, { kind: "tool" }>; id: str
       return (
         <div className="ml-8 self-end rounded-lg border-[1.5px] border-neutral-900 px-3 py-2">
           {item.scope && <div className="mb-1 text-[11px] text-accent">{scopeLabel(item.scope)}</div>}
-          <div className="whitespace-pre-wrap">{item.text}</div>
+          {item.attachments && <SentFiles id={id} items={item.attachments} />}
+          <div className="whitespace-pre-wrap">{item.text === "See the attached files." && item.attachments ? "" : item.text}</div>
         </div>
       );
     case "assistant":

@@ -7,6 +7,7 @@ import { listSkills, skillBody } from "./skills.js";
 import { canvasPage, listPages } from "./pages.js";
 import { reposIn } from "./github.js";
 import { issueToken, revokeToken } from "./mcp/http.js";
+import { describeAttachments, type Attachment } from "./uploads.js";
 
 const runner: AgentRunner = new ClaudeCliRunner();
 const active = new Map<string, AbortController>();
@@ -15,25 +16,26 @@ export const isRunning = (id: string) => active.has(id);
 export const stopTurn = (id: string) => active.get(id)?.abort();
 
 /** Starts a turn in the background. Progress reaches clients through the project's event log. */
-export function startTurn(id: string, text: string, scope?: Scope) {
+export function startTurn(id: string, text: string, scope?: Scope, attachments: Attachment[] = []) {
   if (active.has(id)) throw new Error("A turn is already running");
   const ac = new AbortController();
   active.set(id, ac);
-  void runTurn(id, text, scope, ac);
+  void runTurn(id, text, scope, attachments, ac);
 }
 
-async function runTurn(id: string, text: string, scope: Scope | undefined, ac: AbortController) {
+async function runTurn(id: string, text: string, scope: Scope | undefined, attachments: Attachment[], ac: AbortController) {
   const l = log(id);
   const meta = readMeta(id);
   const turn = meta.turns + 1;
   // Repos the user names themselves may be read with their GitHub access; repos the agent finds on its own are read as public.
   const named = reposIn(text);
   if (named.length) writeMeta({ ...readMeta(id), userRepos: [...new Set([...(readMeta(id).userRepos ?? []), ...named])] });
-  l.emit({ type: "user", text, scope });
+  l.emit({ type: "user", text, scope, attachments: attachments.length ? attachments : undefined });
   l.emit({ type: "turn.start" });
 
   // Scope travels with the message so a note can only target one scene.
-  const prompt = scope ? `${scopePrefix(scope)}\n\n${text}` : text;
+  const attached = describeAttachments(attachments);
+  const prompt = [scope && scopePrefix(scope), text, attached].filter(Boolean).join("\n\n");
 
   const watcher = watchWorkspace(id);
   const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });

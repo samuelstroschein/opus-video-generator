@@ -139,6 +139,12 @@ The agent and the judges can read the product's GitHub repo (`github_files` to f
 - **Both judges check against it.** The storyboard judge and the video judge compare frames with the real site and with the repo's tokens, logo and components; a stand-in logo or guessed colors when the real ones are in the repo is a failure.
 - **Defaults.** The storyboard is the default first step (the user can skip it), because it catches the wrong story and a product that does not look like theirs before anything is built.
 
+### 6e. Attachments: user files enter the workspace, the agent reaches them through MCP  (decided, implemented)
+
+The chat accepts images, zips and other files (paperclip, drag and drop, paste; also on the start screen). The message is sent as multipart form data; the server (`uploads.ts`) writes each file to `assets/uploads/` in the project workspace and unpacks zips next to themselves. Zips are untrusted: at most 600 entries and 200 MB unpacked, an extension allowlist (images, video, audio, fonts, PDF, text and code; no scripts or binaries), junk folders dropped, and every path sanitized against zip-slip. Files are capped at 30 MB and 12 per message.
+
+The agent still has no filesystem. The turn prompt lists what was attached; `read_file` returns images as images (downscaled with ffmpeg when large) and text as text, `list_files` browses unpacked folders. Pages and scenes use the files by relative URL, so an uploaded screenshot can appear in a frame or a scene. The skill ranks them as the top source of truth for how the product looks. Not yet: looking inside videos or PDFs (reference-video analysis is a separate piece of work). In the cloud the folder becomes object storage behind the same file layer.
+
 ### 7. Gates and scope live in the app, not the prompt
 - The server derives stage state from workspace files (what exists, what's approved) and **injects it into every turn**: current stage, what's missing, and the scope (`scene 4 @ 0:14, pin (x,y)`, from the clicked still or paused frame).
 - UI buttons are disabled until the gate is met. The agent can still be asked to skip ahead and then says what's missing, as the wireframe specifies.

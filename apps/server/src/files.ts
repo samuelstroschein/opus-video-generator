@@ -16,7 +16,7 @@ export type WriteResult = { ok: true; warnings: string[] } | { ok: false; error:
 // What the agent may create or change. Everything else (engine, templates, bridge) is read-only to it.
 const WRITABLE = [/^[\w-]+\.html$/, /^scenes\/[\w.-]+\.jsx$/, /^assets\/[\w./-]+$/];
 
-function resolve(id: string, rel: string): string | null {
+export function resolve(id: string, rel: string): string | null {
   if (!rel || path.isAbsolute(rel) || rel.split("/").some((p) => p === ".." || p === ".git")) return null;
   const root = workspaceDir(id);
   const abs = path.resolve(root, rel);

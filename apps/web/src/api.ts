@@ -19,6 +19,8 @@ export type AskQuestion = {
 };
 export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
 
+export type Attachment = { name: string; path: string; size: number; kind: "image" | "video" | "pdf" | "text" | "zip" | "file"; files?: number; entries?: string[] };
+
 export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
 
 export type PageInfo = { file: string; title: string; kind: "video" | "page" };
@@ -41,17 +43,23 @@ async function json<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+/** JSON when there is nothing attached, multipart form data when there is. */
+function message(body: { text: string; scope?: Scope }, files: File[]): RequestInit {
+  if (!files.length) return { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
+  const form = new FormData();
+  form.set("text", body.text);
+  if (body.scope) form.set("scope", JSON.stringify(body.scope));
+  for (const f of files) form.append("files", f);
+  return { method: "POST", body: form };
+}
+
 export const api = {
   list: () => fetch("/api/projects").then((r) => json<ProjectSummary[]>(r)),
-  create: (prompt: string) =>
-    fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then((r) =>
-      json<{ id: string }>(r),
-    ),
+  create: (prompt: string, files: File[] = []) =>
+    fetch("/api/projects", message({ text: prompt }, files)).then((r) => json<{ id: string }>(r)),
   get: (id: string) => fetch(`/api/projects/${id}`).then((r) => json<ProjectState>(r)),
-  send: (id: string, text: string, scope?: Scope) =>
-    fetch(`/api/projects/${id}/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text, scope }) }).then((r) =>
-      json<{ ok: true }>(r),
-    ),
+  send: (id: string, text: string, scope?: Scope, files: File[] = []) =>
+    fetch(`/api/projects/${id}/messages`, message({ text, scope }, files)).then((r) => json<{ ok: true }>(r)),
   stop: (id: string) => fetch(`/api/projects/${id}/stop`, { method: "POST" }),
   // Artifacts live on their own origin (port 8788) so agent-written HTML can't reach the app.
   exportVideo: (id: string) =>
