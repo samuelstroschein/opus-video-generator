@@ -9,7 +9,7 @@ export const DATA_DIR = process.env.LVA_DATA_DIR ?? path.join(REPO_ROOT, "data",
 
 // Layout: <DATA_DIR>/<id>/{meta.json, events.jsonl, workspace/}
 // The workspace is the agent's cwd and its own git repo (one commit per turn = a version).
-export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string; skills?: string[] };
+export type ProjectMeta = { id: string; createdAt: string; sessionId?: string; turns: number; prompt: string; skills?: string[]; userRepos?: string[] };
 
 export const projectDir = (id: string) => path.join(DATA_DIR, safeId(id));
 export const workspaceDir = (id: string) => path.join(projectDir(id), "workspace");

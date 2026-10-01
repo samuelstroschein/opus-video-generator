@@ -127,6 +127,10 @@ function summarize(name: string, input: Json = {}): string {
       } catch {
         return "Looking at page";
       }
+    case "github_files":
+      return `Searching ${input.repo ?? "repo"}${input.query ? ` for ${input.query}` : ""}`;
+    case "github_read":
+      return `Reading ${input.repo ?? ""}/${input.path ?? ""}`;
     case "review_page":
       return `Reviewing ${input.page ?? "page"} with a judge`;
     case "view_page":

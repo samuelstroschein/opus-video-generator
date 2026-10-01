@@ -5,6 +5,7 @@ import type { AgentRunner } from "./runner/types.js";
 import { agentDir, commitTurn, readMeta, SHELL_PROMPT, workspaceDir, writeMeta } from "./projects.js";
 import { listSkills, skillBody } from "./skills.js";
 import { canvasPage, listPages } from "./pages.js";
+import { reposIn } from "./github.js";
 import { issueToken, revokeToken } from "./mcp/http.js";
 
 const runner: AgentRunner = new ClaudeCliRunner();
@@ -25,6 +26,9 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
   const l = log(id);
   const meta = readMeta(id);
   const turn = meta.turns + 1;
+  // Repos the user names themselves may be read with their GitHub access; repos the agent finds on its own are read as public.
+  const named = reposIn(text);
+  if (named.length) writeMeta({ ...readMeta(id), userRepos: [...new Set([...(readMeta(id).userRepos ?? []), ...named])] });
   l.emit({ type: "user", text, scope });
   l.emit({ type: "turn.start" });
 

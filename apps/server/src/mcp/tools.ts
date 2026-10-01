@@ -5,12 +5,14 @@ import { screenshotPage, screenshotUrl } from "../export.js";
 import { runJudge } from "../judge.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
 import { listSkills, loadSkill } from "../skills.js";
+import { listRepoFiles, parseRepo, readRepoFile } from "../github.js";
+import { readMeta } from "../projects.js";
 import { listPages } from "../pages.js";
 
 export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "judge" };
 
 // A judge sub-agent gets only the tools it needs to look: it can read and screenshot, never write or ask.
-const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url"]);
+const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url", "github_files", "github_read"]);
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], isError });
 const fmt = (r: WriteResult, ok: string) => (r.ok ? text(r.warnings.length ? `${ok}\nWarnings (fix these):\n- ${r.warnings.join("\n- ")}` : ok) : text(r.error, true));
@@ -133,6 +135,36 @@ export function buildServer(ctx: ToolContext): McpServer {
     async (form) => {
       log(id).emit({ type: "ask", form: form as AskForm });
       return text("The form is now on the user's screen. Do not call any more tools and do not write anything else: end your turn now. Their answers will arrive as the next message.");
+    },
+  );
+
+  // The user's token reaches only repos the user named in their own messages.
+  const authed = (repo: string) => {
+    const r = parseRepo(repo);
+    return !!r && (readMeta(id).userRepos ?? []).includes(r);
+  };
+
+  reg(
+    "github_files",
+    {
+      description:
+        "List files in a product's GitHub repo, optionally filtered by words that must all appear in the path (e.g. 'theme css', 'components button', 'icon svg', 'screenshot'). Use it to find the design tokens, the UI components you will draw, the real logo and icons, and the UI copy. Read-only.",
+      inputSchema: { repo: z.string().describe("owner/name or a github.com URL"), query: z.string().optional() },
+    },
+    async ({ repo, query }) => text(await listRepoFiles(repo, authed(repo), query)),
+  );
+
+  reg(
+    "github_read",
+    {
+      description:
+        "Read one file from a GitHub repo: source code, CSS tokens, SVG icons, or an image (png/jpg screenshots come back as images you can see). Read the real components and tokens, then draw them faithfully instead of guessing. Read-only.",
+      inputSchema: { repo: z.string(), path: z.string(), start_line: z.number().int().optional(), end_line: z.number().int().optional() },
+    },
+    async ({ repo, path, start_line, end_line }) => {
+      const r = await readRepoFile(repo, path, authed(repo), start_line, end_line);
+      if (r.kind === "image") return { content: [{ type: "image" as const, data: r.data, mimeType: r.mimeType }] };
+      return r.kind === "text" ? text(r.text) : text(r.message, true);
     },
   );
 
