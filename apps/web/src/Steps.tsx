@@ -49,16 +49,17 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   const [pinned, setPinned] = useState<boolean | null>(null);
   useEffect(() => setPinned(null), [live]);
   const timeLeft = useTimeLeft(pace.progress, live);
-  if (!steps.length) return null;
+  if (!steps.length || quiet) return null; // an open question takes the card's place
   const idx = steps.findIndex((s) => s.status === "active");
   const allDone = idx < 0 && steps.every((s) => s.status === "done");
-  const open = pinned ?? (!live && !allDone && !quiet); // a question below needs the room
+  const open = pinned ?? false; // one line by default; the full plan is a click away
   // No active step (between set_steps calls): point at the next one still to do.
   const next = steps.findIndex((s) => s.status === "todo");
   const i = idx >= 0 ? idx : Math.max(0, next);
   const active = idx >= 0 ? steps[idx] : allDone ? undefined : steps[i];
   const counter = allDone ? `${steps.length} of ${steps.length} done` : `Step ${i + 1} of ${steps.length}`;
-  const now = live ? pace.progress?.label || active?.detail || activity : active?.detail;
+  // Only while working: what is happening right now. When idle the card is just the step and the counter.
+  const now = live ? pace.progress?.label || active?.detail || activity : undefined;
   return (
     <div className="mx-2 rounded-t-xl border border-b-0 border-line-2 bg-paper">
       <button onClick={() => setPinned(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
