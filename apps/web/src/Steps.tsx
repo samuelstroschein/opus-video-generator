@@ -16,18 +16,11 @@ function useNow(on: boolean) {
   return now;
 }
 
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const approx = (s: number) => (s < 8 ? "a few seconds" : s < 50 ? `${Math.round(s / 5) * 5}s` : s < 90 ? "about a minute" : `${Math.round(s / 60)} min`);
 
-/** Seconds left in the step: derived from the pace so far once there is enough to go on, else the agent's own estimate. */
-function secondsLeft(p: Progress, since: number | null, now: number): number | null {
-  const sinceReport = (now - p.at) / 1000;
-  if (p.percent !== null && p.percent >= 12 && p.percent < 100 && since) {
-    const perPercent = (p.at - since) / 1000 / p.percent;
-    return Math.max(0, perPercent * (100 - p.percent) - sinceReport);
-  }
-  if (p.etaSeconds !== undefined) return Math.max(0, p.etaSeconds - sinceReport);
-  return null;
+/** Seconds left in the step, only if the agent gave an estimate (report_progress eta_seconds). We never invent one. */
+function secondsLeft(p: Progress, now: number): number | null {
+  return p.etaSeconds === undefined ? null : Math.max(0, p.etaSeconds - (now - p.at) / 1000);
 }
 
 /** The bar under the steps: what is happening, how far along, how long it may take. Indeterminate until the agent reports. */
@@ -35,8 +28,7 @@ export function ProgressBar({ pace, live, fallback, big }: { pace: Pace; live: b
   const now = useNow(live);
   if (!live) return null;
   const p = pace.progress;
-  const elapsed = pace.stepSince ? (now - pace.stepSince) / 1000 : 0;
-  const left = p ? secondsLeft(p, pace.stepSince, now) : null;
+  const left = p ? secondsLeft(p, now) : null;
   const known = p?.percent !== null && p?.percent !== undefined;
   return (
     <div className={big ? "mt-2" : "mt-2"}>
@@ -44,8 +36,7 @@ export function ProgressBar({ pace, live, fallback, big }: { pace: Pace; live: b
         <span className="truncate text-neutral-700">{p?.label || fallback || "Thinking and drafting…"}</span>
         <span className="shrink-0 tabular-nums text-neutral-500">
           {known && `${p!.percent}%`}
-          {known && left !== null && (left > 1 ? ` · ${approx(left)} left` : " · almost done")}
-          {!known && elapsed >= 3 && clock(elapsed)}
+          {left !== null && (known ? " · " : "") + (left > 1 ? `${approx(left)} left` : "almost done")}
         </span>
       </div>
       <div className={["mt-1 overflow-hidden rounded-full bg-neutral-200", big ? "h-1.5" : "h-1"].join(" ")}>

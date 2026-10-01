@@ -7,6 +7,7 @@ import { listSkills, skillBody } from "./skills.js";
 import { canvasPage, listPages } from "./pages.js";
 import { reposIn } from "./github.js";
 import { issueToken, revokeToken } from "./mcp/http.js";
+import { clearDraft, partialJsonString, setDraft } from "./drafts.js";
 import { describeAttachments, type Attachment } from "./uploads.js";
 
 const runner: AgentRunner = new ClaudeCliRunner();
@@ -41,6 +42,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
   const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });
   try {
     const instructions = buildInstructions(id);
+    const writing = new Map<string, string>(); // tool call id → page being streamed
     const quiet = new Set<string>(); // progress reports are shown as a bar, not as chat steps
     for await (const e of runner.run({
       cwd: agentDir(id),
@@ -55,6 +57,23 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
         // Re-read before writing: tools (load_skill) update the metadata during the turn.
         writeMeta({ ...readMeta(id), sessionId: e.sessionId });
       }
+      // A page being written streams to the canvas: keep its partial html and tell the browser to look.
+      if (e.type === "tool.input" && e.name.endsWith("write_file")) {
+        const page = partialJsonString(e.partial, "path");
+        const html = partialJsonString(e.partial, "content");
+        if (page && html && /^[\w-]+\.html$/.test(page)) {
+          setDraft(id, page, html);
+          writing.set(e.id, page);
+          l.emit({ type: "file.stream", path: page }, false);
+        }
+        continue;
+      }
+      if (e.type === "tool.end" && writing.has(e.id)) {
+        const page = writing.get(e.id)!;
+        writing.delete(e.id);
+        clearDraft(id, page);
+        l.emit({ type: "file.stream", path: page, done: true }, false);
+      }
       if (e.type === "tool.start" && e.name.endsWith("report_progress")) quiet.add(e.id);
       if ((e.type === "tool.start" || e.type === "tool.end") && quiet.has(e.id)) continue;
       l.emit(e);
@@ -63,6 +82,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
     l.emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
   } finally {
     revokeToken(token);
+    clearDraft(id);
     watcher.close();
     active.delete(id);
     writeMeta({ ...readMeta(id), turns: turn });

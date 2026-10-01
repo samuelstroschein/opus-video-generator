@@ -27,6 +27,9 @@ export class ClaudeCliRunner implements AgentRunner {
       "--append-system-prompt", context,
     ];
     if (process.env.LVA_CLAUDE_MODEL) args.push("--model", process.env.LVA_CLAUDE_MODEL);
+    // Optional thinking effort (low | medium | high | ...): less planning before the first write, at some cost in quality. Reviewers can differ.
+    const effort = webTools ? process.env.LVA_EFFORT : process.env.LVA_REVIEWER_EFFORT ?? process.env.LVA_EFFORT;
+    if (effort) args.push("--effort", effort);
     if (sessionId) args.push("--resume", sessionId);
 
     // An API key in the environment would bill the API instead of the logged-in subscription.
@@ -44,6 +47,7 @@ export class ClaudeCliRunner implements AgentRunner {
 
     let messageId = "m0";
     const seenTools = new Set<string>();
+    const streaming = new Map<number, { id: string; name: string; json: string; sent: number }>();
     let finished = false;
 
     try {
@@ -64,6 +68,21 @@ export class ClaudeCliRunner implements AgentRunner {
             if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
               yield { type: "text.delta", messageId, text: ev.delta.text };
             }
+            // Tool arguments stream in as partial JSON: pass them on (throttled) so a page can be shown while it is written.
+            if (ev.type === "content_block_start" && ev.content_block?.type === "tool_use") {
+              streaming.set(ev.index, { id: ev.content_block.id, name: ev.content_block.name, json: "", sent: 0 });
+            }
+            if (ev.type === "content_block_delta" && ev.delta?.type === "input_json_delta") {
+              const t = streaming.get(ev.index);
+              if (t) {
+                t.json += ev.delta.partial_json ?? "";
+                if (Date.now() - t.sent > 500) {
+                  t.sent = Date.now();
+                  yield { type: "tool.input", id: t.id, name: t.name, partial: t.json };
+                }
+              }
+            }
+            if (ev.type === "content_block_stop") streaming.delete(ev.index);
             break;
           }
           case "assistant":

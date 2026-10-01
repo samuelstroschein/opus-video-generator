@@ -17,7 +17,7 @@ Open http://localhost:5173. The API runs on :8787 and agent-written HTML artifac
 
 Artifacts (`brief.html`, `storyboards.html`) are written by the agent, starting from reference templates in `templates/project/_lva/templates/`; the app recognizes them by their `data-lva-*` attributes.
 
-Env: `LVA_CLAUDE_MODEL` picks the model, `LVA_DATA_DIR` moves the data folder.
+Env: `LVA_CLAUDE_MODEL` picks the model, `LVA_EFFORT` (and `LVA_REVIEWER_EFFORT`) the thinking effort passed to `claude --effort` (lower means less silent planning before the first write), `LVA_DATA_DIR` moves the data folder.
 
 - Architecture proposal: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Wireframes (open in a browser): [docs/wireframes/launch-video-agent-wireframes.html](docs/wireframes/launch-video-agent-wireframes.html)

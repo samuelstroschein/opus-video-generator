@@ -7,6 +7,7 @@ import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
 import { isRunning, startTurn, stopTurn } from "./turns.js";
 import { saveUploads } from "./uploads.js";
+import { DRAFT_FIT, getDraft } from "./drafts.js";
 import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
@@ -128,6 +129,8 @@ app.get("/api/projects/:id/renders/:file", (c) => {
 // Replays the full event log, then streams live events. The client rebuilds state from scratch on connect.
 app.get("/api/projects/:id/events", (c) => {
   const l = log(c.req.param("id"));
+  // A turn the server no longer runs (it restarted mid-turn) would show as "working" forever: close it out.
+  if (l.open && !isRunning(c.req.param("id"))) l.emit({ type: "error", message: "The server restarted while I was working, so that run stopped. Send your message again and I'll pick up from what's saved." });
   return streamSSE(c, async (stream) => {
     for (const e of l.events) await stream.writeSSE({ data: JSON.stringify(e) });
     await stream.writeSSE({ event: "ready", data: "{}" });
@@ -170,6 +173,9 @@ artifacts.get("/vendor/:name", (c) => {
 artifacts.get("/p/:id/*", (c) => {
   const id = c.req.param("id");
   const rel = decodeURIComponent(c.req.path.replace(`/p/${id}/`, ""));
+  // ?draft=1: the page the agent is writing right now, as far as it has got.
+  const draft = c.req.query("draft") ? getDraft(id, rel) : undefined;
+  if (draft !== undefined) return new Response(draft + DRAFT_FIT, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
   const root = workspaceDir(id);
   const abs = path.resolve(root, rel);
   if (!abs.startsWith(root + path.sep) || abs.includes(`${path.sep}.git${path.sep}`) || !fs.existsSync(abs) || !fs.statSync(abs).isFile()) {

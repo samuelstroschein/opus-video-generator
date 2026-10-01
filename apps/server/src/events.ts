@@ -37,7 +37,7 @@ export type StoredEvent =
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };
-export type LiveEvent = StoredEvent | { type: "file.changed"; path: string } | { type: "export.progress"; frame: number; total: number };
+export type LiveEvent = StoredEvent | { type: "file.changed"; path: string } | { type: "file.stream"; path: string; done?: boolean } | { type: "export.progress"; frame: number; total: number };
 export type Seq<T> = T & { seq: number; ts: number };
 
 type Listener = (e: Seq<LiveEvent>) => void;
@@ -54,9 +54,18 @@ class ProjectLog {
       this.seq = this.events.at(-1)?.seq ?? 0;
     } catch {}
   }
+  /** True when the log ends inside a turn (a turn.start with no turn.done or error after it). */
+  get open() {
+    for (let i = this.events.length - 1; i >= 0; i--) {
+      const t = this.events[i].type;
+      if (t === "turn.done" || t === "error") return false;
+      if (t === "turn.start") return true;
+    }
+    return false;
+  }
   emit(e: LiveEvent, persist = true) {
     const ev = { ...e, seq: ++this.seq, ts: Date.now() } as Seq<LiveEvent>;
-    if (persist && e.type !== "file.changed" && e.type !== "export.progress") {
+    if (persist && e.type !== "file.changed" && e.type !== "file.stream" && e.type !== "export.progress") {
       this.events.push(ev as Seq<StoredEvent>);
       // Everything persisted is replayed to the browser on connect, so the chat rebuilds after a reload.
       fs.appendFileSync(eventsPath(this.id), JSON.stringify(ev) + "\n");

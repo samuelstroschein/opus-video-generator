@@ -22,10 +22,12 @@ type ChatState = {
   progress: Progress | null;
   stepSince: number | null;
   turnSince: number | null;
+  /** The page the agent is writing right now (streamed, partial). n counts updates. */
+  draft: { path: string; n: number; live: boolean } | null;
 };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -38,7 +40,7 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "ask":
       return { ...state, ask: e.form };
     case "turn.start":
-      return { ...state, running: true, progress: null, stepSince: e.ts ?? Date.now(), turnSince: e.ts ?? Date.now() };
+      return { ...state, running: true, draft: null, progress: null, stepSince: e.ts ?? Date.now(), turnSince: e.ts ?? Date.now() };
     case "text.delta": {
       if (state.ask) return state; // the form speaks for itself: drop any chat text the agent adds after ask_questions
       const last = items.at(-1);
@@ -51,6 +53,10 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       const was = state.steps.find((x) => x.status === "active")?.id;
       const now = (e.steps as Step[]).find((x) => x.status === "active")?.id;
       return was === now ? { ...state, steps: e.steps } : { ...state, steps: e.steps, progress: null, stepSince: e.ts ?? Date.now() };
+    }
+    case "file.stream": {
+      const prev = state.draft;
+      return { ...state, draft: { path: e.path, n: (prev && prev.path === e.path ? prev.n : 0) + 1, live: !e.done } };
     }
     case "progress":
       return { ...state, progress: { percent: e.percent ?? null, label: e.label, etaSeconds: e.etaSeconds, at: e.ts ?? Date.now() } };

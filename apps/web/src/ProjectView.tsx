@@ -7,6 +7,34 @@ import { ExportMenu, PageMenu } from "./Toolbar";
 import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
 
+/** A page as the agent writes it. Two iframes take turns: the next version loads behind the visible one and swaps in when ready, so it never flashes. */
+function DraftFrame({ id, path, n }: { id: string; path: string; n: number }) {
+  const [srcs, setSrcs] = useState<[string, string]>(["", ""]);
+  const [active, setActive] = useState<0 | 1>(0);
+  const activeRef = useRef<0 | 1>(0);
+  activeRef.current = active;
+  useEffect(() => {
+    const next = (1 - activeRef.current) as 0 | 1;
+    setSrcs((s) => (next === 0 ? [`${api.fileUrl(id, path, n)}&draft=1`, s[1]] : [s[0], `${api.fileUrl(id, path, n)}&draft=1`]));
+  }, [id, path, n]);
+  return (
+    <div className="relative h-full w-full bg-white">
+      {([0, 1] as const).map((i) =>
+        srcs[i] ? (
+          <iframe
+            key={i}
+            title={`${path} (draft ${i})`}
+            sandbox="allow-scripts allow-same-origin"
+            src={srcs[i]}
+            onLoad={() => i !== activeRef.current && setActive(i)}
+            className={["absolute inset-0 h-full w-full border-0 bg-white", i === active ? "z-10" : "z-0"].join(" ")}
+          />
+        ) : null,
+      )}
+    </div>
+  );
+}
+
 export function ProjectView({ id }: { id: string }) {
   const { chat, state, fileTick } = useProject(id);
   const [override, setOverride] = useState<string | null>(null);
@@ -104,6 +132,8 @@ export function ProjectView({ id }: { id: string }) {
             ) : (
               <iframe ref={iframe} key={current.file} title={current.file} sandbox="allow-scripts allow-same-origin" src={api.fileUrl(id, current.file, tick)} className="h-full w-full border-0" />
             )
+          ) : chat.draft ? (
+            <DraftFrame id={id} path={chat.draft.path} n={chat.draft.n} />
           ) : (
             <ProgressView steps={chat.steps} pace={chat} live={chat.running} activity={lastActivity(chat.items)} />
           )}

@@ -81,11 +81,11 @@ export function buildServer(ctx: ToolContext): McpServer {
     "report_progress",
     {
       description:
-        "Show the user how far along you are inside the current step: a progress bar with a label and a time estimate. Call it at the start of every long stretch of work and again each time a unit finishes (each scene written, each frame drawn, each review fix). The percent covers the CURRENT step only (0 to 100); be honest rather than optimistic, and never let it go backwards. The label says what is happening right now, in a few plain words (\"Drawing scene 3 of 7: the Campari pour\"). Pass eta_seconds only if you have a real estimate of the time left; otherwise the app works it out from how long the step has taken.",
+        "Show the user how far along you are inside the current step: a progress bar with a label and a time estimate. Call it at the start of every long stretch of work and again each time a unit finishes (each scene written, each frame drawn, each review fix). The percent covers the CURRENT step only (0 to 100); be honest rather than optimistic, and never let it go backwards. The label says what is happening right now, in a few plain words (\"Drawing scene 3 of 7: the Campari pour\"). Pass eta_seconds whenever you can estimate the seconds left in this step: the app shows \"about 40s left\" only from your estimate, and shows no time at all without one.",
       inputSchema: {
         percent: z.number().min(0).max(100).describe("How much of the current step is done"),
         label: z.string().describe("What you are doing right now, up to about 8 words"),
-        eta_seconds: z.number().min(0).optional().describe("Your estimate of the seconds left in this step, if you have one"),
+        eta_seconds: z.number().min(0).optional().describe("Your estimate of the seconds left in this step. Shown to the user; omit it if you cannot estimate"),
       },
     },
     async ({ percent, label, eta_seconds }) => {
