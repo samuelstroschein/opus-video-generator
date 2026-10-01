@@ -18,7 +18,7 @@ export type RunOptions = {
   /** The agent's instructions plus the current stage state, appended to the system prompt. */
   context: string;
   signal: AbortSignal;
-  /** Default true. A judge sub-agent gets no web tools, only the MCP tools it is granted. */
+  /** Default true. A reviewer sub-agent gets no web tools, only the MCP tools it is granted. */
   webTools?: boolean;
 };
 

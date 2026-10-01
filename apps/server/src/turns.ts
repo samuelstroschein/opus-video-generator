@@ -41,6 +41,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
   const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });
   try {
     const instructions = buildInstructions(id);
+    const quiet = new Set<string>(); // progress reports are shown as a bar, not as chat steps
     for await (const e of runner.run({
       cwd: agentDir(id),
       mcp: { url: `http://localhost:${process.env.PORT ?? 8787}/mcp`, token },
@@ -54,6 +55,8 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
         // Re-read before writing: tools (load_skill) update the metadata during the turn.
         writeMeta({ ...readMeta(id), sessionId: e.sessionId });
       }
+      if (e.type === "tool.start" && e.name.endsWith("report_progress")) quiet.add(e.id);
+      if ((e.type === "tool.start" || e.type === "tool.end") && quiet.has(e.id)) continue;
       l.emit(e);
     }
   } catch (err) {
@@ -93,7 +96,7 @@ function scopePrefix(scope: Scope): string {
   if (scope.kind === "video") {
     return `[Scope: the video, section "${scope.scene}" at ${scope.time.toFixed(1)}s, pin at x=${scope.x.toFixed(2)}, y=${scope.y.toFixed(2)} (fractions of the frame, origin top-left). Change only what appears at that point in that section's scene file; leave every other scene untouched.]`;
   }
-  const where = scope.version ? `storyboard ${scope.version}, beat ${scope.scene}` : scope.board ? `Board ${scope.board}, scene ${scope.scene}` : `scene ${scope.scene}`;
+  const where = scope.version ? `storyboard ${scope.version}${scope.variant ? `, variant ${scope.variant}` : ""}, beat ${scope.scene}` : scope.board ? `Board ${scope.board}, scene ${scope.scene}` : `scene ${scope.scene}`;
   return `[Scope: ${where}${scope.title ? ` "${scope.title}"` : ""}. Change only this scene (in its scene file or its element); leave everything else untouched.]`;
 }
 

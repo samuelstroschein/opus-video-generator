@@ -112,14 +112,16 @@ export async function openCanvasUnscaled(browser: import("playwright-core").Brow
 }
 
 /** One screenshot of a page, of the video at time t, or (scene given) of one storyboard frame at full size. Returns a JPEG. */
-export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; video: boolean; time?: number; scene?: number }): Promise<Buffer> {
+export async function screenshotPage(id: string, artifactOrigin: string, opts: { page: string; video: boolean; time?: number; scene?: number; variant?: string }): Promise<Buffer> {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
   try {
     const url = `${artifactOrigin}/p/${id}/${opts.page}${opts.video ? "?export=1" : ""}`;
     if (opts.scene !== undefined && !opts.video) {
       const page = await openCanvasUnscaled(browser, url);
-      const frame = page.locator(`.version >> nth=0`).locator(`[data-lva-beat][data-lva-scene="${opts.scene}"] .wf`).first();
-      if (!(await frame.count())) throw new Error(`No frame with scene ${opts.scene} in the newest version.`);
+      const newest = page.locator(`.version >> nth=0`);
+      const within = opts.variant ? newest.locator(`[data-lva-variant="${opts.variant}"]`) : newest;
+      const frame = within.locator(`[data-lva-beat][data-lva-scene="${opts.scene}"] .wf`).first();
+      if (!(await frame.count())) throw new Error(`No frame with scene ${opts.scene}${opts.variant ? ` in variant ${opts.variant}` : ""} in the newest version.`);
       return await frame.screenshot({ type: "jpeg", quality: 85 });
     }
     const page = await browser.newPage({ viewport: opts.video ? { width: 1920, height: 1080 } : { width: 1280, height: 800 }, deviceScaleFactor: 1 });

@@ -10,8 +10,10 @@ export default function validate(rel: string, content: string): string[] {
     if (!/id=["']lva-plan["']/.test(content)) w.push('storyboard.html is missing the hidden <script type="application/json" id="lva-plan"> with the detailed plan.');
     const planText = content.match(/<script[^>]*id=["']lva-plan["'][^>]*>([\s\S]*?)<\/script>/)?.[1];
     try {
-      const beats = JSON.parse(planText ?? "{}").beats ?? [];
-      if (!beats.length || beats.some((b: { subject?: string }) => !b.subject)) w.push("Every beat in #lva-plan needs a `subject` (the one thing the viewer must notice), plus `omit` and `labels`. Write them before drawing the frame.");
+      const plan = JSON.parse(planText ?? "{}");
+      // A single story has plan.beats; a version with variants has plan.variants.{A,B,C}.beats.
+      const beats: { subject?: string }[] = plan.beats ?? Object.values((plan.variants ?? {}) as Record<string, { beats?: { subject?: string }[] }>).flatMap((v) => v.beats ?? []);
+      if (!beats.length || beats.some((b) => !b.subject)) w.push("Every beat in #lva-plan needs a `subject` (the one thing the viewer must notice), plus `omit` and `labels`. Write them before drawing the frame.");
     } catch {
       w.push("#lva-plan is not valid JSON.");
     }

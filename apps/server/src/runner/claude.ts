@@ -136,7 +136,7 @@ function summarize(name: string, input: Json = {}): string {
     case "github_read":
       return `Reading ${input.repo ?? ""}/${input.path ?? ""}`;
     case "review_page":
-      return `Reviewing ${input.page ?? "page"} with a judge`;
+      return `Reviewing ${input.page ?? "page"}`;
     case "view_page":
       return `Looking at ${input.page ?? "page"}${input.time !== undefined ? ` @ ${input.time}s` : ""}${input.scene !== undefined ? ` frame ${input.scene}` : ""}`;
     default:

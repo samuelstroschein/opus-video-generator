@@ -1,10 +1,67 @@
+import { useEffect, useState } from "react";
 import type { Step } from "./api";
+import type { Progress } from "./useProject";
 
 const icon = (s: Step["status"], live: boolean) => (s === "done" ? <span className="text-green-700">✓</span> : s === "active" ? <span className={live ? "animate-pulse" : ""}>●</span> : <span className="text-neutral-300">○</span>);
 
+export type Pace = { progress: Progress | null; stepSince: number | null; turnSince: number | null };
+
+function useNow(on: boolean) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!on) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [on]);
+  return now;
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const approx = (s: number) => (s < 8 ? "a few seconds" : s < 50 ? `${Math.round(s / 5) * 5}s` : s < 90 ? "about a minute" : `${Math.round(s / 60)} min`);
+
+/** Seconds left in the step: derived from the pace so far once there is enough to go on, else the agent's own estimate. */
+function secondsLeft(p: Progress, since: number | null, now: number): number | null {
+  const sinceReport = (now - p.at) / 1000;
+  if (p.percent !== null && p.percent >= 12 && p.percent < 100 && since) {
+    const perPercent = (p.at - since) / 1000 / p.percent;
+    return Math.max(0, perPercent * (100 - p.percent) - sinceReport);
+  }
+  if (p.etaSeconds !== undefined) return Math.max(0, p.etaSeconds - sinceReport);
+  return null;
+}
+
+/** The bar under the steps: what is happening, how far along, how long it may take. Indeterminate until the agent reports. */
+export function ProgressBar({ pace, live, fallback, big }: { pace: Pace; live: boolean; fallback?: string; big?: boolean }) {
+  const now = useNow(live);
+  if (!live) return null;
+  const p = pace.progress;
+  const elapsed = pace.stepSince ? (now - pace.stepSince) / 1000 : 0;
+  const left = p ? secondsLeft(p, pace.stepSince, now) : null;
+  const known = p?.percent !== null && p?.percent !== undefined;
+  return (
+    <div className={big ? "mt-2" : "mt-2"}>
+      <div className={["flex items-baseline justify-between gap-3", big ? "text-sm" : "text-[11px]"].join(" ")}>
+        <span className="truncate text-neutral-700">{p?.label || fallback || "Thinking and drafting…"}</span>
+        <span className="shrink-0 tabular-nums text-neutral-500">
+          {known && `${p!.percent}%`}
+          {known && left !== null && (left > 1 ? ` · ${approx(left)} left` : " · almost done")}
+          {!known && elapsed >= 3 && clock(elapsed)}
+        </span>
+      </div>
+      <div className={["mt-1 overflow-hidden rounded-full bg-neutral-200", big ? "h-1.5" : "h-1"].join(" ")}>
+        {known ? (
+          <div className="h-full rounded-full bg-neutral-900 transition-[width] duration-700 ease-out" style={{ width: `${Math.max(3, p!.percent!)}%` }} />
+        ) : (
+          <div className="h-full w-1/3 animate-[lva-slide_1.4s_ease-in-out_infinite] rounded-full bg-neutral-400" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Compact progress strip: what the agent is doing and what comes next. The agent owns the list (set_steps). */
-export function StepsStrip({ steps, live }: { steps: Step[]; live: boolean }) {
-  if (!steps.length) return null;
+export function StepsStrip({ steps, live, pace, activity }: { steps: Step[]; live: boolean; pace: Pace; activity?: string }) {
+  if (!steps.length && !live) return null;
   const active = steps.find((s) => s.status === "active");
   return (
     <div className="border-b border-line px-4 py-2.5 text-xs">
@@ -19,12 +76,13 @@ export function StepsStrip({ steps, live }: { steps: Step[]; live: boolean }) {
         ))}
       </div>
       {active?.detail && <p className="mt-1 text-neutral-500">{active.detail}</p>}
+      <ProgressBar pace={pace} live={live} fallback={activity} />
     </div>
   );
 }
 
-/** Shown on the canvas until the agent has something settled to show. */
-export function ProgressView({ steps, activity }: { steps: Step[]; activity?: string }) {
+/** Shown on the canvas until the agent has something to show. */
+export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
   return (
     <div className="flex h-full items-center justify-center bg-white px-8">
       <div className="w-full max-w-sm">
@@ -33,10 +91,10 @@ export function ProgressView({ steps, activity }: { steps: Step[]; activity?: st
           {steps.map((s) => (
             <li key={s.id} className="flex items-start gap-3">
               <span className="mt-0.5 w-4 text-center">{icon(s.status, true)}</span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className={s.status === "active" ? "font-semibold" : s.status === "done" ? "text-neutral-500" : "text-neutral-400"}>{s.title}</div>
                 {s.status === "active" && s.detail && <div className="text-sm text-neutral-500">{s.detail}</div>}
-                {s.status === "active" && activity && <div className="mt-0.5 font-mono text-[11px] text-neutral-400">{activity}</div>}
+                {s.status === "active" && <ProgressBar pace={pace} live={live} fallback={activity} big />}
               </div>
             </li>
           ))}

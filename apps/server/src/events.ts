@@ -20,7 +20,7 @@ export type AskForm = { title: string; intro?: string; questions: AskQuestion[] 
 
 // What a note targets. A document scene (storyboard/still): board? + scene + title. A point in the video: kind "video".
 export type Scope =
-  | { kind?: "scene"; board?: string; version?: string; scene: number; title?: string }
+  | { kind?: "scene"; board?: string; version?: string; variant?: string; scene: number; title?: string }
   | { kind: "video"; scene: string; time: number; x: number; y: number };
 
 // Persisted events (replayed to the browser on connect) vs live-only ones.
@@ -32,12 +32,13 @@ export type StoredEvent =
   | { type: "ask"; form: AskForm }
   | { type: "canvas"; page: string }
   | { type: "steps"; steps: Step[] }
-  | { type: "review"; judge: string; page: string; verdict: string }
+  | { type: "progress"; percent: number | null; label: string; etaSeconds?: number }
+  | { type: "review"; reviewer: string; page: string; verdict: string }
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };
 export type LiveEvent = StoredEvent | { type: "file.changed"; path: string } | { type: "export.progress"; frame: number; total: number };
-export type Seq<T> = T & { seq: number };
+export type Seq<T> = T & { seq: number; ts: number };
 
 type Listener = (e: Seq<LiveEvent>) => void;
 
@@ -54,7 +55,7 @@ class ProjectLog {
     } catch {}
   }
   emit(e: LiveEvent, persist = true) {
-    const ev = { ...e, seq: ++this.seq } as Seq<LiveEvent>;
+    const ev = { ...e, seq: ++this.seq, ts: Date.now() } as Seq<LiveEvent>;
     if (persist && e.type !== "file.changed" && e.type !== "export.progress") {
       this.events.push(ev as Seq<StoredEvent>);
       // Everything persisted is replayed to the browser on connect, so the chat rebuilds after a reload.

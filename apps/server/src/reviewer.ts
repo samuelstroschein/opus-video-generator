@@ -7,20 +7,20 @@ import { ClaudeCliRunner } from "./runner/claude.js";
 const runner = new ClaudeCliRunner();
 
 /**
- * A judge is a separate agent run with its own instructions (a rubric shipped by the skill) and a read-only,
+ * A reviewer is a separate agent run with its own instructions (a rubric shipped by the skill) and a read-only,
  * look-only slice of the tools: it can read files, screenshot pages and look at the real product, nothing else.
- * It returns a verdict the working agent acts on. Taste is judged by something that can see, not by rules.
+ * It returns a verdict the working agent acts on. Taste is reviewed by something that can see, not by rules.
  */
-export async function runJudge(projectId: string, judgeName: string, page: string, artifactOrigin: string): Promise<string> {
+export async function runReviewer(projectId: string, reviewerName: string, page: string, artifactOrigin: string): Promise<string> {
   const skills = readMeta(projectId).skills ?? [];
-  const file = skills.map((s) => path.join(REPO_ROOT, "skills", s, "judges", `${judgeName}.md`)).find((f) => fs.existsSync(f));
-  if (!file) throw new Error(`No judge named "${judgeName}" in the loaded skills.`);
-  const token = issueToken({ projectId, artifactOrigin, role: "judge" });
+  const file = skills.map((s) => path.join(REPO_ROOT, "skills", s, "reviewers", `${reviewerName}.md`)).find((f) => fs.existsSync(f));
+  if (!file) throw new Error(`No reviewer named "${reviewerName}" in the loaded skills.`);
+  const token = issueToken({ projectId, artifactOrigin, role: "reviewer" });
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 6 * 60_000);
   const byMessage = new Map<string, string>();
   try {
-    const cwd = path.join(agentDir(projectId), "..", "judge");
+    const cwd = path.join(agentDir(projectId), "..", "reviewer");
     fs.mkdirSync(cwd, { recursive: true });
     for await (const e of runner.run({
       cwd,
@@ -37,8 +37,8 @@ export async function runJudge(projectId: string, judgeName: string, page: strin
     clearTimeout(timer);
     revokeToken(token);
   }
-  // The verdict is the judge's final message; earlier text is it thinking aloud while it looks.
+  // The verdict is the reviewer's final message; earlier text is it thinking aloud while it looks.
   const final = [...byMessage.values()].at(-1)?.trim();
-  if (!final) throw new Error("The judge returned nothing.");
+  if (!final) throw new Error("The reviewer returned nothing.");
   return final;
 }

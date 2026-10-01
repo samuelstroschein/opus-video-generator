@@ -2,15 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Scope } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
-import { useProject } from "./useProject";
+import { lastActivity, useProject } from "./useProject";
 import { ExportMenu, PageMenu } from "./Toolbar";
 import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
-
-function lastActivity(items: ReturnType<typeof useProject>["chat"]["items"]): string | undefined {
-  const t = [...items].reverse().find((i) => i.kind === "tool");
-  return t && t.kind === "tool" ? t.summary : undefined;
-}
 
 export function ProjectView({ id }: { id: string }) {
   const { chat, state, fileTick } = useProject(id);
@@ -45,9 +40,9 @@ export function ProjectView({ id }: { id: string }) {
     const on = (e: MessageEvent) => {
       if (e.source !== iframe.current?.contentWindow || !e.data) return;
       const d = e.data;
-      if (d.type === "lva.scope") setScope({ kind: "scene", board: d.board || undefined, version: d.version || undefined, scene: d.scene, title: d.title, chips: d.chips });
+      if (d.type === "lva.scope") setScope({ kind: "scene", board: d.board || undefined, version: d.version || undefined, variant: d.variant || undefined, scene: d.scene, title: d.title, chips: d.chips });
       else if (d.type === "lva.send") void send(String(d.text));
-      else if (d.type === "lva.state") setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
+      else if (d.type === "lva.state") (resumeAt.current = d.time), setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
       else if (d.type === "lva.pin") setScope({ kind: "video", scene: d.scene, time: d.time, x: d.x, y: d.y, chips: d.chips });
     };
     addEventListener("message", on);
@@ -61,10 +56,27 @@ export function ProjectView({ id }: { id: string }) {
 
   const cmd = (c: { action: "play" | "pause" | "seek"; time?: number }) => iframe.current?.contentWindow?.postMessage({ type: "lva.cmd", ...c }, "*");
 
-  // Don't reload pages while the agent is mid-write; they settle when the turn ends or when it calls show_page.
-  const idleTick = useRef(0);
-  if (!chat.running) idleTick.current = fileTick;
-  const tick = (chat.running ? idleTick.current : fileTick) + (state?.canvasSeq ?? 0) + reloads * 1000;
+  // The page on screen reloads as the agent changes files (it fixes reviewer findings live), at most once every 2.5 s so a burst of edits is one reload.
+  const [liveTick, setLiveTick] = useState(0);
+  const lastReload = useRef(0);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      lastReload.current = Date.now();
+      setLiveTick(fileTick);
+    }, Math.max(0, 2500 - (Date.now() - lastReload.current)));
+    return () => clearTimeout(t);
+  }, [fileTick]);
+  const tick = liveTick + (state?.canvasSeq ?? 0) + reloads * 1000;
+
+  // A reloaded video resumes where the viewer was.
+  const resumeAt = useRef(0);
+  useEffect(() => {
+    resumeAt.current = 0;
+  }, [current?.file]);
+  const resume = () => {
+    const t = resumeAt.current;
+    if (t > 0.05) setTimeout(() => cmd({ action: "seek", time: t }), 400);
+  };
 
   return (
     <div className="grid h-full grid-cols-[400px_1fr]">
@@ -88,12 +100,12 @@ export function ProjectView({ id }: { id: string }) {
             <AskForm key={JSON.stringify(chat.ask).length} form={chat.ask} busy={chat.running} onSubmit={(t) => void send(t)} />
           ) : current ? (
             current.kind === "video" ? (
-              <VideoPane ref={iframe} src={api.fileUrl(id, current.file, tick)} video={video} cmd={cmd} />
+              <VideoPane ref={iframe} src={api.fileUrl(id, current.file, tick)} video={video} cmd={cmd} onLoad={resume} />
             ) : (
               <iframe ref={iframe} key={current.file} title={current.file} sandbox="allow-scripts allow-same-origin" src={api.fileUrl(id, current.file, tick)} className="h-full w-full border-0" />
             )
           ) : (
-            <ProgressView steps={chat.steps} activity={chat.running ? lastActivity(chat.items) : undefined} />
+            <ProgressView steps={chat.steps} pace={chat} live={chat.running} activity={lastActivity(chat.items)} />
           )}
         </div>
       </section>

@@ -31,8 +31,9 @@
     5. Placeholders only for imagery, video and art (class="ph" with a short lowercase label).
     6. Use .stage to center content; no top-anchored windows with a blank bottom half.
     7. THE 1-SECOND TEST: could someone tell what to look at in one second? If not, remove things.
-  After writing, call review_page("storyboard", "storyboard.html"): a judge agent compares your frames with the real
-  product and tells you what to fix. Open _lva/references/storyboard-example.html to see the fidelity bar.
+  After writing, show_page it right away, THEN call review_page("storyboard", "storyboard.html"): a reviewer agent compares
+  your frames with the real product and tells you what to fix, and you fix the page in place while the user is already
+  looking at it. Open _lva/references/storyboard-example.html to see the fidelity bar.
 
   VERSIONS. The first story is v1. Every revision (a user note, a chip, your own improvement) becomes a NEW version:
   insert a new <section class="version"> directly below the VERSIONS marker comment (newest on top), as a full copy
@@ -40,6 +41,26 @@
   sentence what changed and why. NEVER edit or delete an older version. Keep the hidden plan (#lva-plan) equal to
   the NEWEST version. Only the newest version carries "Open questions" (at most 3 real story decisions, or omit it).
   The "latest" badge is automatic (CSS).
+
+  VARIANTS (when the direction is open, see the skill). A version can hold 2-3 alternative stories side by side. Put
+  them inside the version as <div class="variants"> with one <div class="variant" data-lva-variant="A"> per
+  alternative (A, B, C), each with a .vhd line (letter, name, one-sentence pitch) and its own <div class="frames">.
+  Variants share format and length, so beat 1 of A, B and C sit in the same column and the user compares by looking
+  down. Make the alternatives truly different (structure, opening, visual idea), not three wordings of one. When the
+  user picks (or mixes), the next version is a single story again (no .variants) and says where each part came from.
+  The hidden plan then has "variants": { "A": { "name": "…", "beats": [...] }, … } until a variant is chosen.
+  Example:
+    <div class="variants">
+      <div class="variant" data-lva-variant="A">
+        <div class="vhd"><span class="vletter">A</span><span class="vname">Problem → payoff</span><span class="vpitch">Open on the pain, resolve it in one move.</span></div>
+        <div class="frames"> …figure.card per beat… </div>
+      </div>
+      <div class="variant" data-lva-variant="B"> … </div>
+    </div>
+
+  STEP RAIL. For step-by-step and how-to stories (a recipe, a setup, a workflow) draw the same persistent rail at the
+  bottom of EVERY frame: <div class="rail"><i class="done">Ice</i><i class="done">Gin</i><i class="now">Campari</i><i>Vermouth</i></div>.
+  The viewer always sees where they are in the process; it also shows how the video will be structured.
 
   FORMAT. Set --fw / --fh (frame size) and --cols on :root to match the video: 16:9 → 400px 225px, 4 columns;
   9:16 → 225px 400px, 6 columns; 1:1 → 300px 300px, 5 columns. Place wireframe elements with % so they scale.
@@ -99,6 +120,18 @@
   .ph { background:repeating-linear-gradient(45deg,var(--g2) 0 7px,var(--g1) 7px 14px); color:#6b6963; display:flex; align-items:center; justify-content:center; text-align:center; }   /* imagery / video / art only */
   .row { display:flex; gap:var(--gap); align-items:center; padding:2.4cqw 3cqw; border-radius:var(--r); background:#fff; border:1px solid #e5e2da; width:100%; }
   .tag { margin-left:auto; padding:.6cqw 2cqw; border-radius:99cqw; background:#1c1b19; color:#fff; font-size:var(--t-sm); }
+
+  .variants { display:flex; flex-direction:column; gap:64px; }
+  .variant { display:flex; flex-direction:column; gap:20px; }
+  .vhd { display:flex; gap:14px; align-items:baseline; flex-wrap:wrap; }
+  .vletter { font:700 15px ui-monospace,Menlo,monospace; border:1.5px solid var(--ink); border-radius:5px; padding:2px 10px; }
+  .vname { font-size:22px; font-weight:600; letter-spacing:-.01em; }
+  .vpitch { font-size:16px; color:var(--mute); }
+  .rail { position:absolute; left:6cqw; right:6cqw; bottom:3.6cqw; display:flex; justify-content:space-between; font-size:var(--t-sm); color:#9a968c; }
+  .rail i { font-style:normal; position:relative; padding-top:3.4cqw; flex:1; text-align:center; }
+  .rail i::before { content:""; position:absolute; left:50%; top:0; width:2.2cqw; height:2.2cqw; margin-left:-1.1cqw; border-radius:50%; border:.4cqw solid #c9c5ba; background:#fff; }
+  .rail i.done { color:#1c1b19; } .rail i.done::before { background:#1c1b19; border-color:#1c1b19; }
+  .rail i.now { color:#1c1b19; font-weight:700; } .rail i.now::before { border-color:#1c1b19; }
 
   .questions { max-width:900px; border:1px dashed var(--g4); border-radius:10px; padding:14px 18px; background:var(--g1); }
   .questions h3 { margin:0 0 6px; font:600 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
@@ -194,7 +227,17 @@
   addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // a drag is not a click
   vp.addEventListener("dblclick", (e) => { if (!e.target.closest(".card")) fit(true); });
   addEventListener("resize", () => fit(false));
-  fit(false);
+  // The page reloads while the agent works; keep the user's pan and zoom across reloads (until a new version appears).
+  const KEY = "lva-view:" + location.pathname;
+  const count = () => world.querySelectorAll(".version").length;
+  const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify({ z, x, y, n: count() })); } catch {} };
+  let restored = false;
+  try {
+    const v = JSON.parse(sessionStorage.getItem(KEY) || "null");
+    if (v && v.n === count() && v.z > 0) { z = v.z; x = v.x; y = v.y; apply(); restored = true; }
+  } catch {}
+  if (!restored) fit(false);
+  for (const ev of ["wheel", "pointerup", "dblclick"]) vp.addEventListener(ev, () => setTimeout(save, 450));
 })();
 </script>
 <script src="_lva/bridge.js"></script>

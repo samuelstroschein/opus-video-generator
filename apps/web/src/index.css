@@ -10,3 +10,5 @@
 
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--color-paper); color: #1a1a1a; font-family: var(--font-sans); }
+
+@keyframes lva-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }

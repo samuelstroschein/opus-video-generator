@@ -18,6 +18,7 @@
     if (!el) return;
     const board = el.closest("[data-lva-board]")?.getAttribute("data-lva-board") ?? "";
     const version = el.closest("[data-lva-version]")?.getAttribute("data-lva-version") ?? "";
+    const variant = el.closest("[data-lva-variant]")?.getAttribute("data-lva-variant") ?? "";
     selected?.classList.remove("lva-selected");
     selected = el;
     el.classList.add("lva-selected");
@@ -28,7 +29,7 @@
       chips = raw ? JSON.parse(raw) : null;
     } catch {}
     parent.postMessage(
-      { type: "lva.scope", board, version, scene: Number(el.getAttribute("data-lva-scene")), title: el.getAttribute("data-lva-title") ?? "", chips },
+      { type: "lva.scope", board, version, variant, scene: Number(el.getAttribute("data-lva-scene")), title: el.getAttribute("data-lva-title") ?? "", chips },
       "*",
     );
   });

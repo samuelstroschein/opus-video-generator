@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
 import { api, scopeLabel, type Chips, type Scope } from "./api";
 import { StepsStrip } from "./Steps";
+import { lastActivity } from "./useProject";
 import type { Item, useProject } from "./useProject";
 
 type Tool = Extract<Item, { kind: "tool" }>;
@@ -86,7 +87,7 @@ export function ChatPane(props: {
           </span>
         )}
       </header>
-      <StepsStrip steps={chat.steps} live={chat.running} />
+      <StepsStrip steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} />
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-4 text-sm">
         {groupRows(chat.items).map((row, i, all) =>
           row.kind === "tools" ? <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} /> : <ChatItem key={i} item={row} id={id} />,
@@ -195,7 +196,7 @@ function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
       <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-1.5 text-left">
         <span>{item.pass ? "✓" : "⚑"}</span>
         <span className="font-medium">
-          Judge review · round {item.round} · {label}
+          Review · round {item.round} · {label}
         </span>
         {item.fixes.length > 0 && <span className="ml-auto text-[9px] text-neutral-500">{open ? "▾" : "▸"}</span>}
       </button>

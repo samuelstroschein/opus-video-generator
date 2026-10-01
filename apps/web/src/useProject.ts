@@ -8,12 +8,24 @@ export type Item =
   | { kind: "error"; message: string }
   | { kind: "version"; tag: string }
   | { kind: "export"; file: string; seconds: number }
-  | { kind: "review"; judge: string; page: string; pass: boolean; fixes: string[]; round: number };
+  | { kind: "review"; reviewer: string; page: string; pass: boolean; fixes: string[]; round: number };
 
-type ChatState = { items: Item[]; running: boolean; costUsd: number; ask: AskForm | null; steps: Step[]; exporting: { frame: number; total: number } | null };
+export type Progress = { percent: number | null; label: string; etaSeconds?: number; at: number };
+type ChatState = {
+  items: Item[];
+  running: boolean;
+  costUsd: number;
+  ask: AskForm | null;
+  steps: Step[];
+  exporting: { frame: number; total: number } | null;
+  /** The agent's latest report_progress for the active step, and when that step (and the turn) started. */
+  progress: Progress | null;
+  stepSince: number | null;
+  turnSince: number | null;
+};
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -26,7 +38,7 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "ask":
       return { ...state, ask: e.form };
     case "turn.start":
-      return { ...state, running: true };
+      return { ...state, running: true, progress: null, stepSince: e.ts ?? Date.now(), turnSince: e.ts ?? Date.now() };
     case "text.delta": {
       if (state.ask) return state; // the form speaks for itself: drop any chat text the agent adds after ask_questions
       const last = items.at(-1);
@@ -34,16 +46,22 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       else items.push({ kind: "assistant", id: e.messageId, text: e.text });
       return { ...state, items };
     }
-    case "steps":
-      return { ...state, steps: e.steps };
+    case "steps": {
+      // A new active step starts the clock again and drops the previous step's progress.
+      const was = state.steps.find((x) => x.status === "active")?.id;
+      const now = (e.steps as Step[]).find((x) => x.status === "active")?.id;
+      return was === now ? { ...state, steps: e.steps } : { ...state, steps: e.steps, progress: null, stepSince: e.ts ?? Date.now() };
+    }
+    case "progress":
+      return { ...state, progress: { percent: e.percent ?? null, label: e.label, etaSeconds: e.etaSeconds, at: e.ts ?? Date.now() } };
     case "review": {
-      // The judge's verdict, as the user sees it: PASS or REVISE with its fixes. Round = reviews of this page since the user's last message.
+      // The reviewer's verdict, as the user sees it: PASS or REVISE with its fixes. Round = reviews of this page since the user's last message.
       const lastUser = items.map((i) => i.kind).lastIndexOf("user");
       const round = items.slice(lastUser + 1).filter((i) => i.kind === "review" && i.page === e.page).length + 1;
       const lines = String(e.verdict).split("\n").map((l: string) => l.trim()).filter(Boolean);
       const pass = /^VERDICT:\s*PASS/i.test(lines[0] ?? "");
       const fixes = lines.slice(1).filter((l: string) => /^[-•*]/.test(l)).map((l: string) => l.replace(/^[-•*]\s*/, ""));
-      items.push({ kind: "review", judge: e.judge, page: e.page, pass, fixes, round });
+      items.push({ kind: "review", reviewer: e.reviewer ?? e.judge, page: e.page, pass, fixes, round });
       return { ...state, items };
     }
     case "tool.start":
@@ -57,10 +75,10 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return { ...state, items };
     }
     case "turn.done":
-      return { ...state, running: false, costUsd: state.costUsd + (e.costUsd ?? 0) };
+      return { ...state, running: false, progress: null, costUsd: state.costUsd + (e.costUsd ?? 0) };
     case "error":
       items.push({ kind: "error", message: e.message });
-      return { ...state, items, running: false };
+      return { ...state, items, running: false, progress: null };
     case "version":
       items.push({ kind: "version", tag: e.tag });
       return { ...state, items };
@@ -112,4 +130,10 @@ export function useProject(id: string) {
   }, [id, refresh]);
 
   return { chat, state, fileTick };
+}
+
+/** The tool the agent is running right now, as a short label ("Writing scenes/02-gin.jsx"), if one is in flight. */
+export function lastActivity(items: Item[]): string | undefined {
+  const last = items.at(-1);
+  return last?.kind === "tool" && !last.done ? last.summary : undefined;
 }

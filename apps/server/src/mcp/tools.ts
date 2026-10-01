@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
-import { runJudge } from "../judge.js";
+import { runReviewer } from "../reviewer.js";
 import { editFile, listFiles, readFile, resolve as resolvePath, writeFile, type WriteResult } from "../files.js";
 import { readUpload } from "../uploads.js";
 import fs from "node:fs";
@@ -11,10 +11,10 @@ import { listRepoFiles, listRepoImages, parseRepo, readRepoFile, relatedRepos } 
 import { readMeta } from "../projects.js";
 import { listPages } from "../pages.js";
 
-export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "judge" };
+export type ToolContext = { projectId: string; scope?: Scope; artifactOrigin: string; role?: "agent" | "reviewer" };
 
-// A judge sub-agent gets only the tools it needs to look: it can read and screenshot, never write or ask.
-const JUDGE_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url", "github_files", "github_read", "github_related", "github_screenshots"]);
+// A reviewer sub-agent gets only the tools it needs to look: it can read and screenshot, never write or ask.
+const REVIEWER_TOOLS = new Set(["list_files", "read_file", "view_page", "look_at_url", "github_files", "github_read", "github_related", "github_screenshots"]);
 
 const text = (t: string, isError = false) => ({ content: [{ type: "text" as const, text: t }], isError });
 const fmt = (r: WriteResult, ok: string) => (r.ok ? text(r.warnings.length ? `${ok}\nWarnings (fix these):\n- ${r.warnings.join("\n- ")}` : ok) : text(r.error, true));
@@ -35,7 +35,7 @@ export function buildServer(ctx: ToolContext): McpServer {
   const server = new McpServer({ name: "lva", version: "0.1.0" });
   const id = ctx.projectId;
   const reg = ((name: string, ...rest: unknown[]) => {
-    if (ctx.role === "judge" && !JUDGE_TOOLS.has(name)) return undefined;
+    if (ctx.role === "reviewer" && !REVIEWER_TOOLS.has(name)) return undefined;
     return (server.registerTool as (...a: unknown[]) => unknown).call(server, name, ...rest);
   }) as unknown as McpServer["registerTool"];
 
@@ -74,6 +74,23 @@ export function buildServer(ctx: ToolContext): McpServer {
     async ({ steps }) => {
       log(id).emit({ type: "steps", steps: steps as Step[] });
       return text("Steps updated.");
+    },
+  );
+
+  reg(
+    "report_progress",
+    {
+      description:
+        "Show the user how far along you are inside the current step: a progress bar with a label and a time estimate. Call it at the start of every long stretch of work and again each time a unit finishes (each scene written, each frame drawn, each review fix). The percent covers the CURRENT step only (0 to 100); be honest rather than optimistic, and never let it go backwards. The label says what is happening right now, in a few plain words (\"Drawing scene 3 of 7: the Campari pour\"). Pass eta_seconds only if you have a real estimate of the time left; otherwise the app works it out from how long the step has taken.",
+      inputSchema: {
+        percent: z.number().min(0).max(100).describe("How much of the current step is done"),
+        label: z.string().describe("What you are doing right now, up to about 8 words"),
+        eta_seconds: z.number().min(0).optional().describe("Your estimate of the seconds left in this step, if you have one"),
+      },
+    },
+    async ({ percent, label, eta_seconds }) => {
+      log(id).emit({ type: "progress", percent: Math.round(percent), label: label.slice(0, 120), etaSeconds: eta_seconds });
+      return text("Progress shown.");
     },
   );
 
@@ -218,14 +235,14 @@ export function buildServer(ctx: ToolContext): McpServer {
     "review_page",
     {
       description:
-        "Ask an independent judge agent to review your work. The judge looks at the product for real, looks at your frames up close, and returns VERDICT: PASS or VERDICT: REVISE with specific fixes (what is wrong in which frame, and what to do). It takes a minute or two. Call it after writing or revising a page that has a judge (for a storyboard: judge \"storyboard\"), fix every point, and review again until it passes (at most three rounds), before you show the page.",
-      inputSchema: { judge: z.string().describe("The judge's name from the loaded skill, e.g. storyboard"), page: z.string().describe("File name, e.g. storyboard.html") },
+        "Ask an independent reviewer agent to review your work. The reviewer looks at the product for real, looks at your frames up close, and returns VERDICT: PASS or VERDICT: REVISE with specific fixes (what is wrong in which frame, and what to do). It takes a minute or two. Call it AFTER you have shown the page with show_page, never before: the user should already be looking at your result while the review runs. Apply every fix to the page in place (the user's canvas updates live), then review again (at most two rounds in total).",
+      inputSchema: { reviewer: z.string().describe("The reviewer's name from the loaded skill, e.g. storyboard"), page: z.string().describe("File name, e.g. storyboard.html") },
     },
-    async ({ judge, page }) => {
+    async ({ reviewer, page }) => {
       if (!listPages(id).some((p) => p.file === page)) return text(`No page named ${page}.`, true);
       try {
-        const verdict = await runJudge(id, judge, page, ctx.artifactOrigin);
-        log(id).emit({ type: "review", judge, page, verdict });
+        const verdict = await runReviewer(id, reviewer, page, ctx.artifactOrigin);
+        log(id).emit({ type: "review", reviewer, page, verdict });
         return text(verdict);
       } catch (e) {
         return text(`The review failed: ${e instanceof Error ? e.message : String(e)}`, true);
@@ -238,13 +255,13 @@ export function buildServer(ctx: ToolContext): McpServer {
     {
       description:
         "Take a screenshot to check your own work: any top-level page. For a video page (one that mounts <Composition>) pass time (seconds) to see that exact frame. Look for overflow, overlap, unreadable text, empty frames and broken layout, and fix what you find.",
-      inputSchema: { page: z.string().describe("File name, e.g. video.html"), time: z.number().optional(), scene: z.number().int().optional().describe("Storyboard only: zoom into this frame (its data-lva-scene number) of the newest version, at full size") },
+      inputSchema: { page: z.string().describe("File name, e.g. video.html"), time: z.number().optional(), scene: z.number().int().optional().describe("Storyboard only: zoom into this frame (its data-lva-scene number) of the newest version, at full size"), variant: z.string().optional().describe("Storyboard with variants only: the variant letter (A, B, C) whose frame to zoom into") },
     },
-    async ({ page, time, scene }) => {
+    async ({ page, time, scene, variant }) => {
       try {
         const info = listPages(id).find((p) => p.file === page);
         if (!info) return text(`No page named ${page}.`, true);
-        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, video: info.kind === "video", time, scene });
+        const buf = await screenshotPage(id, ctx.artifactOrigin, { page, video: info.kind === "video", time, scene, variant });
         return { content: [{ type: "image" as const, data: buf.toString("base64"), mimeType: "image/jpeg" }] };
       } catch (e) {
         return text(`Could not render ${page}: ${e instanceof Error ? e.message : String(e)}`, true);
