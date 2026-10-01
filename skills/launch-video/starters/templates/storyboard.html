@@ -7,8 +7,6 @@
 <title>Storyboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<!-- One-click STORY feedback for a selected frame. Story notes, not polish notes. Keep or adapt. -->
-<meta name="lva:chips" content='[["Stronger hook","Make the hook stronger: open on the sharpest, most surprising moment."],["Cut this beat","Cut this beat."],["Swap with previous","Swap this beat with the previous one."],["Add a beat before","Add a short beat before this one that sets it up."],["Shorter","Make this beat shorter."]]'>
 <!--
   STARTING POINT. Copy to storyboard.html and replace the sample content.
 
@@ -102,12 +100,11 @@
   .frames { display:grid; grid-template-columns:repeat(var(--cols),var(--fw)); gap:44px 32px; }
 
   /* a frame card */
-  .card { margin:0; width:var(--fw); display:flex; flex-direction:column; gap:12px; cursor:pointer; }
+  .card { margin:0; width:var(--fw); display:flex; flex-direction:column; gap:12px; }
   .card .cap { display:flex; gap:10px; align-items:baseline; }
   .num { font:600 11px "IBM Plex Mono",ui-monospace,monospace; background:var(--ink); color:#f6f5f2; padding:2px 6px; border-radius:4px; }
   .time { font:400 12px "IBM Plex Mono",ui-monospace,monospace; color:#9a968f; }
   .card p { margin:0; font-size:15px; line-height:1.5; color:#191817; }
-  .card.lva-selected .wf { outline:3px solid var(--ink); outline-offset:3px; }
   .card.changed .wf::after { content:""; position:absolute; top:9px; right:9px; width:10px; height:10px; border-radius:50%; background:var(--ink); box-shadow:0 0 0 3px var(--g1); }
 
   /* the frame sheet: a container, so cqw units scale everything with the frame */

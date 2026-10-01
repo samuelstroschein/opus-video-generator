@@ -55,8 +55,6 @@
 //
 // HOST PROTOCOL (the host owns playback chrome; the engine owns the clock)
 //   engine -> host: {type:'lva.state', time, duration, playing, scenes:[{name,dur,start,desc}]}
-//                   {type:'lva.pin', x, y, time, scene, chips}   (click on the stage while paused; x,y are 0..1;
-//                   chips comes from <meta name="lva:chips"> if the page defines it)
 //   host -> engine: {type:'lva.cmd', action:'play'|'pause'|'seek', time}
 /* END USAGE */
 (function () {
@@ -137,13 +135,6 @@
     const x = a[2] + (b[2] - a[2]) * e, y = a[3] + (b[3] - a[3]) * e;
     return `translate(${W / 2}px, ${H / 2}px) scale(${zoom}) translate(${-x}px, ${-y}px)`;
   };
-  const pageChips = () => {
-    try {
-      return JSON.parse(document.querySelector('meta[name="lva:chips"]')?.getAttribute("content") || "null");
-    } catch {
-      return null;
-    }
-  };
 
   const Ctx = createContext({ T: 0, CUES: {}, duration: 0, width: 1920, height: 1080 });
   const useComposition = () => useContext(Ctx);
@@ -167,7 +158,6 @@
     const { scenes, CUES, duration } = parsed;
     const [time, setTime] = useState(MODE === "still" ? STILL_T : 0);
     const [playing, setPlaying] = useState(false);
-    const [pin, setPin] = useState(null);
     const [box, setBox] = useState({ w: innerWidth, h: innerHeight });
     const timeRef = useRef(time);
     const playingRef = useRef(false);
@@ -184,7 +174,6 @@
     };
     const play = () => {
       if (timeRef.current >= duration - 0.01) seek(0);
-      setPin(null);
       playingRef.current = true;
       setPlaying(true);
     };
@@ -256,14 +245,6 @@
     const left = MODE === "export" ? 0 : (box.w - width * k) / 2;
     const top = MODE === "export" ? 0 : (box.h - height * k) / 2;
 
-    const onClick = (e) => {
-      if (MODE !== "play" || playing) return;
-      const r = e.currentTarget.getBoundingClientRect();
-      const p = { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
-      setPin(p);
-      if (parent !== window) parent.postMessage({ type: "lva.pin", ...p, time: timeRef.current, scene: sceneAt(timeRef.current), chips: pageChips() }, "*");
-    };
-
     return h(
       "div",
       { style: { position: "fixed", inset: 0, background: MODE === "export" ? bg : "#000", overflow: "hidden" } },
@@ -271,15 +252,9 @@
         "div",
         {
           "data-lva-stage": "",
-          onClick,
-          style: { position: "absolute", left, top, width, height, transform: `scale(${k})`, transformOrigin: "0 0", background: bg, overflow: "hidden", cursor: MODE === "play" && !playing ? "crosshair" : "default" },
+          style: { position: "absolute", left, top, width, height, transform: `scale(${k})`, transformOrigin: "0 0", background: bg, overflow: "hidden" },
         },
         h(Ctx.Provider, { value: { T: time, CUES, duration, width, height } }, children),
-        pin &&
-          !playing &&
-          h("div", {
-            style: { position: "absolute", left: `${pin.x * 100}%`, top: `${pin.y * 100}%`, width: 28, height: 28, margin: "-14px 0 0 -14px", borderRadius: "50%", background: "#c2552b", border: "3px solid #fff", boxShadow: "0 2px 8px rgba(0,0,0,.5)", pointerEvents: "none" },
-          }),
       ),
     );
   }

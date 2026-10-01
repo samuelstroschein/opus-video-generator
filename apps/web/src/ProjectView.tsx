@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type Scope } from "./api";
+import { api } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { AppHeader } from "./Header";
@@ -45,7 +45,6 @@ export function ProjectView({ id }: { id: string }) {
     return () => void (document.title = "Launch Video Agent");
   }, [state?.title]);
   const [override, setOverride] = useState<string | null>(null);
-  const [scope, setScope] = useState<Scope | null>(null);
   const [error, setError] = useState("");
   const [video, setVideo] = useState<VideoState | null>(null);
   const iframe = useRef<HTMLIFrameElement>(null);
@@ -60,10 +59,10 @@ export function ProjectView({ id }: { id: string }) {
   const current = pages.find((p) => p.file === file);
 
   const send = useCallback(
-    async (text: string, sc?: Scope) => {
+    async (text: string) => {
       setError("");
       try {
-        await api.send(id, text, sc);
+        await api.send(id, text);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -76,10 +75,8 @@ export function ProjectView({ id }: { id: string }) {
     const on = (e: MessageEvent) => {
       if (e.source !== iframe.current?.contentWindow || !e.data) return;
       const d = e.data;
-      if (d.type === "lva.scope") setScope({ kind: "scene", board: d.board || undefined, version: d.version || undefined, variant: d.variant || undefined, scene: d.scene, title: d.title, chips: d.chips });
-      else if (d.type === "lva.send") void send(String(d.text));
+      if (d.type === "lva.send") void send(String(d.text));
       else if (d.type === "lva.state") (resumeAt.current = d.time), setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
-      else if (d.type === "lva.pin") setScope({ kind: "video", scene: d.scene, time: d.time, x: d.x, y: d.y, chips: d.chips });
     };
     addEventListener("message", on);
     return () => removeEventListener("message", on);
@@ -87,7 +84,6 @@ export function ProjectView({ id }: { id: string }) {
 
   useEffect(() => {
     if (current?.kind !== "video") setVideo(null);
-    setScope(null);
   }, [current?.file]);
 
   const cmd = (c: { action: "play" | "pause" | "seek"; time?: number }) => iframe.current?.contentWindow?.postMessage({ type: "lva.cmd", ...c }, "*");
@@ -145,7 +141,7 @@ export function ProjectView({ id }: { id: string }) {
     </div>
     <main className="grid min-h-0 flex-1 bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
       <div className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
-        <ChatPane id={id} chat={chat} title={state?.title} scope={scope} clearScope={() => setScope(null)} error={error} setError={setError} />
+        <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
       <section className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
         <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">

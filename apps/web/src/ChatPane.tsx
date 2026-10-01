@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
-import { api, scopeLabel, type Chips, type Scope } from "./api";
+import { api, scopeLabel, type Scope } from "./api";
 import { Spinner, StepCard } from "./Steps";
 import { lastActivity } from "./useProject";
 import type { Item, useProject } from "./useProject";
@@ -22,40 +22,14 @@ function groupRows(items: Item[]): Row[] {
   return rows;
 }
 
-// Fallback one-click feedback; pages normally define their own chips (lva:chips).
-const SCENE_CHIPS: Chips = [
-  ["Tighter", "Make this tighter: fewer elements, shorter text."],
-  ["Bigger text", "Make the text bigger and bolder."],
-  ["Show real UI", "Show more of the actual product UI here."],
-  ["Other color", "Try a different color treatment for this."],
-  ["Simpler", "Simplify this: one focal point, less clutter."],
-];
-const VIDEO_CHIPS: Chips = [
-  ["Slower", "Slow this down (about 0.7x)."],
-  ["Faster", "Speed this up (about 1.4x)."],
-  ["Hard cut", "Use a hard cut here instead of a transition."],
-  ["Push in", "Add a push-in on the spot I pinned."],
-  ["Hold longer", "Hold this moment about 1 second longer."],
-];
-
-function Pill({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="rounded-full border border-line-2 bg-white px-[11px] py-1 text-xs font-medium text-ink hover:bg-bubble">
-      {children}
-    </button>
-  );
-}
-
 export function ChatPane(props: {
   id: string;
   chat: ReturnType<typeof useProject>["chat"];
   title?: string;
-  scope: Scope | null;
-  clearScope: () => void;
   error: string;
   setError: (e: string) => void;
 }) {
-  const { id, chat, title, scope, clearScope, error, setError } = props;
+  const { id, chat, error, setError } = props;
   const [text, setText] = useState("");
   const att = useAttachments(setError);
   // Stay pinned to the newest message, but only while the user is at the bottom: anyone scrolled up to read is left
@@ -91,40 +65,36 @@ export function ChatPane(props: {
     };
   }, []);
 
-  async function send(message = text, files = att.files, sc = scope ?? undefined) {
+  async function send(message = text, files = att.files) {
     if (!message.trim() && !files.length) return;
     setError("");
     try {
-      await api.send(id, message, sc, files);
+      await api.send(id, message, undefined, files);
       if (message === text) setText("");
       if (files === att.files) att.clear(); // a chip or quick reply leaves pending attachments alone
-      clearScope();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   }
 
 
-  const chips = scope ? (scope.chips ?? (scope.kind === "video" ? VIDEO_CHIPS : SCENE_CHIPS)) : null;
   // The agent's question (suggest_replies) takes over the composer until it is answered or skipped.
   const [skipped, setSkipped] = useState<object | null>(null);
   const [sel, setSel] = useState(0);
   useEffect(() => setSel(0), [chat.question]);
   // The answers' shortcuts (1–4, arrows, Enter) work right away: focus the box when a question arrives.
   const input = useRef<HTMLTextAreaElement>(null);
-  const questionOpen = !chat.running && !scope && !!chat.question && skipped !== chat.question;
+  const questionOpen = !chat.running && !!chat.question && skipped !== chat.question;
   useEffect(() => {
     if (questionOpen) input.current?.focus();
   }, [questionOpen]);
-  const asking = !chat.running && !scope && chat.question && skipped !== chat.question ? chat.question : null;
+  const asking = !chat.running && chat.question && skipped !== chat.question ? chat.question : null;
   const canSend = !!text.trim() || att.files.length > 0;
   const placeholder = att.dragging
     ? "Drop files to attach"
     : asking
       ? "Or write your own response"
-      : scope
-        ? "What should change here?"
-        : "Reply, or tell me what to change…";
+      : "Reply, or tell me what to change…";
   const onKey = (e: KeyboardEvent) => {
     // With a question open and nothing typed: 1–4 picks an answer, arrows move, Enter sends the highlighted one.
     if (asking && !text) {
@@ -176,17 +146,6 @@ export function ChatPane(props: {
             att.dragging ? "border-ink" : "border-line-3 focus-within:border-mute",
           ].join(" ")}
         >
-          {scope && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent">
-                {scopeLabel(scope)}
-                <button onClick={clearScope} className="-my-1 -mr-1.5 ml-0.5 flex h-6 w-6 items-center justify-center rounded-full opacity-70 hover:bg-accent/10 hover:opacity-100" aria-label="Clear scope">
-                  ×
-                </button>
-              </span>
-              {!chat.running && chips?.map(([label, msg]) => <Pill key={label} onClick={() => void send(msg, [], scope)}>{label}</Pill>)}
-            </div>
-          )}
           {asking && (
             <div className="flex flex-col gap-2 px-1 pb-1 pt-0.5">
               <div className="flex items-center gap-2 text-[13px] text-mute">
