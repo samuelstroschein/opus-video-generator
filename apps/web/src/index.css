@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: oklch(0.55 0.17 35);
+  --color-accent-soft: oklch(0.96 0.03 35);
+  --color-paper: #faf9f6;
+  --color-line: #e4e1da;
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--color-paper); color: #1a1a1a; font-family: var(--font-sans); }

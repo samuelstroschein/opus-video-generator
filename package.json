@@ -1,0 +1,10 @@
+{
+  "name": "launch-video-agent",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "typecheck": "pnpm -r --filter \"./apps/*\" typecheck"
+  }
+}

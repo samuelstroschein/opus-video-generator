@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brief</title>
+<style>
+  :root { --ink:#1a1a1a; --mute:#6b6b6b; --line:#e4e1da; --bg:#faf9f6; --ok:#2a8a4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui,-apple-system,sans-serif; max-width:760px; }
+  h1 { margin:0 0 2px; font-size:22px; }
+  .one { margin:0 0 18px; color:var(--mute); }
+  .empty { color:var(--mute); padding:60px 0; text-align:center; }
+  .card { background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .card h3 { margin:0 0 8px; font:600 11px ui-monospace,monospace; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .kv { display:grid; grid-template-columns:110px 1fr; gap:6px 12px; }
+  .kv dt { color:var(--mute); } .kv dd { margin:0; }
+  .sw { display:flex; gap:10px; flex-wrap:wrap; }
+  .sw span { display:flex; align-items:center; gap:6px; font:12px ui-monospace,monospace; }
+  .sw i { width:22px; height:22px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+  ul { margin:0; padding-left:18px; }
+  .check { list-style:none; padding:0; display:grid; gap:4px; }
+  .check .ok { color:var(--ok); } .check .todo { color:var(--mute); }
+  .note { color:var(--mute); font-size:12px; }
+</style>
+</head>
+<body>
+<div id="root"><div class="empty">Waiting for the brief…</div></div>
+<script>
+  const root = document.getElementById('root');
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const row = (k, v) => v ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+
+  fetch('./brief.json', { cache: 'no-store' }).then(r => r.json()).then(b => {
+    const p = b.product || {}, br = b.brand || {}, l = b.launch || {};
+    root.innerHTML = `
+      <h1>${esc(p.name)}</h1><p class="one">${esc(p.oneLiner)}</p>
+      <div class="card"><h3>Product</h3><dl class="kv">
+        ${row('URL', p.url)}${row('Audience', p.audience)}${row('Tone', p.tone)}
+        ${(p.keyFeatures || []).length ? `<dt>Features</dt><dd><ul>${p.keyFeatures.map(f => `<li>${esc(f)}</li>`).join('')}</ul></dd>` : ''}
+      </dl></div>
+      <div class="card"><h3>Brand</h3>
+        <div class="sw">${(br.colors || []).map(c => `<span><i style="background:${esc(c.hex)}"></i>${esc(c.hex)} ${esc(c.role)}</span>`).join('') || '<span class="note">No colors found</span>'}</div>
+        <dl class="kv" style="margin-top:10px">${row('Fonts', (br.fonts || []).join(', '))}${row('Logo', br.logoUrl)}</dl></div>
+      <div class="card"><h3>Launch</h3><dl class="kv">
+        ${row('Goal', l.goal)}${row('Hook', l.hook)}${row('CTA', l.cta)}${row('Length', l.lengthSec ? l.lengthSec + 's' : '')}${row('Platforms', (l.platforms || []).join(', '))}
+      </dl></div>
+      <div class="card"><h3>Context checklist</h3><ul class="check">
+        <li class="ok">✓ Product URL and description</li>
+        <li class="ok">✓ Brand (colors, fonts)</li>
+        <li class="todo">○ Product screenshots <span class="note">(upload not built yet)</span></li>
+        <li class="todo">○ Reference video <span class="note">(upload not built yet)</span></li>
+      </ul></div>
+      ${(b.assumptions || []).length ? `<div class="card"><h3>Assumptions the agent made</h3><ul>${b.assumptions.map(a => `<li>${esc(a)}</li>`).join('')}</ul></div>` : ''}`;
+  }).catch(() => { root.innerHTML = '<div class="empty">No brief yet. Paste your product URL in the chat.</div>'; });
+</script>
+</body>
+</html>
