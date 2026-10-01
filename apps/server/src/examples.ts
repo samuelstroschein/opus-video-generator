@@ -4,7 +4,7 @@ import path from "node:path";
 import { zipSync, strToU8 } from "fflate";
 import { REPO_ROOT } from "./projects.js";
 
-// Landing-page examples: the most-liked Opus 5.5 video per visual style in athemeroy/awesome-opus-5-5-videos
+// Landing-page examples: the most-liked Opus 5.5 product launches, then the most-liked video per visual style, in athemeroy/awesome-opus-5-5-videos
 // (likes as of 2026-09-27). "Use" attaches a reference pack (this module builds it) and a prompt with blanks.
 // Case notes are from that repo's case index (CC BY 4.0), lightly edited and translated. Thumbnails and videos
 // remain the creators' material: the pack credits them and is for style reference only.
@@ -12,9 +12,46 @@ import { REPO_ROOT } from "./projects.js";
 const SOURCE = "https://github.com/athemeroy/awesome-opus-5-5-videos";
 const THUMBS = "https://raw.githubusercontent.com/athemeroy/awesome-opus-5-5-videos/main/assets/case-thumbnails";
 
-type Example = { id: string; by: string; title: string; style: string; likes: string; look: string; made: string; seen: string };
+type Example = { id: string; by: string; title: string; style: string; likes: string; look: string; made: string; seen: string; launch?: boolean };
 
 const EXAMPLES: Example[] = [
+  // Product launches first: what this app is for.
+  {
+    id: "2102787937482252537", by: "deedydas", title: "Inference startup launch", style: "Motion graphics", likes: "3.2k", launch: true,
+    look: "clean kinetic type, charts that build up, UI cards sliding in on a white stage",
+    made: "A short prompt for a modern startup ad; the creator reports about one minute and $2.",
+    seen: "26 s. Kinetic typography, charts, the logo and UI cards for an inference startup.",
+  },
+  {
+    id: "2102477340920152162", by: "trq212", title: "Site launch trailer", style: "Typography", likes: "2.2k", launch: true,
+    look: "big editorial type and website screens cut together like a film trailer",
+    made: "The creator iterated on redesigns of their own site, then asked Opus to cut a trailer from those versions.",
+    seen: "95 s. Typography and website-screen compositions across a trailer.",
+  },
+  {
+    id: "2102441708395041170", by: "Miguel07Code", title: "Shotbase launch", style: "Product UI", likes: "1.3k", launch: true,
+    look: "branded UI and type, real app screenshots and controls, ending on the product mark",
+    made: "A one-shot launch video made with HyperFrames in under 20 minutes, the creator reports.",
+    seen: "58 s. Branded UI and typography with app screenshots, controls and a final product mark.",
+  },
+  {
+    id: "2102554209166000267", by: "twoclipping", title: "Hooklab ad", style: "Fast-cut ad", likes: "602", launch: true,
+    look: "a fast cut to the beat: a wall of real people, the product UI, number cards, the logo",
+    made: "The creator posted a full production spec: product name, selling points, UI, 10 to 20 own clips and a licensed song, cut on a 120 BPM grid as one HTML page rendered with Playwright and ffmpeg.",
+    seen: "20 s. A wall of real people, the product interface, number cards and a Hooklab end card.",
+  },
+  {
+    id: "2102462889160286423", by: "bridgemindai", title: "Hoodie drop", style: "Merch launch", likes: "554", launch: true,
+    look: "a product still on a clean stage, the price, then the shop page",
+    made: "Opus 5.5 with Remotion for the creator's own hoodie ad, given free rein (\"no skills\", the creator says).",
+    seen: "30 s. Brand mark, hoodie stills, the price and the online shop page.",
+  },
+  {
+    id: "2103152093733253544", by: "Lucas_IA_", title: "Mushroom coffee ad", style: "Flat vector", likes: "403", launch: true,
+    look: "a flat vector character story with the product, subtitles and a vertical frame",
+    made: "An existing paid skill (a drawing engine and scripts) triggered by a short prompt; Claude Code writes JS frames, HyperFrames exports, ElevenLabs narrates.",
+    seen: "72 s. A vertical French coffee ad with a recurring character, subtitles and product shots.",
+  },
   {
     id: "2103315922098470926", by: "stephanlivera", title: "Motion-design showreel", style: "Motion graphics", likes: "16k",
     look: "kinetic type, shapes that morph into each other, fast cuts on the beat",
@@ -62,6 +99,18 @@ const EXAMPLES: Example[] = [
     look: "layered paper cutouts, a retro sunburst, collage textures",
     made: "The creator says Opus built it in plain JavaScript using the creator's existing skill.",
     seen: "88 s. A visual chronology with a recurring flower mark, model labels, illustrated scenes and an end credit.",
+  },
+  {
+    id: "2102760783344189761", by: "MengTo", title: "Boat through Japan", style: "3D world", likes: "6.4k",
+    look: "a lit 3D world with weather, reflections and a slow travelling camera",
+    made: "A playable Three.js scene: a boat through Japanese landscapes with weather, day and night, textures and characters.",
+    seen: "60 s. A moving boat through rain and night, temples, bridges and reflections.",
+  },
+  {
+    id: "2103009037164110327", by: "addyosmani", title: "How browsers work", style: "Explainer", likes: "2.4k",
+    look: "clear diagrams that turn into each other, one idea per step",
+    made: "The creator says Opus 5.5 drew each frame in JavaScript, mostly in one shot.",
+    seen: "40 s. A diagram sequence from DNS and HTTP to the DOM, layout and painting.",
   },
 ];
 
@@ -139,8 +188,11 @@ const packName = (x: Example) => `${x.by}-reference.zip`;
 
 /** What the landing page shows, plus the prompt "Use" puts in the box. Blanks are in [brackets]. */
 export function listExamples() {
-  return EXAMPLES.map((x) => ({
-    id: x.id, by: x.by, title: x.title, style: x.style, likes: x.likes,
+  // Launches first, then by likes.
+  const n = (l: string) => parseFloat(l) * (l.endsWith("k") ? 1000 : 1);
+  const sorted = [...EXAMPLES].sort((a, b) => Number(!!b.launch) - Number(!!a.launch) || n(b.likes) - n(a.likes));
+  return sorted.map((x) => ({
+    id: x.id, by: x.by, title: x.title, style: x.style, likes: x.likes, launch: !!x.launch,
     img: `${THUMBS}/${x.id}.webp`,
     poster: `/api/examples/${x.id}/media/poster.jpg`,
     preview: `/api/examples/${x.id}/media/preview.mp4`,

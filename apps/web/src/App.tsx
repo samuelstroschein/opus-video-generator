@@ -175,7 +175,7 @@ function Home() {
           <div className="flex items-baseline justify-between gap-4">
             <div className="text-[13px] font-medium text-white/55">Examples</div>
             <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-white/40 hover:text-white">
-              Most-liked Opus 5.5 videos, via awesome-opus-5-5-videos ↗
+              Most-liked Opus 5.5 launches and styles, via awesome-opus-5-5-videos ↗
             </a>
           </div>
           <div className="grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
@@ -244,7 +244,10 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
           onError={(e) => (e.currentTarget.poster = x.img)}
           className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
-        <span className="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
+        <span className="absolute left-2 top-2 flex gap-1">
+          {x.launch && <span className="rounded-md bg-[#d97757] px-1.5 py-0.5 text-[11px] font-medium text-white">Launch</span>}
+          <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">{x.style}</span>
+        </span>
         <span className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-90">
           <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><path d="M0 0v12l10-6z" /></svg>
         </span>
