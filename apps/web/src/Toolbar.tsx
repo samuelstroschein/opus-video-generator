@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AudioLines, ChartColumn, ChevronDown, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
 import { api, type PageInfo } from "./api";
 
 /** Small click-outside popover. */
@@ -25,6 +26,13 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
     </div>
   );
 }
+
+// The page types a page can declare (lva:icon); anything else gets a plain page.
+const ICONS: Record<string, LucideIcon> = { doc: FileText, storyboard: LayoutGrid, video: Play, image: Image, palette: Palette, list: List, text: Type, chart: ChartColumn, audio: AudioLines, table: Table, flag: Flag, page: File };
+const PageIcon = ({ p }: { p: PageInfo }) => {
+  const I = ICONS[p.icon ?? (p.kind === "video" ? "video" : "page")] ?? File;
+  return <I size={15} strokeWidth={1.75} className="shrink-0" aria-hidden />;
+};
 
 const Dot = () => <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />;
 
@@ -76,8 +84,8 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
   }, [active, changed[active ?? ""]]);
 
   const dot = (f: string) => f !== active && (changed[f] ?? 0) > (viewed[f] ?? 0);
-  const byFile = Object.fromEntries(pages.map((p) => [p.file, p]));
-  const visible = slots.map((f) => byFile[f]).filter(Boolean) as PageInfo[];
+  // Tabs keep the order the pages were made in (the server lists them oldest first), so they never shuffle.
+  const visible = pages.filter((p) => slots.includes(p.file));
   const hidden = pages.filter((p) => !slots.includes(p.file)).sort((a, b) => (changed[b.file] ?? 0) - (changed[a.file] ?? 0) || pages.indexOf(b) - pages.indexOf(a));
 
   if (!pages.length) return <span className="px-1 text-[13px] text-faint">Pages appear here as the agent makes them</span>;
@@ -89,10 +97,11 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
           onClick={() => onPick(p.file)}
           title={p.title}
           className={[
-            "flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium",
-            p.file === active ? "border-line-3 bg-white text-ink shadow-[0_1px_2px_rgba(0,0,0,.04)]" : "border-transparent text-mute hover:bg-bubble hover:text-ink",
+            "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px]",
+            p.file === active ? "bg-bubble font-medium text-ink" : "text-mute hover:bg-bubble/70 hover:text-ink",
           ].join(" ")}
         >
+          <PageIcon p={p} />
           {tabTitle(p)}
           {dot(p.file) && <Dot />}
         </button>
@@ -100,10 +109,10 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
       {hidden.length > 0 && (
         <Popover
           button={(toggle) => (
-            <button onClick={toggle} className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium text-mute hover:bg-line">
+            <button onClick={toggle} className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-mute hover:bg-bubble/70 hover:text-ink">
               {hidden.length} more
               {hidden.some((p) => dot(p.file)) && <Dot />}
-              <span className="text-[9px]">▾</span>
+              <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
             </button>
           )}
         >
@@ -111,6 +120,7 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
             <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium text-faint">More pages · newest first</div>
             {hidden.map((p) => (
               <button key={p.file} onClick={() => onPick(p.file)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble">
+                <PageIcon p={p} />
                 <span className="flex-1 truncate">{tabTitle(p)}</span>
                 <span className="font-mono text-[11px] text-faint">{p.file}</span>
                 {dot(p.file) && <Dot />}

@@ -23,7 +23,7 @@ export type Attachment = { name: string; path: string; size: number; kind: "imag
 
 export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
 
-export type PageInfo = { file: string; title: string; kind: "video" | "page" };
+export type PageInfo = { file: string; title: string; kind: "video" | "page"; icon?: string };
 export type ProjectState = {
   id: string;
   title: string;
