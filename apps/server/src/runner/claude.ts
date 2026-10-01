@@ -121,6 +121,12 @@ function summarize(name: string, input: Json = {}): string {
       return "Listing files";
     case "ask_questions":
       return "Asking questions";
+    case "look_at_url":
+      try {
+        return `Looking at ${new URL(input.url).host}`;
+      } catch {
+        return "Looking at page";
+      }
     case "view_page":
       return `Looking at ${input.page ?? "page"}${input.time !== undefined ? ` @ ${input.time}s` : ""}`;
     default:

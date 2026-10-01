@@ -64,6 +64,11 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, ac: A
 }
 
 /** Shell prompt + the skills this project has loaded (+ a catalog of the rest) + a snapshot of the project. Served from the control plane, so edits apply to every project. */
+function currentSteps(id: string): string {
+  const last = [...log(id).events].reverse().find((e) => e.type === "steps") as { steps: { title: string; status: string }[] } | undefined;
+  return last ? last.steps.map((s) => `${s.title} [${s.status}]`).join(" → ") : "";
+}
+
 function buildInstructions(id: string): string {
   const loaded = readMeta(id).skills ?? [];
   const catalog = listSkills().filter((s) => !loaded.includes(s.name));
@@ -72,7 +77,7 @@ function buildInstructions(id: string): string {
     fs.readFileSync(SHELL_PROMPT, "utf8").trim(),
     ...loaded.map((n) => `## Loaded skill: ${n}\n\n${skillBody(n) ?? ""}`),
     catalog.length ? `## Skill catalog (call load_skill to use one)\n${catalog.map((s) => `- ${s.name}: ${s.description}`).join("\n")}` : "",
-    `## Project snapshot\nPages: ${pages.map((p) => p.file).join(", ") || "(none yet)"}. Canvas shows: ${canvasPage(id)?.page ?? "(nothing yet)"}.`,
+    `## Project snapshot\nPages: ${pages.map((p) => p.file).join(", ") || "(none yet)"}. Canvas shows: ${canvasPage(id)?.page ?? "(nothing yet)"}.\nSteps shown to the user: ${currentSteps(id) || "(none yet)"}.`,
   ]
     .filter(Boolean)
     .join("\n\n");

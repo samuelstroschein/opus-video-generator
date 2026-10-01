@@ -4,7 +4,13 @@ import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { useProject } from "./useProject";
 import { ExportMenu, PageMenu } from "./Toolbar";
+import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
+
+function lastActivity(items: ReturnType<typeof useProject>["chat"]["items"]): string | undefined {
+  const t = [...items].reverse().find((i) => i.kind === "tool");
+  return t && t.kind === "tool" ? t.summary : undefined;
+}
 
 export function ProjectView({ id }: { id: string }) {
   const { chat, state, fileTick } = useProject(id);
@@ -18,7 +24,8 @@ export function ProjectView({ id }: { id: string }) {
   // The agent decides what the canvas shows (show_page). The user can browse with the dropdown until the agent shows something again.
   const pages = state?.pages ?? [];
   useEffect(() => setOverride(null), [state?.canvasSeq]);
-  const file = override ?? state?.canvas ?? pages.at(-1)?.file ?? null;
+  // Only what the agent has shown (or the user picked) appears; until then the canvas shows progress, never a half-finished page.
+  const file = override ?? state?.canvas ?? null;
   const current = pages.find((p) => p.file === file);
 
   const send = useCallback(
@@ -86,7 +93,7 @@ export function ProjectView({ id }: { id: string }) {
               <iframe ref={iframe} key={current.file} title={current.file} sandbox="allow-scripts allow-same-origin" src={api.fileUrl(id, current.file, tick)} className="h-full w-full border-0" />
             )
           ) : (
-            <div className="flex h-full items-center justify-center px-8 text-center text-neutral-500">{chat.running ? "The agent is working…" : "Nothing here yet."}</div>
+            <ProgressView steps={chat.steps} activity={chat.running ? lastActivity(chat.items) : undefined} />
           )}
         </div>
       </section>

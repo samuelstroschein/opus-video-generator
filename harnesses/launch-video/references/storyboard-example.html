@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storyboard: worked example</title>
+<!--
+  WORKED EXAMPLE OF STORYBOARD FIDELITY. This is the quality bar. Read it with read_file and match its fidelity.
+  What to notice:
+    - the PRODUCT IS RECOGNIZABLE in every frame: its real layout (chat panel and canvas, composer, a model picker menu),
+      real labels and copy, its own theme (dark here) and a few of its real colors used flat, its real icons/glyphs
+    - frames are SIMPLIFIED, not polished: few elements, flat fills, no shadows or gradients, small type where the real UI
+      has small type, a clear single moment per frame
+    - the ONLY placeholders are for imagery and art (the hatched "mascot running" panel, the "space scene" panel)
+    - words in frames are the words that will appear on screen, never bracketed descriptions like "[Logo]"
+    - one caption per frame: number, time range, a bold name for the moment plus one sentence on what happens
+    - one version header: tag, format and length, title, a short note
+  The inline styles inside each .wf are the example's own product mock-ups; yours will be of the user's product.
+-->
+<style>
+  :root { --fw:420px; --fh:280px; --cols:4; --ink:#1c1b19; --mute:#6b6963; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#fff; color:var(--ink); font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif; }
+  #vp { position:fixed; inset:0; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #versions { position:absolute; left:0; top:0; transform-origin:0 0; width:max-content; padding:80px; display:flex; flex-direction:column; gap:130px; }
+  .version { display:flex; flex-direction:column; gap:30px; }
+  .vtag { display:flex; gap:12px; align-items:center; margin-bottom:10px; }
+  .chip { font:600 13px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:3px 9px; border-radius:4px; }
+  .vmeta { font:500 12px ui-monospace,Menlo,monospace; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); }
+  .vhead h2 { margin:0; font-size:32px; font-weight:600; letter-spacing:-.01em; }
+  .vnote { margin:8px 0 0; font-size:17px; line-height:1.5; color:var(--mute); max-width:860px; }
+  .frames { display:grid; grid-template-columns:repeat(var(--cols),var(--fw)); gap:44px 36px; }
+  .card { margin:0; width:var(--fw); display:flex; flex-direction:column; gap:12px; cursor:pointer; }
+  .card .cap { display:flex; gap:10px; align-items:baseline; }
+  .num { font:600 12px ui-monospace,Menlo,monospace; background:var(--ink); color:#f6f5f2; padding:2px 7px; border-radius:4px; }
+  .time { font:12px ui-monospace,Menlo,monospace; color:var(--mute); }
+  .card p { margin:0; font-size:15px; line-height:1.45; }
+  .card.lva-selected .wf { outline:3px solid var(--ink); outline-offset:3px; }
+  .wf { position:relative; width:var(--fw); height:var(--fh); border-radius:12px; overflow:hidden; }
+  .wf.bare > div:first-child { width:100% !important; height:100% !important; }
+</style>
+</head>
+<body>
+<div id="vp"><main id="versions">
+  <section class="version" data-lva-version="v1">
+    <div class="vhead">
+      <div class="vtag"><span class="chip">v1</span><span class="vmeta">1620×1080 (3:2) · ~12s · loops</span></div>
+      <h2>Claude Design, switched to GPT-6 Sol</h2>
+      <p class="vnote">One switch, from Opus 5.5 to GPT-6 Sol (released today), then one prompt: improve the design. The Claude mascot animation gets redone by Sol. No end card; it loops. Model icons and colors follow the announcement: <span style="color:#3d7ff5">★</span> Astra blue, <span style="color:#c9a93a">☀</span> Sol pale yellow, <span style="color:#9c86d6">☾</span> Luna lavender, <span style="color:#d97757">✳</span> Opus in Claude orange (✳ is a stand-in for the Claude icon). The picker is dark so the pale icons stay visible.</p>
+    </div>
+    <div class="frames">
+      <figure class="card" data-lva-beat data-lva-scene="1" data-lva-title="Already mid-chat">
+        <div class="wf bare"><div style="width:420px;height:280px;background:#1f1e1c;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:140px 1fr">
+<div style="border-right:1px solid #33312d;padding:10px 9px;display:flex;flex-direction:column;gap:6px;font-size:8.5px;line-height:1.4;color:#d8d6d0">
+<div style="align-self:flex-end;background:#2b2a27;border-radius:6px;padding:6px;color:#e8e6e1">Make a short loop of the Claude mascot running around</div>
+<div>I'll animate the mascot on a looping path.</div>
+<div style="border:1px solid #3a3834;border-radius:5px;padding:5px;color:#a9a7a1">Mascot Run · Animation</div>
+<div style="margin-top:auto;background:#2b2a27;border-radius:6px;padding:6px;display:flex;justify-content:space-between;color:#a9a7a1"><span>Reply…</span><span><span style="color:#d97757">✳</span> Opus 5.5 ▾</span></div>
+</div>
+<div style="padding:10px;display:flex"><div style="flex:1;border-radius:7px;background:repeating-linear-gradient(135deg,#3a3834 0 8px,#33312d 8px 16px);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:#d8d6d0;text-align:center">Claude mascot running<br>(looping)</div></div>
+</div></div>
+        <div class="cap"><span class="num">01</span><span class="time">0.0–3.0s</span></div>
+        <p><b>Already mid-chat.</b> Finished Opus 5.5 conversation. The mascot runs laps around the canvas.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="2" data-lva-title="Zoom to picker">
+        <div class="wf bare"><div style="width:420px;height:280px;background:#1f1e1c;border-radius:12px;overflow:hidden;padding:0 60px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:14px">
+<div style="background:#2b2a27;border-radius:12px;padding:16px;font-size:17px;color:#a9a7a1">Reply…</div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:18px;color:#e8e6e1;border:2px solid #6b6963;border-radius:9px;padding:7px 12px"><span style="color:#d97757">✳</span> Opus 5.5 ▾</span><span style="font-size:20px;color:#e8e6e1">↖</span></div>
+</div></div>
+        <div class="cap"><span class="num">02</span><span class="time">3.0–4.5s</span></div>
+        <p><b>Zoom to picker.</b> Camera pushes in on the composer. Cursor clicks the picker.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="3" data-lva-title="Picker opens">
+        <div class="wf bare"><div style="width:420px;height:280px;background:#1f1e1c;border-radius:12px;overflow:hidden;padding:18px 60px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:flex-end;gap:8px">
+<div style="background:#2b2a27;border:1px solid #3a3834;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:2px;font-size:15px;color:#e8e6e1;width:220px">
+<div style="padding:6px 10px;display:flex;justify-content:space-between"><span><span style="color:#d97757">✳</span> Opus 5.5</span><span>✓</span></div>
+<div style="height:1px;background:#3a3834;margin:3px 0"></div>
+<div style="padding:6px 10px"><span style="color:#d6c8f3">☾</span> GPT-6 Luna</div>
+<div style="padding:6px 10px;border-radius:7px;background:#3a3834;display:flex;justify-content:space-between"><span><span style="color:#f3e3a1">☀</span> GPT-6 Sol</span><span>↖</span></div>
+<div style="padding:6px 10px"><span style="color:#3d7ff5">★</span> GPT-6 Astra</div>
+</div>
+<span style="font-size:15px;color:#e8e6e1;border:2px solid #6b6963;border-radius:9px;padding:5px 10px;align-self:flex-start"><span style="color:#d97757">✳</span> Opus 5.5 ▾</span>
+</div></div>
+        <div class="cap"><span class="num">03</span><span class="time">4.5–6.5s</span></div>
+        <p><b>Picker opens.</b> Luna, Sol, Astra stagger in, each icon glowing in its color. Cursor clicks Sol.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="4" data-lva-title="Switched">
+        <div class="wf bare"><div style="width:420px;height:280px;background:#1f1e1c;border-radius:12px;overflow:hidden;padding:0 60px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:14px">
+<div style="background:#2b2a27;border-radius:12px;padding:16px;font-size:17px;color:#e8e6e1">GPT-6, improve the design</div>
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:18px;color:#e8e6e1;border:2px solid #f3e3a1;border-radius:9px;padding:7px 12px"><span style="color:#f3e3a1">☀</span> GPT-6 Sol ▾</span><span style="font-size:15px;background:#c96f4a;color:#fff;border-radius:8px;padding:7px 12px">Send</span></div>
+</div></div>
+        <div class="cap"><span class="num">04</span><span class="time">6.5–8.0s</span></div>
+        <p><b>Switched.</b> Picker reads "GPT-6 Sol" with a pale yellow outline. Follow-up types in and sends.</p>
+      </figure>
+      <figure class="card" data-lva-beat data-lva-scene="5" data-lva-title="Sol result">
+        <div class="wf bare"><div style="width:420px;height:280px;background:#1f1e1c;border-radius:12px;overflow:hidden;display:grid;grid-template-columns:140px 1fr">
+<div style="border-right:1px solid #33312d;padding:10px 9px;display:flex;flex-direction:column;gap:6px;font-size:8.5px;line-height:1.4;color:#d8d6d0">
+<div style="color:#6b6963">…earlier Opus 5.5 messages</div>
+<div style="align-self:flex-end;background:#2b2a27;border-radius:6px;padding:6px;color:#e8e6e1">GPT-6, improve the design</div>
+<div>Reworking the scene: lighting, depth, motion.</div>
+<div style="margin-top:auto;background:#2b2a27;border-radius:6px;padding:6px;display:flex;justify-content:space-between;color:#a9a7a1"><span>Reply…</span><span style="color:#e8e6e1"><span style="color:#f3e3a1">☀</span> GPT-6 Sol ▾</span></div>
+</div>
+<div style="padding:10px;display:flex"><div style="width:100%;height:100%;border-radius:7px;background:radial-gradient(circle at 25% 45%,#f3d27a 0 9%,transparent 10%),radial-gradient(circle at 78% 40%,#9fd8e8 0 7%,transparent 8%),#0f1115;display:flex;align-items:flex-end;justify-content:center;padding:8px;font-size:9px;color:#8b8f98">[ space scene: sun and moon ]</div></div>
+</div></div>
+        <div class="cap"><span class="num">05</span><span class="time">8.0–12.0s</span></div>
+        <p><b>Sol result.</b> Zoom out. The flat mascot scene dissolves into the richer space version and holds, then loops to 01.</p>
+      </figure>
+    </div>
+  </section>
+</main></div>
+<script type="application/json" id="lva-plan">{ "beats": [] }</script>
+<script>
+(() => {
+  const vp = document.getElementById("vp"), world = document.getElementById("versions");
+  let z = 1, x = 0, y = 0, drag = null, moved = false;
+  const apply = () => (world.style.transform = `translate(${x}px,${y}px) scale(${z})`);
+  const el = world.querySelector(".version");
+  z = Math.min((innerWidth - 100) / el.offsetWidth, (innerHeight - 100) / el.offsetHeight, 1.2);
+  x = (innerWidth - el.offsetWidth * z) / 2 - el.offsetLeft * z; y = 50 - el.offsetTop * z; apply();
+  vp.addEventListener("wheel", (e) => { e.preventDefault(); if (e.ctrlKey || e.metaKey) { const nz = Math.max(0.08, Math.min(3, z * Math.exp(-e.deltaY * 0.01))); x = e.clientX - (e.clientX - x) * (nz / z); y = e.clientY - (e.clientY - y) * (nz / z); z = nz; } else { x -= e.deltaX; y -= e.deltaY; } apply(); }, { passive: false });
+  vp.addEventListener("pointerdown", (e) => { if (e.button === 0) { drag = { sx: e.clientX, sy: e.clientY, x, y }; moved = false; } });
+  addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy; if (Math.abs(dx) + Math.abs(dy) > 4) moved = true; if (moved) { x = drag.x + dx; y = drag.y + dy; apply(); } });
+  addEventListener("pointerup", () => (drag = null));
+  addEventListener("click", (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+})();
+</script>
+<script src="_lva/bridge.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { api, scopeLabel, type Chips, type Scope } from "./api";
+import { StepsStrip } from "./Steps";
 import type { Item, useProject } from "./useProject";
 
 type Tool = Extract<Item, { kind: "tool" }>;
@@ -82,6 +83,7 @@ export function ChatPane(props: {
           </span>
         )}
       </header>
+      <StepsStrip steps={chat.steps} live={chat.running} />
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-4 text-sm">
         {groupRows(chat.items).map((row, i, all) =>
           row.kind === "tools" ? <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} /> : <ChatItem key={i} item={row} id={id} />,

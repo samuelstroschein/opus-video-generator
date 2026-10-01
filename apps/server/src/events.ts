@@ -2,6 +2,9 @@ import fs from "node:fs";
 import type { AgentEvent } from "./runner/types.js";
 import { eventsPath } from "./projects.js";
 
+// The plan the agent reports for the current job. It can rewrite it at any time as the work changes.
+export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
+
 // A form the agent put on the canvas (the ask_questions tool). Answers come back as the next chat message.
 export type AskQuestion = {
   id: string;
@@ -27,6 +30,7 @@ export type StoredEvent =
   | { type: "version"; tag: string }
   | { type: "ask"; form: AskForm }
   | { type: "canvas"; page: string }
+  | { type: "steps"; steps: Step[] }
   | { type: "export.start"; file: string; from: number; to: number; fps: number }
   | { type: "export.done"; file: string; seconds: number }
   | { type: "export.error"; message: string };

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { api, type AskForm, type ProjectState, type Scope } from "./api";
+import { api, type AskForm, type ProjectState, type Scope, type Step } from "./api";
 
 export type Item =
   | { kind: "user"; text: string; scope?: Scope }
@@ -9,10 +9,10 @@ export type Item =
   | { kind: "version"; tag: string }
   | { kind: "export"; file: string; seconds: number };
 
-type ChatState = { items: Item[]; running: boolean; costUsd: number; ask: AskForm | null; exporting: { frame: number; total: number } | null };
+type ChatState = { items: Item[]; running: boolean; costUsd: number; ask: AskForm | null; steps: Step[]; exporting: { frame: number; total: number } | null };
 type ServerEvent = { type: string; [k: string]: any };
 
-const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, exporting: null };
+const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null };
 
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
@@ -33,7 +33,11 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       else items.push({ kind: "assistant", id: e.messageId, text: e.text });
       return { ...state, items };
     }
+    case "steps":
+      return { ...state, steps: e.steps };
     case "tool.start":
+      // Text the agent wrote before calling a tool is thinking aloud; only the final message of a turn belongs in the chat.
+      if (items.at(-1)?.kind === "assistant") items.pop();
       items.push({ kind: "tool", id: e.id, summary: e.summary, done: false, ok: true });
       return { ...state, items };
     case "tool.end": {

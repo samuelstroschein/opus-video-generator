@@ -19,6 +19,8 @@ export type AskQuestion = {
 };
 export type AskForm = { title: string; intro?: string; questions: AskQuestion[] };
 
+export type Step = { id: string; title: string; status: "todo" | "active" | "done"; detail?: string };
+
 export type PageInfo = { file: string; title: string; kind: "video" | "page" };
 export type ProjectState = {
   id: string;

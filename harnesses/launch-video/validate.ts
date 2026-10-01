@@ -8,6 +8,7 @@ export default function validate(rel: string, content: string): string[] {
     if (!/data-lva-version=/.test(content)) w.push('storyboard.html has no <section class="version" data-lva-version="v1"> sections. The storyboard is a canvas of versions.');
     if (!/data-lva-beat/.test(content)) w.push("storyboard.html has no data-lva-beat cards (one per beat, each also with data-lva-scene and data-lva-title).");
     if (!/id=["']lva-plan["']/.test(content)) w.push('storyboard.html is missing the hidden <script type="application/json" id="lva-plan"> with the detailed plan.');
+    if (/\[[A-Z][^\]]{2,40}\]/.test(content.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, ""))) w.push("Frames contain bracketed placeholder labels like [Logo]. Draw the real thing at mid fidelity: real words, the real layout of the product. Placeholders are only for imagery and art.");
     if (/<button/i.test(content)) w.push("The storyboard has no buttons: the user answers in chat. Guide the next step in your reply instead.");
     if (/cursive|Segoe Print|Bradley Hand|Chalkboard|Comic Sans/i.test(content)) w.push("Use a normal sans-serif font in the storyboard, no handwriting fonts.");
     const versions = [...content.matchAll(/data-lva-version=["'](v\d+)["']/g)].map((m) => Number(m[1].slice(1)));

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { log, type AskForm, type Scope } from "../events.js";
-import { screenshotPage } from "../export.js";
+import { log, type AskForm, type Scope, type Step } from "../events.js";
+import { screenshotPage, screenshotUrl } from "../export.js";
 import { editFile, listFiles, readFile, writeFile, type WriteResult } from "../files.js";
 import { listSkills, loadSkill } from "../harness.js";
 import { listPages } from "../pages.js";
@@ -37,6 +37,31 @@ export function buildServer(ctx: ToolContext): McpServer {
     async ({ name }) => {
       const body = loadSkill(id, name);
       return body === null ? text(`No skill named "${name}". Available: ${listSkills().map((s) => s.name).join(", ")}`, true) : text(body);
+    },
+  );
+
+  server.registerTool(
+    "set_steps",
+    {
+      description:
+        "Tell the user what you are doing: report the steps of the current job, and update them as you work. The app shows them as a progress strip so the user always knows what is happening and what comes next. Call it right after load_skill, again whenever a step starts or finishes, and whenever the plan changes (add, remove or rename steps freely). Exactly one step is 'active' while you work.",
+      inputSchema: {
+        steps: z
+          .array(
+            z.object({
+              id: z.string().describe("Stable short id, e.g. storyboard"),
+              title: z.string().describe("1–4 words, a verb phrase: 'Research the product', 'Storyboard the story'"),
+              status: z.enum(["todo", "active", "done"]),
+              detail: z.string().optional().describe("One short line on what happens in this step, shown while it is active"),
+            }),
+          )
+          .min(1)
+          .max(8),
+      },
+    },
+    async ({ steps }) => {
+      log(id).emit({ type: "steps", steps: steps as Step[] });
+      return text("Steps updated.");
     },
   );
 
@@ -100,6 +125,23 @@ export function buildServer(ctx: ToolContext): McpServer {
     async (form) => {
       log(id).emit({ type: "ask", form: form as AskForm });
       return text("The form is now on the user's screen. Do not call any more tools and do not write anything else: end your turn now. Their answers will arrive as the next message.");
+    },
+  );
+
+  server.registerTool(
+    "look_at_url",
+    {
+      description:
+        "Take a real screenshot of a public web page so you can SEE it (the product's homepage, its app or docs pages). Use it in research to learn how the product actually looks: layout, theme, colors, type, how its UI is arranged. Needed to make frames the founder recognizes as their product. Public http(s) pages only.",
+      inputSchema: { url: z.string().url(), full_page: z.boolean().optional().describe("Capture the whole page height instead of the first screen") },
+    },
+    async ({ url, full_page }) => {
+      try {
+        const buf = await screenshotUrl(url, { fullPage: full_page });
+        return { content: [{ type: "image" as const, data: buf.toString("base64"), mimeType: "image/jpeg" }] };
+      } catch (e) {
+        return text(`Could not load ${url}: ${e instanceof Error ? e.message : String(e)}`, true);
+      }
     },
   );
 

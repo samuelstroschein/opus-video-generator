@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import dns from "node:dns/promises";
+import net from "node:net";
 import { chromium } from "playwright-core";
 import { log } from "./events.js";
 import { rendersDir } from "./pages.js";
@@ -102,6 +104,33 @@ export async function screenshotPage(id: string, artifactOrigin: string, opts: {
       await page.waitForTimeout(600); // let the page's own script render
     }
     return await page.screenshot({ type: "jpeg", quality: 80, fullPage: !isVideo });
+  } finally {
+    await browser.close();
+  }
+}
+
+const PRIVATE = [/^10\./, /^127\./, /^0\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^::1$/, /^f[cd]/i, /^fe80/i];
+/** Refuse anything that is not a public http(s) host, so the agent cannot be pointed at our own machine or network. */
+async function assertPublicUrl(raw: string): Promise<URL> {
+  const u = new URL(raw);
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("Only http(s) URLs can be viewed.");
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (/^localhost$|\.local$|\.internal$/i.test(host)) throw new Error("That host is not public.");
+  const addrs = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true });
+  if (addrs.some((a) => PRIVATE.some((re) => re.test(a.address)))) throw new Error("That host is not public.");
+  return u;
+}
+
+/** A screenshot of a public web page, for the agent to study how a product really looks. */
+export async function screenshotUrl(rawUrl: string, opts: { fullPage?: boolean } = {}): Promise<Buffer> {
+  const url = await assertPublicUrl(rawUrl);
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+    await page.goto(url.href, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
+    await page.waitForTimeout(1500); // let hero animations and lazy content settle
+    return await page.screenshot({ type: "jpeg", quality: 72, fullPage: !!opts.fullPage });
   } finally {
     await browser.close();
   }
