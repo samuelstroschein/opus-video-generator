@@ -93,13 +93,13 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
           ))}
         </div>
         <div className="sticky bottom-0 -mx-7 -mb-7 flex flex-wrap items-center gap-1 whitespace-nowrap rounded-b-2xl border-t border-line bg-white px-7 py-4 max-sm:-mx-5 max-sm:-mb-5 max-sm:px-3 max-sm:py-3">
-          <button disabled={busy} onClick={() => onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
+          <button aria-disabled={busy} onClick={() => !busy && onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
             Decide for me
           </button>
-          <button disabled={busy} onClick={() => onSubmit("Direction: Ask me follow-up questions before you continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
+          <button aria-disabled={busy} onClick={() => !busy && onSubmit("Direction: Ask me follow-up questions before you continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
             Ask me follow-ups
           </button>
-          <button disabled={busy} onClick={submit} className="ml-auto rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
+          <button aria-disabled={busy} onClick={() => !busy && submit()} className="ml-auto rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white aria-disabled:opacity-35">
             Continue →
           </button>
         </div>

@@ -89,7 +89,7 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
     if (size !== "lg") addEventListener("scroll", place, true);
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const list = items();
         const i = list.indexOf(document.activeElement as HTMLElement);
         e.preventDefault();

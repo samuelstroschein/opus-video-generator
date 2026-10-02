@@ -75,18 +75,28 @@ export function ChatPane(props: {
 
   // One send at a time: a double click or a second Enter while the first is still on its way does nothing.
   const sending = useRef(false);
-  async function send(message = text, files = att.files) {
+  const [pending, setPending] = useState(false);
+  /** Send the composer (no arguments) or a quick reply (its text, no files). */
+  async function send(reply?: string, replyFiles?: File[]) {
+    const fromBox = reply === undefined;
+    const message = reply ?? text;
+    const files = replyFiles ?? att.files;
     if ((!message.trim() && !files.length) || sending.current) return;
     sending.current = true;
+    setPending(true);
     setError("");
     try {
       await api.send(id, message, undefined, files);
-      if (message === text) setText("");
-      if (files === att.files) att.clear(); // a chip or quick reply leaves pending attachments alone
+      if (fromBox) {
+        // Only what was sent goes: anything typed or attached while it was on its way stays in the composer.
+        setText((t) => (t.startsWith(message) ? t.slice(message.length).trimStart() : t));
+        att.swap((f) => files.includes(f), []);
+      }
     } catch (e) {
       setError(say(e));
     } finally {
       sending.current = false;
+      setPending(false);
     }
   }
 
@@ -177,7 +187,7 @@ export function ChatPane(props: {
           )}
           {chat.queued.map((q, i) => (
             <Safe key={q.qid ?? `q${i}`}>
-              <QueuedNote id={id} note={q} onError={setError} />
+              <QueuedNote id={id} note={q} onError={setError} onRemoved={() => input.current?.focus()} />
             </Safe>
           ))}
         </div>
@@ -262,8 +272,8 @@ export function ChatPane(props: {
                 </button>
               )}
               {(!chat.running || canSend) && (
-                <button onClick={() => void send()} disabled={!canSend} className="rounded-lg bg-ink px-3.5 py-2 text-[13px] font-medium text-white disabled:opacity-35">
-                  {chat.running ? "Queue note" : "Send"}
+                <button onClick={() => void send()} disabled={!canSend} aria-busy={pending} className="rounded-lg bg-ink px-3.5 py-2 text-[13px] font-medium text-white disabled:opacity-35 aria-busy:opacity-60">
+                  {pending ? "Sending…" : chat.running ? "Queue note" : "Send"}
                 </button>
               )}
             </div>
@@ -285,7 +295,7 @@ function UserBubble({ id, text, scope, attachments, faded }: { id: string; text:
 }
 
 /** A note waiting for the run to finish: shown faded, and editable or removable until it goes out. */
-function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof useProject>["chat"]["queued"][number]; onError: (m: string) => void }) {
+function QueuedNote({ id, note, onError, onRemoved }: { id: string; note: ReturnType<typeof useProject>["chat"]["queued"][number]; onError: (m: string) => void; onRemoved: () => void }) {
   const [editing, setEditingState] = useState(false);
   const [draft, setDraft] = useState(note.text);
   const editButton = useRef<HTMLButtonElement>(null);
@@ -337,7 +347,7 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
             <button ref={editButton} onClick={() => (setDraft(note.text), setEditing(true))} className="ring-inset -my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Edit
             </button>
-            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="ring-inset -my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
+            <button onClick={() => note.qid && (onRemoved(), void act(api.removeQueued(id, note.qid)))} className="ring-inset -my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Remove
             </button>
           </>

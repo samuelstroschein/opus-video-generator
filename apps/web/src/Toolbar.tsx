@@ -12,9 +12,11 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
   const ref = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const items = () => [...(panel.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? [])];
-  useLayoutEffect(() => {
+  // Fit the panel to the window: on open, and again if the window is resized or the phone rotated while it is open.
+  const fit = () => {
     const el = panel.current;
-    if (!open || !el) return;
+    if (!el) return;
+    el.style.maxHeight = el.style.marginLeft = el.style.marginRight = "";
     const r = el.getBoundingClientRect();
     const w = document.documentElement.clientWidth; // not innerWidth: on phones that grows to fit the overflowing menu
     el.style.maxHeight = `${document.documentElement.clientHeight - r.top - 8}px`; // a long menu scrolls on short screens
@@ -22,17 +24,24 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
     // Shift with a margin, not a transform: a transformed menu still widens the page by its original position.
     if (align === "right") el.style.marginRight = dx ? `${-dx}px` : "";
     else el.style.marginLeft = dx ? `${dx}px` : "";
+  };
+  useLayoutEffect(() => {
+    if (!open) return;
+    fit();
     items()[0]?.focus({ preventScroll: true });
+    addEventListener("resize", fit);
+    return () => removeEventListener("resize", fit);
   }, [open]);
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (ref.current?.contains(document.activeElement)) ref.current.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
+        const a = document.activeElement;
+        if (!a || a === document.body || ref.current?.contains(a)) ref.current?.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
         return setOpen(false);
       }
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || e.metaKey || e.ctrlKey || e.altKey) return;
       const list = items();
       if (!list.length) return;
       e.preventDefault();
@@ -203,13 +212,15 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
       <div className="w-72 max-w-full" role="menu">
         <button
           role="menuitem"
-          disabled={!canExport || !!exporting}
+          // aria-disabled, not disabled: a disabled button drops keyboard focus to the page
+          aria-disabled={!canExport || !!exporting}
           onClick={(e) => {
             e.stopPropagation(); // stay open: the menu shows the render's progress
+            if (!canExport || exporting) return;
             setError("");
             api.exportVideo(id).catch((err) => setError(say(err)));
           }}
-          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble disabled:opacity-50"
+          className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble aria-disabled:opacity-50"
         >
           <span>
             Render video

@@ -168,7 +168,7 @@ export function ProjectView({ id }: { id: string }) {
       role="tablist"
       aria-label="View"
       onKeyDown={(e) => {
-        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.metaKey || e.ctrlKey || e.altKey) return; // Cmd/Alt+arrows: browser back/forward
         const next = pane === "chat" ? "canvas" : "chat";
         setPane(next);
         e.currentTarget.querySelector<HTMLElement>(`#tab-${next}`)?.focus();
