@@ -111,9 +111,8 @@ The point is to review the **story**, so the frames are simplified, but at **mid
 Sound makes a launch video pop, so **every video gets sound** unless the user says otherwise. Add it while you build the video, not as an afterthought.
 
 1. **Sound effects: use the bundled kit**, `_lva/sfx/` (royalty-free, CC0, no credit needed): `click`, `click-soft`, `tick`, `typing` (2 s of keystrokes), `select`, `toggle`, `switch`, `pop`, `appear`, `open`, `close`, `whoosh`, `whoosh-long`, `success`, `success-long`, `chime`, `pluck`, `bong`, `glitch`, `error` (all `.mp3`). Put one on each moment that moves: a click on every cursor click, a whoosh on a morph or camera move, a pop or appear when something lands, typing under typed text, success on a check. Keep effects quieter than the music.
-2. **Music: a royalty-free track.** The user's own song from `assets/uploads/…` if they gave one; otherwise fetch one with `download_file` into `assets/audio/` from a library whose license allows use in videos (Mixkit's free music, Pixabay Music). Only use a URL you found on the library's page this session, never one from memory, and name the track and its license in your reply.
-3. **Measure, don't guess.** You can't hear, so call `analyze_audio` on the track: length, BPM, first beat and the strongest hits. Put the song's big hit on the video's key moment with `data-trim`, and put scene cuts on beats (a beat is `60 / BPM` seconds).
-4. **Declare it in `video.html`**, outside the React tree, one tag per sound (see SOUND in `_lva/engine.js`):
+2. **Music: royalty-free**, or the user's own. `analyze_audio` tells you a track's tempo and hits, since you can't hear it.
+3. **Declare it in `video.html`**, outside the React tree, one tag per sound (see SOUND in `_lva/engine.js`):
    `<audio src="assets/audio/song.mp3" data-start="0" data-trim="12.4" data-volume="0.7"></audio>`
    `<audio src="_lva/sfx/whoosh.mp3" data-start="3.2" data-volume="0.5"></audio>`
    The preview plays them in step with the video and Export mixes them into the MP4 at -14 LUFS.
