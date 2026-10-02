@@ -46,8 +46,8 @@ export function ProjectView({ id }: { id: string }) {
   // Below 768px there is room for one column: the user switches between the chat and the canvas.
   const [pane, setPane] = useState<"chat" | "canvas">("chat");
   useEffect(() => {
-    document.title = missing ? "Not found · Launch Video Agent" : state?.title ? `${state.title} · Launch Video Agent` : "Launch Video Agent";
-    return () => void (document.title = "Launch Video Agent");
+    document.title = missing ? "Not found · Opus Video Agent" : state?.title ? `${state.title} · Opus Video Agent` : "Opus Video Agent";
+    return () => void (document.title = "Opus Video Agent");
   }, [state?.title, missing]);
   const [override, setOverride] = useState<string | null>(null);
   const [error, setError] = useState("");

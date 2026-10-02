@@ -59,8 +59,12 @@ function message(body: { text: string; scope?: Scope }, files: File[]): RequestI
 /** An error in words a person can act on (the browser's own "Failed to fetch" says nothing). */
 export const say = (e: unknown) => (e instanceof TypeError ? "Can't reach the server. Check that it is running, then try again." : e instanceof Error ? e.message : String(e));
 
+const ARTIFACT_PORT = (window as { __OVA__?: { artifactPort?: number } }).__OVA__?.artifactPort ?? 8788;
+
 export const api = {
   list: () => fetch("/api/projects").then((r) => json<ProjectSummary[]>(r)),
+  /** Is Claude Code installed and signed in on this machine (generation runs through it)? */
+  health: () => fetch("/api/health").then((r) => json<{ claude: { installed: boolean; loggedIn: boolean; authMethod?: string }; ffmpeg: boolean }>(r)),
   examples: () => fetch("/api/examples").then((r) => json<Example[]>(r)),
   /** An example's reference pack (thumbnail + BRIEF.md) as a File, ready to attach. */
   examplePack: async (x: Example) => {
@@ -81,5 +85,6 @@ export const api = {
   exportVideo: (id: string) =>
     fetch(`/api/projects/${id}/export`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => json<{ ok: true }>(r)),
   renderUrl: (id: string, file: string, download = false) => `/api/projects/${id}/renders/${file}${download ? "?download=1" : ""}`,
-  fileUrl: (id: string, file: string, tick: number) => `${location.protocol}//${location.hostname}:8788/p/${id}/${file}?t=${tick}`,
+  // The installed app tells the page its artifact port (window.__OVA__); in development it is 8788.
+  fileUrl: (id: string, file: string, tick: number) => `${location.protocol}//${location.hostname}:${ARTIFACT_PORT}/p/${id}/${file}?t=${tick}`,
 };

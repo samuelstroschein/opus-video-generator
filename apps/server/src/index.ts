@@ -14,8 +14,26 @@ import { mountMcp } from "./mcp/http.js";
 import { createRequire } from "node:module";
 import { isExporting, startExport } from "./export.js";
 import { canvasPage, listPages, listRenders, rendersDir } from "./pages.js";
+import { claudeStatus } from "./claude-status.js";
+import { ffmpegPath } from "./binaries.js";
 
 const app = new Hono();
+
+// Everything here runs on this machine only and spends the user's Claude subscription, so: listen on loopback,
+// answer only requests addressed to localhost (no DNS rebinding), and let only our own page change anything
+// (another site open in the browser could otherwise POST here, and agent-written pages live on another port).
+const HOST = process.env.OVA_HOST ?? "127.0.0.1";
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+app.use("*", async (c, next) => {
+  if (!LOCAL_HOST.test(c.req.header("host") ?? "")) return c.text("forbidden", 403);
+  if (c.req.method !== "GET" && c.req.method !== "HEAD" && !c.req.path.startsWith("/mcp")) {
+    const origin = c.req.header("origin");
+    if (origin && new URL(origin).host !== c.req.header("host") && !isDevOrigin(origin)) return c.text("forbidden", 403);
+  }
+  await next();
+});
+/** In development the app is served by Vite (port 5173) and proxied here. */
+const isDevOrigin = (origin: string) => !process.env.OVA_WEB_DIR && /^http:\/\/(localhost|127\.0\.0\.1):5173$/.test(origin);
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -51,6 +69,11 @@ const MIME: Record<string, string> = {
 mountMcp(app);
 
 app.get("/api/projects", (c) => c.json(listProjects()));
+// Whether Claude Code is installed and signed in (and whether ffmpeg is there for exports), for the page to explain.
+app.get("/api/health", (c) => {
+  const { message: _, ...claude } = claudeStatus();
+  return c.json({ claude, ffmpeg: !!ffmpegPath() });
+});
 
 // Landing-page examples and their reference packs (a zip the "Use" button attaches).
 app.get("/api/examples", (c) => c.json(listExamples()));
@@ -217,6 +240,7 @@ app.get("/api/projects/:id/events", (c) => {
 // Agent-written HTML runs in an iframe on that origin, so it can't touch the app's origin
 // (cookies, storage, API). In the cloud this becomes a dedicated artifacts domain.
 const artifacts = new Hono();
+artifacts.use("*", async (c, next) => (LOCAL_HOST.test(c.req.header("host") ?? "") ? next() : c.text("forbidden", 403)));
 const nodeRequire = createRequire(import.meta.url);
 const pkgDir = (name: string) => path.dirname(nodeRequire.resolve(`${name}/package.json`));
 // Shared runtime libraries for agent-written pages, so each workspace stays small. Pages load them from /vendor/.
@@ -246,8 +270,27 @@ artifacts.get("/p/:id/*", (c) => {
   });
 });
 
+// The built web app, when installed (npx): served from here, told which port the artifacts are on.
+const WEB_DIR = process.env.OVA_WEB_DIR;
+if (WEB_DIR) {
+  const index = () => fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8").replace("</head>", `<script>window.__OVA__=${JSON.stringify({ artifactPort: ARTIFACT_PORT })}</script></head>`);
+  app.get("*", (c) => {
+    const rel = decodeURIComponent(c.req.path).replace(/^\/+/, "");
+    const abs = path.resolve(WEB_DIR, rel);
+    if (rel && abs.startsWith(path.resolve(WEB_DIR) + path.sep) && fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      const cache = rel.startsWith("assets/") ? "public, max-age=31536000, immutable" : "no-cache";
+      return new Response(fs.readFileSync(abs), { headers: { "content-type": MIME[path.extname(abs)] ?? "application/octet-stream", "cache-control": cache } });
+    }
+    return c.html(index(), 200, { "cache-control": "no-cache" });
+  });
+}
+
 const port = Number(process.env.PORT ?? 8787);
-const artifactPort = Number(process.env.ARTIFACT_PORT ?? 8788);
-serve({ fetch: app.fetch, port }, () => console.log(`api on http://localhost:${port}`));
+const artifactPort = ARTIFACT_PORT;
+export const ready = Promise.all([
+  new Promise<void>((ok) => serve({ fetch: app.fetch, port, hostname: HOST }, () => ok())),
+  new Promise<void>((ok) => serve({ fetch: artifacts.fetch, port: artifactPort, hostname: HOST }, () => ok())),
+]).then(() => {
+  if (!process.env.OVA_QUIET) console.log(`api on http://localhost:${port} · artifacts on http://localhost:${artifactPort}`);
+});
 warmExamples();
-serve({ fetch: artifacts.fetch, port: artifactPort }, () => console.log(`artifacts on http://localhost:${artifactPort}`));

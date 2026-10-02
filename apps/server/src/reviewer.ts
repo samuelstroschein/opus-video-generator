@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { issueToken, revokeToken } from "./mcp/http.js";
-import { agentDir, readMeta, REPO_ROOT } from "./projects.js";
+import { agentDir, readMeta, ASSET_ROOT } from "./projects.js";
 import { ClaudeCliRunner } from "./runner/claude.js";
 
 const runner = new ClaudeCliRunner();
@@ -13,7 +13,7 @@ const runner = new ClaudeCliRunner();
  */
 export async function runReviewer(projectId: string, reviewerName: string, page: string, artifactOrigin: string): Promise<string> {
   const skills = readMeta(projectId).skills ?? [];
-  const file = skills.map((s) => path.join(REPO_ROOT, "skills", s, "reviewers", `${reviewerName}.md`)).find((f) => fs.existsSync(f));
+  const file = skills.map((s) => path.join(ASSET_ROOT, "skills", s, "reviewers", `${reviewerName}.md`)).find((f) => fs.existsSync(f));
   if (!file) throw new Error(`No reviewer named "${reviewerName}" in the loaded skills.`);
   const token = issueToken({ projectId, artifactOrigin, role: "reviewer" });
   const ac = new AbortController();

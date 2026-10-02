@@ -1,4 +1,16 @@
-# Launch Video Agent
+# Opus Video Agent
+
+## Use it
+
+```bash
+npx opus-video-agent
+```
+
+Starts the app on your machine and opens it in your browser. Videos are made by your own Claude Code, so they run on your Claude subscription: [install Claude Code](https://claude.com/claude-code) and run `claude` once to sign in. Projects are kept in `~/.opus-video-agent`. See [docs/npm-readme.md](docs/npm-readme.md) for options.
+
+To build the package from this repo: `pnpm build:package` (output in `dist/opus-video-agent`; `cd` there and `npm pack`, then `npx ./opus-video-agent-*.tgz` to try it as users would).
+
+## Develop
 
 Browser app that turns a real product (URL, brand, screenshots, reference videos) into a launch video through a guided agent: Brief → 3 storyboards → scene stills → video with scoped notes → export.
 
@@ -6,7 +18,7 @@ Browser app that turns a real product (URL, brand, screenshots, reference videos
 
 The agent has no filesystem: it connects over MCP to a tool server in the API (list/read/write/edit files, ask a form, screenshot a page), which is also how the cloud version will work.
 
-Requires Node 22+, pnpm, ffmpeg, Google Chrome (used headless for export; set `LVA_CHROME` to use another binary), and a logged-in `claude` CLI (uses your subscription; `ANTHROPIC_API_KEY` is deliberately ignored).
+Requires Node 22+, pnpm, ffmpeg, Google Chrome (used headless for export; set `OVA_CHROME` / `OVA_FFMPEG` to use other binaries), and a logged-in `claude` CLI (uses your subscription; `ANTHROPIC_API_KEY` is deliberately ignored).
 
 ```bash
 pnpm install
@@ -17,7 +29,7 @@ Open http://localhost:5173. The API runs on :8787 and agent-written HTML artifac
 
 Artifacts (`brief.html`, `storyboards.html`) are written by the agent, starting from reference templates in `templates/project/_lva/templates/`; the app recognizes them by their `data-lva-*` attributes.
 
-Env: `LVA_CLAUDE_MODEL` and `LVA_EFFORT` set the working agent's model and thinking effort (`claude --model` / `--effort`; default: the CLI's own). Reviewers run on `claude-sonnet-5-5` at `medium` effort by default; change with `LVA_REVIEWER_MODEL` / `LVA_REVIEWER_EFFORT`. `LVA_DATA_DIR` moves the data folder.
+Env: `LVA_CLAUDE_MODEL` and `LVA_EFFORT` set the working agent's model and thinking effort (`claude --model` / `--effort`; default: the CLI's own). Reviewers run on `claude-sonnet-5-5` at `medium` effort by default; change with `LVA_REVIEWER_MODEL` / `LVA_REVIEWER_EFFORT`. `OVA_DATA` moves the data folder (projects and the example cache). The server listens on 127.0.0.1 only and refuses requests from other sites or hostnames.
 
 - Architecture proposal: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Wireframes (open in a browser): [docs/wireframes/launch-video-agent-wireframes.html](docs/wireframes/launch-video-agent-wireframes.html)

@@ -1,10 +1,17 @@
 {
-  "name": "launch-video-agent",
+  "name": "opus-video-agent",
   "private": true,
   "packageManager": "pnpm@10.34.5",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
-    "typecheck": "pnpm -r --filter \"./apps/*\" typecheck"
-  }
+    "typecheck": "pnpm -r --filter \"./apps/*\" typecheck",
+    "build:package": "node scripts/build-package.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "version": "0.1.0"
 }

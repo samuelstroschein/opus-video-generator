@@ -65,6 +65,8 @@ function Home() {
   const [examples, setExamples] = useState<Example[]>([]);
   // Which lists couldn't load (each retries on its own), so the notice names only what is missing.
   const [down, setDown] = useState({ projects: false, examples: false });
+  // Generation runs through the user's own Claude Code: say so plainly if it isn't installed or signed in yet.
+  const [claude, setClaude] = useState<{ installed: boolean; loggedIn: boolean } | null>(null);
   const offline = down.projects || down.examples;
   const [using, setUsing] = useState<string | null>(null);
   // Example filters: toggle category tags (none selected = all). Four rows at a time.
@@ -98,6 +100,7 @@ function Home() {
     };
     keepTrying("projects", api.list, setProjects);
     keepTrying("examples", api.examples, setExamples);
+    api.health().then((h) => alive && setClaude(h.claude), () => {});
     return () => {
       alive = false;
       timers.forEach(clearTimeout);
@@ -244,6 +247,26 @@ function Home() {
             </button>
           </div>
         </div>
+        {claude && !claude.loggedIn && (
+          <div role="status" className="-mt-4 w-[720px] max-w-full rounded-xl border border-[#f0b49d]/40 bg-[#2a1a14]/70 px-4 py-3 text-sm text-white/90 backdrop-blur-md">
+            <p className="m-0 font-medium">{claude.installed ? "Sign in to Claude Code to start" : "Install Claude Code to start"}</p>
+            <p className="m-0 mt-1 text-white/75">
+              Videos are made by Claude Code on this machine, with your own Claude subscription.{" "}
+              {claude.installed ? (
+                <>
+                  Run <code className="rounded bg-white/10 px-1 font-mono text-[13px]">claude</code> in a terminal once and sign in, then reload this page.
+                </>
+              ) : (
+                <>
+                  <a href="https://claude.com/claude-code" target="_blank" rel="noreferrer" className="underline hover:text-white">
+                    Install Claude Code
+                  </a>
+                  , run <code className="rounded bg-white/10 px-1 font-mono text-[13px]">claude</code> once to sign in, then reload this page.
+                </>
+              )}
+            </p>
+          </div>
+        )}
         {error && <p role="alert" className="-mt-6 text-center text-sm text-red-300">{error}</p>}
         <p role="status" className={offline ? "-mt-4 text-center text-sm text-white/70" : "sr-only"}>
           {down.projects && down.examples

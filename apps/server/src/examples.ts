@@ -2,7 +2,8 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { zipSync, strToU8 } from "fflate";
-import { REPO_ROOT } from "./projects.js";
+import { DATA_ROOT } from "./projects.js";
+import { requireFfmpeg, videoDuration } from "./binaries.js";
 
 // Landing-page examples from athemeroy/awesome-opus-5-5-videos: a curated set first (the most-liked product launches,
 // then the most-liked video per visual style), then every other well-liked case, filterable by category
@@ -127,7 +128,7 @@ const EXAMPLES: Example[] = [
 
 // Each example's video is pulled once from X's public embed data into a LOCAL cache (data/ is git-ignored) and served
 // from our own API: fast, works offline, and no hotlinking. It is not committed: the videos belong to their creators.
-const CACHE = path.join(REPO_ROOT, "data", "examples");
+const CACHE = path.join(DATA_ROOT, "examples");
 export const MEDIA = ["poster.jpg", "preview.mp4", "video.mp4"] as const;
 type Media = (typeof MEDIA)[number];
 const pending = new Map<string, Promise<void>>();
@@ -208,9 +209,9 @@ export function warmExamples() {
 export const POSTER_AT = 0.35;
 
 function posterFrom(video: string, out: string) {
-  const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", video]).toString().trim());
+  const dur = videoDuration(video);
   if (!(dur > 0)) throw new Error("no duration");
-  execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(dur * POSTER_AT), "-i", video, "-frames:v", "1", "-q:v", "3", out]);
+  execFileSync(requireFfmpeg(), ["-v", "error", "-y", "-ss", String(dur * POSTER_AT), "-i", video, "-frames:v", "1", "-q:v", "3", out]);
 }
 
 const postUrl = (x: Example) => `https://x.com/${x.by}/status/${x.id}`;

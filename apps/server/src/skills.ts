@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { REPO_ROOT, readMeta, workspaceDir, writeMeta } from "./projects.js";
+import { ASSET_ROOT, readMeta, workspaceDir, writeMeta } from "./projects.js";
 
 // A skill is a folder under skills/<name>/:
 //   skill.md      frontmatter (name, description) + the instructions the agent follows
@@ -11,7 +11,7 @@ import { REPO_ROOT, readMeta, workspaceDir, writeMeta } from "./projects.js";
 // The shell knows nothing about launch videos. Everything use-case specific lives in a skill.
 
 export type Skill = { name: string; description: string };
-const SKILLS_DIR = path.join(REPO_ROOT, "skills");
+const SKILLS_DIR = path.join(ASSET_ROOT, "skills");
 
 function parse(file: string): { meta: Record<string, string>; body: string } {
   const raw = fs.readFileSync(file, "utf8");
@@ -51,8 +51,9 @@ export function loadSkill(id: string, name: string): string | null {
 type Validator = (rel: string, content: string) => string[];
 const validators: Record<string, Validator> = {};
 for (const d of fs.existsSync(SKILLS_DIR) ? fs.readdirSync(SKILLS_DIR) : []) {
-  const f = path.join(SKILLS_DIR, d, "validate.ts");
-  if (fs.existsSync(f)) validators[d] = (await import(pathToFileURL(f).href)).default as Validator;
+  // validate.ts in the repo; the installed package ships it compiled (validate.js), since Node won't run TypeScript from node_modules.
+  const f = ["validate.js", "validate.ts"].map((n) => path.join(SKILLS_DIR, d, n)).find((p) => fs.existsSync(p));
+  if (f) validators[d] = (await import(pathToFileURL(f).href)).default as Validator;
 }
 export function validate(id: string, rel: string, content: string): string[] {
   return (readMeta(id).skills ?? []).flatMap((s) => validators[s]?.(rel, content) ?? []);

@@ -7,6 +7,7 @@ import { chromium } from "playwright-core";
 import { log } from "./events.js";
 import { rendersDir } from "./pages.js";
 import { readMeta } from "./projects.js";
+import { chromePath, requireFfmpeg } from "./binaries.js";
 
 // Export = open video.html?export=1 in headless Chrome, seek each frame (window.__lva.seekSync), screenshot it,
 // and pipe the frames to ffmpeg. The page is a pure function of T, so any [from, to) range renders independently:
@@ -15,18 +16,7 @@ import { readMeta } from "./projects.js";
 const running = new Set<string>();
 export const isExporting = (id: string) => running.has(id);
 
-export function chromePath(): string {
-  const candidates = [
-    process.env.LVA_CHROME,
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-  ].filter(Boolean) as string[];
-  const found = candidates.find((p) => fs.existsSync(p));
-  if (!found) throw new Error("No Chrome found. Install Google Chrome or set LVA_CHROME to its executable.");
-  return found;
-}
+export { chromePath };
 
 export type ExportOptions = { fps?: number; from?: number; to?: number; label?: string };
 
@@ -63,7 +53,7 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
     l.emit({ type: "export.start", file, from: start, to: end, fps });
 
     const ff = spawn(
-      "ffmpeg",
+      requireFfmpeg(),
       ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-c:v", "mjpeg", "-i", "-", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "17", "-preset", "veryfast", "-movflags", "+faststart", out],
       { stdio: ["pipe", "ignore", "pipe"] },
     );

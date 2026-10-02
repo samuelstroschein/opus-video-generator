@@ -4,8 +4,11 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-export const DATA_DIR = process.env.LVA_DATA_DIR ?? path.join(REPO_ROOT, "data", "projects");
+/** The app's own files (skills, templates, the built web app): the repo in development, the package when run with npx. */
+export const ASSET_ROOT = process.env.OVA_ASSET_ROOT ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+/** Projects and caches: data/ in the repo during development, ~/.opus-video-agent when installed (set by the CLI). */
+export const DATA_ROOT = process.env.OVA_DATA ?? path.join(ASSET_ROOT, "data");
+export const DATA_DIR = path.join(DATA_ROOT, "projects");
 
 // Layout: <DATA_DIR>/<id>/{meta.json, events.jsonl, workspace/}
 // The workspace is the agent's cwd and its own git repo (one commit per turn = a version).
@@ -19,7 +22,7 @@ export const agentDir = (id: string) => {
   fs.mkdirSync(d, { recursive: true });
   return d;
 };
-export const SHELL_PROMPT = path.join(REPO_ROOT, "templates", "shell.md");
+export const SHELL_PROMPT = path.join(ASSET_ROOT, "templates", "shell.md");
 const metaPath = (id: string) => path.join(projectDir(id), "meta.json");
 export const eventsPath = (id: string) => path.join(projectDir(id), "events.jsonl");
 

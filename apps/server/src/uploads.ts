@@ -3,6 +3,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { unzipSync } from "fflate";
 import { workspaceDir } from "./projects.js";
+import { requireFfmpeg } from "./binaries.js";
 
 // Files the user attaches in chat land in the project's assets/uploads/ folder. They are part of the workspace,
 // so video pages can use them (<img src="assets/uploads/shot.png">) and the agent reaches them through list_files
@@ -161,7 +162,7 @@ export function readUpload(id: string, abs: string, rel: string): Binary | null 
     if (mime && size < 1_500_000) return { kind: "image", data: fs.readFileSync(abs).toString("base64"), mimeType: mime };
     // Large or unsupported (avif): downscale to a JPEG the model can take.
     try {
-      const buf = execFileSync("ffmpeg", ["-v", "error", "-i", abs, "-vf", "scale='min(1600,iw)':-2", "-frames:v", "1", "-q:v", "3", "-f", "image2", "-c:v", "mjpeg", "-"], { maxBuffer: 20 * 1024 * 1024 });
+      const buf = execFileSync(requireFfmpeg(), ["-v", "error", "-i", abs, "-vf", "scale='min(1600,iw)':-2", "-frames:v", "1", "-q:v", "3", "-f", "image2", "-c:v", "mjpeg", "-"], { maxBuffer: 20 * 1024 * 1024 });
       return { kind: "image", data: buf.toString("base64"), mimeType: "image/jpeg" };
     } catch {
       return { kind: "info", message: `${rel} is an image (${Math.round(size / 1024)} KB) that could not be converted for viewing.` };
