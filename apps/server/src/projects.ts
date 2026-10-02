@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 
 /** The app's own files (skills, templates, the built web app): the repo in development, the package when run with npx. */
 export const ASSET_ROOT = process.env.OVA_ASSET_ROOT ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-/** Projects and caches: data/ in the repo during development, ~/.opus-video-agent when installed (set by the CLI). */
+/** Projects and caches: data/ in the repo during development, ~/.opus-video-generator when installed (set by the CLI). */
 export const DATA_ROOT = process.env.OVA_DATA ?? path.join(ASSET_ROOT, "data");
 export const DATA_DIR = path.join(DATA_ROOT, "projects");
 

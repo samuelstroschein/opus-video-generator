@@ -1,16 +1,16 @@
-// Builds the npm package `opus-video-agent` into dist/opus-video-agent:
-//   bin/cli.js      the `opus-video-agent` command (checks Claude Code, picks ports, opens the browser)
+// Builds the npm package `opus-video-generator` into dist/opus-video-generator:
+//   bin/cli.js      the `opus-video-generator` command (checks Claude Code, picks ports, opens the browser)
 //   bin/server.js   the app server, bundled (dependencies stay in node_modules)
 //   web/            the built web app, served by the server
 //   skills/, templates/  what the agent loads
-// Run: pnpm build:package   Then try it: cd dist/opus-video-agent && npm pack && npx ./opus-video-agent-*.tgz
+// Run: pnpm build:package   Then try it: cd dist/opus-video-generator && npm pack && npx ./opus-video-generator-*.tgz
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { build } from "esbuild";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const out = path.join(root, "dist", "opus-video-agent");
+const out = path.join(root, "dist", "opus-video-generator");
 const server = path.join(root, "apps", "server");
 const rel = (p) => path.relative(root, p);
 
@@ -49,20 +49,23 @@ for (const d of fs.readdirSync(path.join(out, "skills"))) {
 const serverPkg = JSON.parse(fs.readFileSync(path.join(server, "package.json"), "utf8"));
 const rootPkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const pkg = {
-  name: "opus-video-agent",
+  name: "opus-video-generator",
   version: rootPkg.version,
   description: "Make launch videos with Claude, in your browser, on your own Claude subscription.",
   type: "module",
-  bin: { "opus-video-agent": "bin/cli.js" },
-  files: ["bin", "web", "skills", "templates", "README.md"],
+  bin: { "opus-video-generator": "bin/cli.js" },
+  files: ["bin", "web", "skills", "templates", "README.md", "LICENSE"],
+  repository: { type: "git", url: "git+https://github.com/samuelstroschein/opus-video-generator.git" },
+  homepage: "https://github.com/samuelstroschein/opus-video-generator",
   engines: { node: ">=20" },
   os: ["darwin", "linux"],
   dependencies: serverPkg.dependencies,
   optionalDependencies: { "ffmpeg-static": "^5.3.0" },
   keywords: ["claude", "claude-code", "video", "launch-video", "agent"],
-  license: rootPkg.license ?? "UNLICENSED",
+  license: rootPkg.license,
 };
 fs.writeFileSync(path.join(out, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
 fs.copyFileSync(path.join(root, "docs", "npm-readme.md"), path.join(out, "README.md"));
+fs.copyFileSync(path.join(root, "LICENSE"), path.join(out, "LICENSE"));
 
-console.log(`\nBuilt ${rel(out)} (opus-video-agent ${pkg.version})`);
+console.log(`\nBuilt ${rel(out)} (opus-video-generator ${pkg.version})`);

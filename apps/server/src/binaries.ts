@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 
 // The two programs the app runs besides Claude Code: ffmpeg (MP4 export, posters, image downscaling) and Chrome
-// (export frames, page screenshots for the reviewer). Found on this machine, so `npx opus-video-agent` needs no setup
+// (export frames, page screenshots for the reviewer). Found on this machine, so `npx opus-video-generator` needs no setup
 // beyond Claude Code: ffmpeg falls back to the copy bundled with the package (ffmpeg-static), Chrome to any
 // Chrome, Edge or Chromium that is installed.
 

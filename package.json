@@ -1,5 +1,5 @@
 {
-  "name": "opus-video-agent",
+  "name": "opus-video-generator",
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "engines": {
@@ -13,5 +13,6 @@
   "devDependencies": {
     "esbuild": "^0.28.2"
   },
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "license": "MIT"
 }

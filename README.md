@@ -1,14 +1,14 @@
-# Opus Video Agent
+# Opus Video Generator
 
 ## Use it
 
 ```bash
-npx opus-video-agent
+npx opus-video-generator
 ```
 
-Starts the app on your machine and opens it in your browser. Videos are made by your own Claude Code, so they run on your Claude subscription: [install Claude Code](https://claude.com/claude-code) and run `claude` once to sign in. Projects are kept in `~/.opus-video-agent`. See [docs/npm-readme.md](docs/npm-readme.md) for options.
+Starts the app on your machine and opens it in your browser. Videos are made by your own Claude Code, so they run on your Claude subscription: [install Claude Code](https://claude.com/claude-code) and run `claude` once to sign in. Projects are kept in `~/.opus-video-generator`. See [docs/npm-readme.md](docs/npm-readme.md) for options.
 
-To build the package from this repo: `pnpm build:package` (output in `dist/opus-video-agent`; `cd` there and `npm pack`, then `npx ./opus-video-agent-*.tgz` to try it as users would).
+To build the package from this repo: `pnpm build:package` (output in `dist/opus-video-generator`; `cd` there and `npm pack`, then `npx ./opus-video-generator-*.tgz` to try it as users would).
 
 ## Develop
 
@@ -36,3 +36,11 @@ Env: `LVA_CLAUDE_MODEL` and `LVA_EFFORT` set the working agent's model and think
 - Ideal flow and the direction-questions form: [docs/wireframes/ux-flow.html](docs/wireframes/ux-flow.html)
 
 Prototype runs against the local `claude` and `codex` CLIs (reusing our subscriptions). The long-term target is a cloud-hosted web app.
+
+## Credits
+
+- Example styles come from [awesome-opus-5-5-videos](https://github.com/athemeroy/awesome-opus-5-5-videos) by athemeroy: the case notes are used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The videos and thumbnails belong to their creators (linked on each example); they are not stored in this repo, only fetched to each user's machine for previews.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

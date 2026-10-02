@@ -5,8 +5,8 @@ import posthog from "posthog-js";
 // plus autocapture and session replay. What people write stays private: inputs are masked, so is the text of
 // anything marked .ova-private (the chat, project titles), clicks carry no element text, and page titles
 // (the project title) are dropped. Anonymous: the id is a random install id the CLI keeps
-// in ~/.opus-video-agent, so one person counts once even when the port changes. Off when the user opts out
-// (`npx opus-video-agent --no-telemetry`, OVA_TELEMETRY=0 or DO_NOT_TRACK=1), and off in development.
+// in ~/.opus-video-generator, so one person counts once even when the port changes. Off when the user opts out
+// (`npx opus-video-generator --no-telemetry`, OVA_TELEMETRY=0 or DO_NOT_TRACK=1), and off in development.
 
 // The project's public key: safe to ship (it can only send events). Empty = telemetry off.
 const POSTHOG_KEY = "phc_C2VNrBe6wWF87sih62ewWtSoyMkcfxKF35yWyGzf842c";

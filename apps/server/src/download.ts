@@ -11,7 +11,7 @@ export async function downloadToProject(id: string, rawUrl: string, rel: string)
   let url = await assertPublicUrl(rawUrl);
   let res: Response | undefined;
   for (let hop = 0; hop < 6; hop++) {
-    res = await fetch(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 (opus-video-agent)" }, signal: AbortSignal.timeout(60_000) });
+    res = await fetch(url, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0 (opus-video-generator)" }, signal: AbortSignal.timeout(60_000) });
     const next = res.status >= 300 && res.status < 400 ? res.headers.get("location") : null;
     if (!next) break;
     url = await assertPublicUrl(new URL(next, url).href);

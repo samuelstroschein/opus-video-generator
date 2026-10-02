@@ -2,10 +2,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Star } from "lucide-react";
 
 // Where the code lives. A placeholder until the public repo exists: change it here and everything follows.
-export const GITHUB_REPO = "opus-video-agent/opus-video-agent";
+export const GITHUB_REPO = "samuelstroschein/opus-video-generator";
 const GITHUB_URL = `https://github.com/${GITHUB_REPO}`;
 // The link people share with their video. A placeholder until there is a public site.
-export const SHARE_LINK = "https://example.com/opus-video-agent";
+export const SHARE_LINK = "https://github.com/samuelstroschein/opus-video-generator";
 export const SHARE_TEXT = `I just generated this video with Opus 5.5 using ${SHARE_LINK}`;
 
 /** GitHub's mark (lucide no longer ships brand icons). */
@@ -96,9 +96,9 @@ export function AppHeader({ tone, children }: { tone: "dark" | "light"; children
         tone === "dark" ? "text-white" : "border-b border-line bg-white text-ink",
       ].join(" ")}
     >
-      <a href="#/" className={["flex items-center gap-2 whitespace-nowrap rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]", children ? "shrink-0" : "min-w-0"].join(" ")} title="All projects" aria-label="Opus Video Agent, all projects">
+      <a href="#/" className={["flex items-center gap-2 whitespace-nowrap rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]", children ? "shrink-0" : "min-w-0"].join(" ")} title="All projects" aria-label="Opus Video Generator, all projects">
         <img src="/claude-icon.png" alt="" className="h-5 w-5 shrink-0" />
-        <span className={children ? "max-sm:hidden" : "min-w-0 truncate max-[359px]:hidden"}>Opus Video Agent</span>
+        <span className={children ? "max-sm:hidden" : "min-w-0 truncate max-[359px]:hidden"}>Opus Video Generator</span>
       </a>
       {children && (
         <>

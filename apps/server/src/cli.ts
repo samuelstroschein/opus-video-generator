@@ -1,4 +1,4 @@
-// `npx opus-video-agent`: start the app on this machine and open it in the browser. Generation runs through the
+// `npx opus-video-generator`: start the app on this machine and open it in the browser. Generation runs through the
 // user's own Claude Code (and so their own Claude subscription); nothing leaves the machine except what Claude
 // Code itself sends to Anthropic.
 import fs from "node:fs";
@@ -22,12 +22,12 @@ const value = (name: string) => {
 };
 
 if (flag("--help") || flag("-h")) {
-  console.log(`Opus Video Agent ${pkg.version}: make launch videos with Claude, on your own Claude subscription.
+  console.log(`Opus Video Generator ${pkg.version}: make launch videos with Claude, on your own Claude subscription.
 
-Usage: npx opus-video-agent [options]
+Usage: npx opus-video-generator [options]
 
   --port <n>     Port for the app (default 8787; the next free one if taken)
-  --data <dir>   Where projects are kept (default ~/.opus-video-agent)
+  --data <dir>   Where projects are kept (default ~/.opus-video-generator)
   --no-open      Don't open the browser
   --no-telemetry Don't send anonymous usage stats (also: OVA_TELEMETRY=0 or DO_NOT_TRACK=1)
   -v, --version  Print the version
@@ -42,7 +42,7 @@ if (flag("--version") || flag("-v")) {
 
 const [major] = process.versions.node.split(".").map(Number);
 if (major < 20) {
-  console.error(`Opus Video Agent needs Node.js 20 or newer (you have ${process.versions.node}).`);
+  console.error(`Opus Video Generator needs Node.js 20 or newer (you have ${process.versions.node}).`);
   process.exit(1);
 }
 
@@ -63,7 +63,10 @@ const dim = (s: string) => (process.stdout.isTTY ? `\x1b[2m${s}\x1b[0m` : s);
 const bold = (s: string) => (process.stdout.isTTY ? `\x1b[1m${s}\x1b[0m` : s);
 
 async function main() {
-  const dataDir = path.resolve(value("--data") ?? path.join(os.homedir(), ".opus-video-agent"));
+  const dataDir = path.resolve(value("--data") ?? path.join(os.homedir(), ".opus-video-generator"));
+  // Projects from before the rename (opus-video-agent) move over once.
+  const old = path.join(os.homedir(), ".opus-video-agent");
+  if (!value("--data") && !fs.existsSync(dataDir) && fs.existsSync(old)) fs.renameSync(old, dataDir);
   fs.mkdirSync(dataDir, { recursive: true });
   const [port, artifactPort] = await ports(Number(value("--port") ?? 8787));
 
@@ -96,7 +99,7 @@ async function main() {
   const url = `http://localhost:${port}`;
   const claude = claudeStatus(true);
   console.log(`
-  ${bold("Opus Video Agent")} ${dim(pkg.version)}
+  ${bold("Opus Video Generator")} ${dim(pkg.version)}
 
   ${bold(url)}
   ${dim(`Projects: ${dataDir.replace(os.homedir(), "~")}`)}
