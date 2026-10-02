@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
 import { api, say, scopeLabel, type Scope } from "./api";
 import { Spinner, StepCard } from "./Steps";
@@ -147,6 +147,13 @@ export function ChatPane(props: {
   }, [sel]);
   // The answers' shortcuts (1–4, arrows, Enter) work right away: focus the box when a question arrives.
   const input = useRef<HTMLTextAreaElement>(null);
+  // The text box grows with what is typed (up to 160px, then it scrolls), in the chat and under a question alike.
+  useLayoutEffect(() => {
+    const el = input.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  });
   const questionOpen = !chat.running && !!chat.question && skipped !== chat.question;
   useEffect(() => {
     // Don't pull focus out of a menu the user has open (the attach menu); otherwise the question takes the composer.
