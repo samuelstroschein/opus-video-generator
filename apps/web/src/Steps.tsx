@@ -78,12 +78,12 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
         <span className="text-[10px] text-faint">{open ? "▾" : "▴"}</span>
       </button>
       {open ? (
-        <div className="flex flex-col gap-2 px-3 pb-3 text-[13px]">
+        <div className="flex min-w-0 flex-col gap-2 px-3 pb-3 text-[13px] [overflow-wrap:anywhere]">
           {steps.map((s) => (
             <div key={s.id} className="flex flex-col gap-0.5">
               <div className={["flex items-center gap-2", tone(s.status)].join(" ")}>
-                <span className="w-3 text-center text-[11px]">{icon(s.status)}</span>
-                {s.title}
+                <span className="w-3 shrink-0 text-center text-[11px]">{icon(s.status)}</span>
+                <span className="min-w-0">{s.title}</span>
               </div>
               {s.status === "active" && now && <div className="pl-5 text-xs text-mute">{now}</div>}
             </div>
@@ -99,7 +99,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
 export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
   return (
     <div className="flex h-full items-center justify-center bg-paper px-8">
-      <div className="w-full max-w-sm">
+      <div className="w-full min-w-0 max-w-sm [overflow-wrap:anywhere]">
         {steps.length === 0 && (
           <div className="flex items-center gap-3 text-sm text-mute">
             {live ? (

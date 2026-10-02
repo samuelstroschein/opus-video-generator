@@ -3,6 +3,7 @@ import { api, say } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { AppHeader } from "./Header";
+import { Safe, keyOf } from "./Safe";
 import { lastActivity, useProject } from "./useProject";
 import { ExportMenu, PageTabs, ShareMenu } from "./Toolbar";
 import { ProgressView } from "./Steps";
@@ -211,7 +212,9 @@ export function ProjectView({ id }: { id: string }) {
         </nav>
         <div className="relative min-h-0 flex-1 bg-paper">
           {chat.ask ? (
-            <AskForm key={JSON.stringify(chat.ask).length} form={chat.ask} busy={chat.running} onSubmit={(t) => void send(t)} />
+            <Safe key={keyOf(chat.ask)} fallback={<p className="p-8 text-center text-sm text-mute">This form couldn't be shown. Answer in the chat instead.</p>}>
+              <AskForm form={chat.ask} busy={chat.running} onSubmit={(t) => void send(t)} />
+            </Safe>
           ) : current ? (
             current.kind === "video" ? (
               <VideoPane ref={iframe} src={api.fileUrl(id, current.file, tick)} video={video} cmd={cmd} onLoad={resume} />
@@ -221,7 +224,9 @@ export function ProjectView({ id }: { id: string }) {
           ) : chat.draft ? (
             <DraftFrame id={id} path={chat.draft.path} n={chat.draft.n} />
           ) : (
-            <ProgressView steps={chat.steps} pace={chat} live={chat.running} activity={lastActivity(chat.items)} />
+            <Safe>
+              <ProgressView steps={chat.steps} pace={chat} live={chat.running} activity={lastActivity(chat.items)} />
+            </Safe>
           )}
         </div>
       </section>

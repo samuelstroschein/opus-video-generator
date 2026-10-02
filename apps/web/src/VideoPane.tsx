@@ -53,7 +53,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
   const pxPerSec = trackW / duration;
   // Drop the last tick if it would run into the end label.
   const ticks = Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step).filter((t) => (duration - t) * pxPerSec > 64);
-  const pct = (t: number) => `${(t / duration) * 100}%`;
+  const pct = (t: number) => `${(Math.min(Math.max(t, 0), duration) / duration) * 100}%`; // never outside the track
 
   return (
     <div className="flex h-full flex-col bg-black">
@@ -120,16 +120,16 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           </div>
           {/* sections */}
           <div className="relative h-9">
-            {v?.scenes.map((s) => (
+            {v?.scenes.map((s, i) => (
               <div
-                key={s.name}
+                key={`${i}:${s.name}`}
                 title={s.desc}
                 style={{ left: pct(s.start), width: pct(s.dur) }}
                 className="absolute inset-y-0 p-px"
               >
-                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current?.name === s.name ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-300"].join(" ")}>
+                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current === s ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-300"].join(" ")}>
                   <span className="truncate">
-                    {s.name} <span className={current?.name === s.name ? "text-white/75" : "text-neutral-400"}>· {s.dur}s</span>
+                    {s.name} <span className={current === s ? "text-white/75" : "text-neutral-400"}>· {s.dur}s</span>
                   </span>
                 </div>
               </div>

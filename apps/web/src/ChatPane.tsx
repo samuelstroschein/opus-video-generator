@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNo
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
 import { api, say, scopeLabel, type Scope } from "./api";
 import { Spinner, StepCard } from "./Steps";
+import { Safe } from "./Safe";
 import { lastActivity } from "./useProject";
 import type { Item, useProject } from "./useProject";
 
@@ -131,21 +132,27 @@ export function ChatPane(props: {
       <div ref={scroller} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
         <div ref={content} className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
           {groupRows(chat.items).map((row, i, all) =>
-            row.kind === "tools" ? (
-              <ToolGroup key={i} tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />
-            ) : (
-              <ChatItem key={i} item={row} id={id} />
-            ),
+            <Safe key={i}>
+              {row.kind === "tools" ? (
+                <ToolGroup tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />
+              ) : (
+                <ChatItem item={row} id={id} />
+              )}
+            </Safe>,
           )}
           {chat.queued.map((q, i) => (
-            <QueuedNote key={q.qid ?? `q${i}`} id={id} note={q} onError={setError} />
+            <Safe key={q.qid ?? `q${i}`}>
+              <QueuedNote id={id} note={q} onError={setError} />
+            </Safe>
           ))}
         </div>
       </div>
 
       <div className="flex shrink-0 flex-col px-3 pb-3">
         {error && <p role="alert" className="mx-2 mb-2 text-xs text-red-600">{error}</p>}
-        <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
+        <Safe>
+          <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
+        </Safe>
         <div
           {...att.dropProps}
           className={[

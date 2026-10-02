@@ -45,7 +45,13 @@ function safeReduce(state: ChatState, e: Action): ChatState {
 }
 
 function reduce(state: ChatState, e: Action): ChatState {
-  if (e.type === "replay") return e.events.reduce(safeReduce, initial);
+  if (e.type === "replay") {
+    // A replay rebuilds everything. Where the result is unchanged, keep the objects already on screen, so a dismissed
+    // question stays dismissed and an open form keeps its state across a reconnect.
+    const next = e.events.reduce(safeReduce, initial);
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    return { ...next, question: same(next.question, state.question) ? state.question : next.question, ask: same(next.ask, state.ask) ? state.ask : next.ask };
+  }
   const items = [...state.items];
   switch (e.type) {
     case "reset":
@@ -230,6 +236,7 @@ export function useProject(id: string) {
         } catch {
           return; // a malformed event: skip it rather than break the stream handler
         }
+        if (!e || typeof e !== "object" || typeof e.type !== "string") return;
         if (e.type === "file.changed" && e.path !== "*") {
           const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
           if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
