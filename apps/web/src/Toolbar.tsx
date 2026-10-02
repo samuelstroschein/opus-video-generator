@@ -140,7 +140,7 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
   const visible = pages.filter((p) => slots.includes(p.file));
   const hidden = pages.filter((p) => !slots.includes(p.file)).sort((a, b) => (changed[b.file] ?? 0) - (changed[a.file] ?? 0) || pages.indexOf(b) - pages.indexOf(a));
 
-  if (!pages.length) return <span className="px-1 text-[13px] text-faint">Pages appear here as the agent makes them</span>;
+  if (!pages.length) return null;
   return (
     <div className="flex min-w-0 flex-1 items-center gap-1">
       {visible.map((p) => (

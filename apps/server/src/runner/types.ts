@@ -6,7 +6,7 @@ export type AgentEvent =
   | { type: "tool.start"; id: string; name: string; summary: string }
   | { type: "tool.input"; id: string; name: string; partial: string } // the tool call's JSON arguments received so far (throttled)
   | { type: "tool.end"; id: string; ok: boolean }
-  | { type: "turn.done"; costUsd?: number; durationMs?: number }
+  | { type: "turn.done"; costUsd?: number; durationMs?: number; stopped?: boolean }
   | { type: "error"; message: string };
 
 export type RunOptions = {

@@ -87,6 +87,7 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
   const prompt = [scope && scopePrefix(scope), text, attached].filter(Boolean).join("\n\n");
 
   const watcher = watchWorkspace(id);
+  let ended = false; // a turn.done or error was logged; otherwise (Stop) the turn is closed in `finally`
   const token = issueToken({ projectId: id, scope, artifactOrigin: `http://localhost:${process.env.ARTIFACT_PORT ?? 8788}` });
   try {
     const instructions = buildInstructions(id);
@@ -126,11 +127,15 @@ async function runTurn(id: string, text: string, scope: Scope | undefined, attac
       }
       if (e.type === "tool.start" && /(report_progress|suggest_replies)$/.test(e.name)) quiet.add(e.id);
       if ((e.type === "tool.start" || e.type === "tool.end") && quiet.has(e.id)) continue;
+      if (e.type === "turn.done" || e.type === "error") ended = true;
       l.emit(e);
     }
   } catch (err) {
+    ended = true;
     l.emit({ type: "error", message: err instanceof Error ? err.message : String(err) });
   } finally {
+    // Stopped (or the agent ended without a result): close the turn in the log, or the chat would keep showing it as running.
+    if (!ended) l.emit({ type: "turn.done", stopped: ac.signal.aborted });
     revokeToken(token);
     clearDraft(id);
     watcher.close();

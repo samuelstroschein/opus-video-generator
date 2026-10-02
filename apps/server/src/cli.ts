@@ -66,7 +66,8 @@ async function main() {
   const [port, artifactPort] = await ports(Number(value("--port") ?? 8787));
 
   Object.assign(process.env, {
-    OVA_ASSET_ROOT: pkgRoot,
+    // The package ships skills/ and templates/ next to bin/; from a repo checkout the server finds them itself.
+    ...(fs.existsSync(path.join(pkgRoot, "skills")) ? { OVA_ASSET_ROOT: pkgRoot } : {}),
     OVA_DATA: dataDir,
     PORT: String(port),
     ARTIFACT_PORT: String(artifactPort),

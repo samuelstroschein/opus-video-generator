@@ -218,11 +218,14 @@ export function ProjectView({ id }: { id: string }) {
             </button>
           </div>
         )}
-        <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
-          <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
-          <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />
-          <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
-        </nav>
+        {/* The page bar (tabs, Share, Export) appears with the first page; before that there is nothing to switch or share. */}
+        {pages.length > 0 && (
+          <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
+            <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
+            <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />
+            <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
+          </nav>
+        )}
         <div className="relative min-h-0 flex-1 bg-paper">
           {chat.ask ? (
             <Safe key={keyOf(chat.ask)} fallback={<p className="p-8 text-center text-sm text-mute">This form couldn't be shown. Answer in the chat instead.</p>}>

@@ -526,6 +526,8 @@ function ChatItem({ item, id }: { item: Exclude<Item, { kind: "tool" }>; id: str
       return <AgentText text={item.text} />;
     case "error":
       return <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">{item.message}</div>;
+    case "stopped":
+      return <div className="text-xs text-faint">Stopped. Send a message to continue.</div>;
     case "review":
       return <ReviewRow item={item} />;
     case "export":

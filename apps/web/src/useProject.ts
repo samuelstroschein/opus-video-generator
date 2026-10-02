@@ -6,6 +6,7 @@ export type Item =
   | { kind: "assistant"; id: string; text: string }
   | { kind: "tool"; id: string; summary: string; done: boolean; ok: boolean; at?: number; end?: number }
   | { kind: "error"; message: string }
+  | { kind: "stopped" }
   | { kind: "version"; tag: string }
   | { kind: "export"; file: string; seconds: number }
   | { kind: "review"; reviewer: string; page: string; pass: boolean; fixes: string[]; round: number };
@@ -133,7 +134,8 @@ function reduce(state: ChatState, e: Action): ChatState {
       return { ...state, items };
     }
     case "turn.done":
-      return { ...state, running: false, progress: null, costUsd: state.costUsd + (e.costUsd ?? 0) };
+      if (e.stopped) items.push({ kind: "stopped" });
+      return { ...state, items, running: false, progress: null, costUsd: state.costUsd + (e.costUsd ?? 0) };
     case "error":
       items.push({ kind: "error", message: e.message });
       return { ...state, items, running: false, progress: null };
