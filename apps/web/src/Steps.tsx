@@ -64,8 +64,8 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   // Only while working: what is happening right now. When idle the card is just the step and the counter.
   const now = live ? pace.progress?.label || active?.detail || activity : undefined;
   return (
-    <div className="mx-2 rounded-t-xl border border-b-0 border-line-2 bg-paper">
-      <button onClick={() => setPinned(!open)} aria-expanded={open} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
+    <div className="mx-2 flex min-h-[2.75rem] flex-col rounded-t-xl border border-b-0 border-line-2 bg-paper">
+      <button onClick={() => setPinned(!open)} aria-expanded={open} className="flex w-full shrink-0 items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
         {live ? <Spinner /> : allDone && <span className="text-[11px] text-ok">✓</span>}
         <span className="min-w-0 flex-1 truncate">{open ? counter : (active?.title ?? (allDone ? "All steps done" : counter))}</span>
         {!open && (
@@ -78,7 +78,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
         <span className="text-[10px] text-faint">{open ? "▾" : "▴"}</span>
       </button>
       {open ? (
-        <div className="flex min-w-0 flex-col gap-2 px-3 pb-3 text-[13px] [overflow-wrap:anywhere]">
+        <div className="flex max-h-[45vh] min-h-0 min-w-0 flex-col gap-2 overflow-y-auto px-3 pb-3 text-[13px] [overflow-wrap:anywhere]">
           {steps.map((s) => (
             <div key={s.id} className="flex flex-col gap-0.5">
               <div className={["flex items-center gap-2", tone(s.status)].join(" ")}>

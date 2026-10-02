@@ -90,6 +90,11 @@ export function ChatPane(props: {
   const [skipped, setSkipped] = useState<object | null>(null);
   const [sel, setSel] = useState(0);
   useEffect(() => setSel(0), [chat.question]);
+  // Keep the highlighted answer in view when arrows move it through a question taller than its box.
+  const questionBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    questionBox.current?.querySelectorAll<HTMLElement>("[data-reply]")[sel]?.scrollIntoView({ block: "nearest" });
+  }, [sel]);
   // The answers' shortcuts (1–4, arrows, Enter) work right away: focus the box when a question arrives.
   const input = useRef<HTMLTextAreaElement>(null);
   const questionOpen = !chat.running && !!chat.question && skipped !== chat.question;
@@ -129,7 +134,7 @@ export function ChatPane(props: {
   return (
     <section className="flex min-h-0 flex-1 flex-col border-r border-line bg-white">
 
-      <div ref={scroller} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5">
+      <div ref={scroller} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5 [@media(max-height:420px)]:pt-2">
         <div ref={content} className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
           {groupRows(chat.items).map((row, i, all) =>
             <Safe key={i}>
@@ -148,22 +153,24 @@ export function ChatPane(props: {
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col px-3 pb-3">
-        {error && <p role="alert" className="mx-2 mb-2 text-xs text-red-600">{error}</p>}
+      {/* The bottom stack may shrink: on a short screen the question panel and the open plan give way (and scroll inside
+          themselves) so the text box, Send and Skip always stay on screen, whatever else is showing. */}
+      <div className="flex min-h-0 flex-col px-3 pb-3">
+        {error && <p role="alert" className="mx-2 mb-2 shrink-0 text-xs text-red-600">{error}</p>}
         <Safe>
           <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
         </Safe>
         <div
           {...att.dropProps}
           className={[
+            // With a question open (the plan card hides then), the composer may shrink: the question scrolls inside it.
+            asking ? "min-h-0" : "",
             "flex flex-col gap-2 rounded-[14px] border bg-white p-2.5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_6px_20px_rgba(0,0,0,.04)]",
             att.dragging ? "border-ink" : "border-line-3 focus-within:border-mute",
           ].join(" ")}
         >
           {asking && (
-            // Short screens (a phone on its side): the question scrolls inside itself, capped to what is left after the header,
-            // tabs and the rest of the composer (~262px), so Send and Skip stay on screen.
-            <div className="flex max-h-[min(45vh,calc(100vh-262px))] flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
+            <div ref={questionBox} className="flex max-h-[45vh] min-h-0 flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
               <div className="flex items-center gap-2 text-[13px] text-mute">
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <circle cx="8" cy="8" r="6.5" />
@@ -179,6 +186,7 @@ export function ChatPane(props: {
                 {asking.replies.map((r, i) => (
                   <button
                     key={r}
+                    data-reply
                     onMouseEnter={() => setSel(i)}
                     onClick={() => (void send(r, []), input.current?.focus())}
                     className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
@@ -192,7 +200,7 @@ export function ChatPane(props: {
             </div>
           )}
           <PendingFiles files={att.files} remove={(k) => (att.remove(k), input.current?.focus())} />
-          <div className={["flex items-start gap-2", asking ? "border-t border-line pt-2" : ""].join(" ")}>
+          <div className={["flex shrink-0 items-start gap-2", asking ? "border-t border-line pt-2" : ""].join(" ")}>
             {asking && (
               <svg className="ml-1 mt-[3px] flex-none text-faint" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
                 <path d="M10.8 2.7 13.3 5.2 5.6 12.9 2.6 13.4 3.1 10.4z" />
@@ -205,10 +213,10 @@ export function ChatPane(props: {
               onKeyDown={onKey}
               rows={asking ? 1 : 2}
               placeholder={placeholder}
-              className="max-h-40 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint max-sm:text-base"
+              className="max-h-40 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint max-sm:text-base [@media(pointer:coarse)]:text-base"
             />
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex shrink-0 items-center justify-between">
             <AttachButton onPick={att.add} />
             <div className="flex items-center gap-2">
               {chat.running && (
@@ -277,7 +285,7 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
               if (e.key === "Escape") setEditing(false);
             }}
             rows={Math.min(6, draft.split("\n").length + 1)}
-            className="resize-none bg-transparent px-1 text-sm leading-normal max-sm:text-base"
+            className="resize-none bg-transparent px-1 text-sm leading-normal max-sm:text-base [@media(pointer:coarse)]:text-base"
           />
           <div className="flex justify-end gap-1.5">
             <button onClick={() => setEditing(false)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-mute hover:bg-bubble">

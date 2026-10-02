@@ -45,7 +45,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                     value={values[q.id] as string}
                     onChange={(e) => set(q.id, e.target.value)}
                     rows={2}
-                    className="w-full resize-none rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base focus:border-mute"
+                    className="w-full resize-none rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base [@media(pointer:coarse)]:text-base focus:border-mute"
                   />
                 ) : (
                   <>
@@ -86,7 +86,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                   onChange={(e) => setOther((s) => ({ ...s, [q.id]: e.target.value }))}
                   placeholder="Tell me more"
                   aria-label={`${q.label}: something else`}
-                  className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base focus:border-mute"
+                  className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base [@media(pointer:coarse)]:text-base focus:border-mute"
                 />
               )}
             </div>
