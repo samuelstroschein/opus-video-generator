@@ -23,7 +23,18 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
     const label = (val: string) => (val === OTHER ? other[q.id] || "(something else)" : q.options?.find((o) => o.value === val)?.label ?? val);
     return Array.isArray(v) ? v.map(label).join(", ") || "(none)" : label(v) || "(no preference)";
   }
-  const submit = () => onSubmit(`Direction:\n${form.questions.map((q) => `- ${q.label} ${answerText(q)}`).join("\n")}`);
+  const lines = (qs: AskQuestion[]) => qs.map((q) => `- ${q.label} ${answerText(q)}`).join("\n");
+  const submit = () => onSubmit(`Direction:\n${lines(form.questions)}`);
+  // The other two buttons keep what the user filled in too: "Ask me follow-ups" sends every answer plus the request,
+  // "Decide for me" sends the answers the user changed and leaves the rest to the agent.
+  const changed = form.questions.filter((q) => JSON.stringify(values[q.id]) !== JSON.stringify(initialValue(q)));
+  const followUps = () => onSubmit(`Direction:\n${lines(form.questions)}\nThen ask me follow-up questions before you continue.`);
+  const decide = () =>
+    onSubmit(
+      changed.length
+        ? `Direction:\n${lines(changed)}\nDecide everything else for me: pick sensible values, tell me what you chose, and continue.`
+        : "Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.",
+    );
 
   return (
     <div className="flex h-full items-start justify-center overflow-y-auto scroll-pb-32 scroll-pt-4 bg-paper px-8 pt-12 max-sm:px-3 max-sm:pt-4">
@@ -93,10 +104,10 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
           ))}
         </div>
         <div className="sticky bottom-0 -mx-7 -mb-7 flex flex-wrap items-center gap-1 whitespace-nowrap rounded-b-2xl border-t border-line bg-white px-7 py-4 max-sm:-mx-5 max-sm:-mb-5 max-sm:px-3 max-sm:py-3">
-          <button aria-disabled={busy} onClick={() => !busy && onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
-            Decide for me
+          <button aria-disabled={busy} onClick={() => !busy && decide()} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
+            {changed.length ? "Decide the rest" : "Decide for me"}
           </button>
-          <button aria-disabled={busy} onClick={() => !busy && onSubmit("Direction: Ask me follow-up questions before you continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
+          <button aria-disabled={busy} onClick={() => !busy && followUps()} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink aria-disabled:opacity-40">
             Ask me follow-ups
           </button>
           <button aria-disabled={busy} onClick={() => !busy && submit()} className="ml-auto rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white aria-disabled:opacity-35">
