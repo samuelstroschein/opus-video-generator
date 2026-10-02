@@ -89,12 +89,15 @@ export function ChatPane(props: {
       await api.send(id, message, undefined, files);
       // Send (and Stop) go away once the run starts: keep keyboard focus in the text box rather than losing it.
       // Only if focus is still on the composer's own buttons: never pull it away from wherever the user has gone since.
-      const a = document.activeElement;
-      if (a?.tagName === "BUTTON" && bottom.current?.contains(a)) input.current?.focus();
+      if (document.activeElement?.hasAttribute("data-send")) input.current?.focus();
       if (fromBox) {
         // Only what was sent goes: anything typed or attached while it was on its way stays in the composer.
         setText((t) => (t.startsWith(message) ? t.slice(message.length).trimStart() : t));
+        // If focus was on a sent file's chip, that chip goes away now: keep focus in the composer.
+        const was = document.activeElement;
         att.swap((f) => files.includes(f), []);
+        if (was && bottom.current?.contains(was))
+          requestAnimationFrame(() => (!document.activeElement || document.activeElement === document.body) && input.current?.focus());
       }
     } catch (e) {
       setError(say(e));
@@ -234,6 +237,7 @@ export function ChatPane(props: {
                     onMouseEnter={() => setSel(i)}
                     // The panel scrolls, which would cut an outside focus ring: draw it inside.
                     onClick={() => (void send(r, []), input.current?.focus())}
+                    data-current={i === sel && !text ? "" : undefined}
                     className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
                   >
                     <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line-3 bg-white font-mono text-xs text-mute">{i + 1}</span>
@@ -265,7 +269,7 @@ export function ChatPane(props: {
             <AttachButton onPick={att.add} />
             <div className="flex items-center gap-2">
               {chat.running && (
-                <button onClick={() => (input.current?.focus(), api.stop(id).catch((e) => setError(say(e))))} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
+                <button data-send onClick={() => (input.current?.focus(), api.stop(id).catch((e) => setError(say(e))))} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
                   <span className="h-2 w-2 rounded-[1px] bg-ink" />
                   Stop
                 </button>
@@ -276,7 +280,7 @@ export function ChatPane(props: {
                 </button>
               )}
               {(!chat.running || canSend) && (
-                <button onClick={() => void send()} disabled={!canSend} aria-busy={pending} className="rounded-lg bg-ink px-3.5 py-2 text-[13px] font-medium text-white disabled:opacity-35 aria-busy:opacity-60">
+                <button data-send onClick={() => void send()} disabled={!canSend} aria-busy={pending} className="rounded-lg bg-ink px-3.5 py-2 text-[13px] font-medium text-white disabled:opacity-35 aria-busy:opacity-60">
                   {pending ? "Sending…" : chat.running ? "Queue note" : "Send"}
                 </button>
               )}

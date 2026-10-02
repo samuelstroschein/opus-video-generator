@@ -39,9 +39,12 @@ export function useAttachments(onError: (m: string) => void) {
   const [files, setFiles] = useState<File[]>([]);
   const [dragging, setDragging] = useState(false);
 
+  // The latest list, so a folder that finishes reading later adds to what is there by then (not what was there at drop).
+  const latest = useRef(files);
+  latest.current = files;
   const add = (list: FileList | File[] | null) => {
     if (!list) return;
-    const next = [...files];
+    const next = [...latest.current];
     for (const f of Array.from(list)) {
       const loose = next.filter((x) => !folderOf(x)).length;
       const inFolder = folderOf(f) ? next.filter((x) => folderOf(x) === folderOf(f)).length : 0;
@@ -52,6 +55,7 @@ export function useAttachments(onError: (m: string) => void) {
         break;
       } else next.push(f);
     }
+    latest.current = next;
     setFiles(next);
   };
 

@@ -176,7 +176,7 @@ function Home() {
         <AppHeader tone="dark" />
       </div>
       <main className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[72px] max-sm:pt-10">
-        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#f5f3ef] max-sm:text-4xl">
+        <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#f5f3ef] max-sm:text-[36px]">
           Generate videos with{" "}
           <span className="whitespace-nowrap">
             <img src="/claude-icon.png" alt="Claude" className="ml-[4px] mr-[10px] inline-block h-[46px] w-[46px] object-contain align-[-4px] max-sm:h-[28px] max-sm:w-[28px] max-sm:align-[-3px]" />
@@ -234,7 +234,7 @@ function Home() {
             className="relative block min-h-[76px] w-full resize-none bg-transparent text-[17px] leading-normal text-white caret-white [scrollbar-width:none] placeholder:text-white/50 focus-visible:outline-none [&::-webkit-scrollbar]:hidden"
           />
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <AttachButton onPick={att.add} size="lg" glass />
             <span role="status" className="flex-1 text-right text-[13px] text-[#f0b49d]">
               {blankHint && blanksLeft ? "Fill in the highlighted blanks first" : ""}

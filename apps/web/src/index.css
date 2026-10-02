@@ -36,7 +36,13 @@ textarea:focus { outline: none; }
 [data-reply]:focus-visible, .ring-inset:focus-visible { outline-offset: -2px; }
 /* Windows high contrast drops background colours: mark the selected tab or page with an outline instead. */
 @media (forced-colors: active) {
-  [role="tab"][aria-selected="true"], [aria-current="page"], [aria-haspopup][aria-expanded="true"] { outline: 2px solid CanvasText; outline-offset: -2px; }
+  /* Selected / pressed / current: a dashed outline, so the solid focus ring still shows which one has focus. */
+  [role="tab"][aria-selected="true"], [aria-current="page"], [aria-haspopup][aria-expanded="true"], [aria-pressed="true"], [data-current] {
+    outline: 2px dashed CanvasText; outline-offset: -3px;
+  }
+  :where(button, a, [tabindex]):focus-visible { outline: 3px solid Highlight; outline-offset: 1px; }
+  /* Things that are only colour (progress bars, dots, the playhead) keep their own colours. */
+  .keep-colors, .keep-colors * { forced-color-adjust: none; }
 }
 /* Dark bars in the light editor (the video timeline) need the light ring too. */
 .surface-dark :where(button, a, [tabindex]):focus-visible { outline-color: rgb(255 255 255 / .7); }

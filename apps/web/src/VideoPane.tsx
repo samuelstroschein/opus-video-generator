@@ -130,7 +130,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
                 style={{ left: pct(s.start), width: pct(s.dur) }}
                 className="absolute inset-y-0 p-px"
               >
-                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current === s ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-300"].join(" ")}>
+                <div data-current={current === s ? "" : undefined} className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current === s ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-300"].join(" ")}>
                   <span className="truncate">
                     {s.name} <span className={current === s ? "text-white/75" : "text-neutral-400"}>· {s.dur}s</span>
                   </span>
@@ -140,7 +140,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           </div>
           {/* playhead */}
           {v && (
-            <div className="pointer-events-none absolute inset-y-0" style={{ left: pct(v.time) }}>
+            <div className="keep-colors pointer-events-none absolute inset-y-0" style={{ left: pct(v.time) }}>
               <div className="absolute -left-[5px] top-0 h-2.5 w-2.5 rounded-full bg-white shadow" />
               <div className="absolute -left-px top-1 bottom-0 w-0.5 bg-white" />
             </div>
