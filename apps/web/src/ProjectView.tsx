@@ -241,7 +241,7 @@ export function ProjectView({ id }: { id: string }) {
             current.kind === "video" ? (
               <VideoPane ref={iframe} src={api.fileUrl(id, current.file, tick)} video={video} cmd={cmd} onLoad={resume} />
             ) : (
-              <iframe ref={iframe} key={current.file} title={current.file} sandbox="allow-scripts allow-same-origin" src={api.fileUrl(id, current.file, tick)} className="h-full w-full border-0" />
+              <iframe ref={iframe} key={current.file} title={current.file} sandbox="allow-scripts allow-same-origin" allow="autoplay" src={api.fileUrl(id, current.file, tick)} className="h-full w-full border-0" />
             )
           ) : chat.draft ? (
             <DraftFrame id={id} path={chat.draft.path} n={chat.draft.n} />

@@ -106,6 +106,16 @@ The point is to review the **story**, so the frames are simplified, but at **mid
 4. **`review_page("video", "video.html")`**: an independent reviewer studies the real product, samples frames at every section and every transition, and returns `VERDICT: PASS` or `VERDICT: REVISE` with fixes tied to times. Apply all its fixes in ONE `edit_files` call across the scene files (the player reloads as files change, so the user watches the video improve). Review at most twice; after the second round apply its fixes and stop. If the last verdict was REVISE, say plainly what the reviewer flagged and what you changed. Do not report your own checks as a verdict.
 5. Reply with one or two sentences: what it is and what they can do (play it, tell you in chat what to change, press Export).
 
+## Sound
+
+A launch video for social plays muted at first, so it must work silently, but sound is what makes it land. Add it when the user gives you a song or asks for sound; offer it when the video is done.
+
+1. **Get the files.** The user's own song from `assets/uploads/…`, or files you fetch with `download_file` into `assets/audio/` (only files the user may use: their own, or CC0 / royalty-free sound effects; say where each came from in your reply).
+2. **Measure, don't guess.** You can't hear, so call `analyze_audio` on the song: length, BPM, first beat and the strongest hits. Put the song's big hit on the video's key moment with `data-trim`, and put scene cuts on beats (a beat is `60 / BPM` seconds).
+3. **Declare it in `video.html`**, outside the React tree, one tag per sound (see SOUND in `_lva/engine.js`):
+   `<audio src="assets/audio/song.mp3" data-start="0" data-trim="12.4" data-volume="0.8" preload="auto"></audio>`
+   Sound effects sit at the moment they belong to (a click, a whoosh on a morph, a pop on a check), at a lower volume than the music. The preview plays them in step with the video and Export mixes them into the MP4 at -14 LUFS.
+
 ## Notes on the video
 
 The user watches in the app and tells you in chat what to change, usually with a time or a section ("at 9s the zoom is too fast", "make the Campari pour slower"). Change only the scene that note is about, boldly, and reply with the exact values you changed ("zoom 1.2s → 1.7s"). If a section's length changes, update `LVA_SCENES`.

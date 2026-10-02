@@ -56,6 +56,9 @@ const MIME: Record<string, string> = {
   ".mp3": "audio/mpeg",
   ".wav": "audio/wav",
   ".m4a": "audio/mp4",
+  ".ogg": "audio/ogg",
+  ".aac": "audio/aac",
+  ".flac": "audio/flac",
   ".pdf": "application/pdf",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
@@ -86,18 +89,23 @@ app.get("/api/examples/:id/media/:file", async (c) => {
     return c.json({ error: e instanceof Error ? e.message : String(e) }, 502);
   }
   if (!file) return c.text("not found", 404);
+  return sendFile(c.req.header("range"), file, file.endsWith(".mp4") ? "video/mp4" : "image/jpeg", "public, max-age=86400");
+});
+
+/** A file with byte-range support: audio and video can only be seeked (and so kept in sync) when ranges work. */
+function sendFile(rangeHeader: string | undefined, file: string, type: string, cache: string): Response {
   const size = fs.statSync(file).size;
-  const type = file.endsWith(".mp4") ? "video/mp4" : "image/jpeg";
-  const headers = { "content-type": type, "accept-ranges": "bytes", "cache-control": "public, max-age=86400" };
-  const range = c.req.header("range")?.match(/bytes=(\d*)-(\d*)/);
-  if (range) {
+  const headers = { "content-type": type, "accept-ranges": "bytes", "cache-control": cache };
+  const range = rangeHeader?.match(/bytes=(\d*)-(\d*)/);
+  if (range && size > 0) {
     const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
     const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    if (start > end || start >= size) return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
     const body = fs.createReadStream(file, { start, end });
     return new Response(Readable.toWeb(body) as ReadableStream, { status: 206, headers: { ...headers, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) } });
   }
   return new Response(Readable.toWeb(fs.createReadStream(file)) as ReadableStream, { headers: { ...headers, "content-length": String(size) } });
-});
+}
 
 app.get("/api/examples/:id/pack", async (c) => {
   try {
@@ -265,9 +273,7 @@ artifacts.get("/p/:id/*", (c) => {
   if (!abs.startsWith(root + path.sep) || abs.includes(`${path.sep}.git${path.sep}`) || !fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
     return c.text("not found", 404);
   }
-  return new Response(fs.readFileSync(abs), {
-    headers: { "content-type": MIME[path.extname(abs)] ?? "application/octet-stream", "cache-control": "no-store" },
-  });
+  return sendFile(c.req.header("range"), abs, MIME[path.extname(abs).toLowerCase()] ?? "application/octet-stream", "no-store");
 });
 
 // The built web app, when installed (npx): served from here, told which port the artifacts are on.

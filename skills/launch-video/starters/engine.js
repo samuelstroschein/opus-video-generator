@@ -44,9 +44,19 @@
 //      arriving), M.draw (easeInOutCubic, things moving or drawing), M.pop (easeOutBack, small overshoot for emphasis).
 //      Do not redeclare M in a scene file (scenes share one global scope).
 //   3. Loop seam: the last frame should match the first (settle by the end, open at 0).
-//   4. Fonts: a Google Fonts <link> is allowed; any other external resource is not. Use inline SVG/CSS for imagery.
-//      Real product screenshots are supplied later as files in assets/ and referenced by relative URL.
+//   4. Fonts: a Google Fonts <link> is allowed; any other external URL is not. Files the page needs (screenshots,
+//      photos, sounds) live in assets/ and are referenced by relative URL: the user's uploads, or files you fetch
+//      with download_file.
 //   5. Size: design for the width x height you pass (default 1920x1080). The engine scales it to fit.
+//
+// SOUND (declared in HTML, like HyperFrames): put <audio> tags in video.html, OUTSIDE the React tree:
+//     <audio src="assets/audio/song.mp3" data-start="0" data-trim="12.4" data-volume="0.8" preload="auto"></audio>
+//     <audio src="assets/audio/whoosh.mp3" data-start="3.2" data-volume="0.6" preload="auto"></audio>
+//   data-start: when it starts in the video (s). data-trim: where in the file to start (s), e.g. so the song's big
+//   hit lands on a cut. data-duration: how long it plays (default: to the end of the file). data-volume: 0..1.
+//   The engine plays them in step with T (play, pause, seek, loop); the exporter mixes the same tags into the MP4
+//   (normalised to -14 LUFS). Never call .play() yourself or use autoplay. analyze_audio tells you a file's length,
+//   tempo and hits, so you can place cuts on the music without hearing it.
 //
 // MODES (query string, the engine handles them; never implement them yourself)
 //   (none)     interactive: the host app shows play/pause and a scrubber; the engine loops.
@@ -195,6 +205,28 @@
       raf = requestAnimationFrame(step);
       return () => cancelAnimationFrame(raf);
     }, [playing, duration]);
+
+    // Sound: every <audio data-start> follows the clock (see SOUND above). The exporter mixes the same tags.
+    useEffect(() => {
+      if (MODE !== "play") return;
+      for (const a of document.querySelectorAll("audio[data-start]")) {
+        const start = Number(a.dataset.start) || 0;
+        const trim = Number(a.dataset.trim) || 0;
+        const len = Number(a.dataset.duration) || (isFinite(a.duration) ? a.duration - trim : Infinity);
+        a.volume = clamp(a.dataset.volume === undefined ? 1 : Number(a.dataset.volume), 0, 1);
+        const local = time - start;
+        if (!(playing && local >= 0 && local < len)) {
+          if (!a.paused) a.pause();
+          continue;
+        }
+        const want = trim + local;
+        if (a.paused) {
+          a.currentTime = want;
+          a.play().catch(() => {});
+        } else if (Math.abs(a.currentTime - want) > 0.15) a.currentTime = want; // drifted (or looped): resync
+      }
+    }, [time, playing]);
+    useEffect(() => () => document.querySelectorAll("audio[data-start]").forEach((a) => a.pause()), []);
 
     useEffect(() => {
       const on = () => setBox({ w: innerWidth, h: innerHeight });

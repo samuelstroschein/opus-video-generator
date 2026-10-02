@@ -60,7 +60,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
 
   return (
     <div className="flex h-full flex-col bg-black">
-      <iframe ref={ref} title="video" sandbox="allow-scripts allow-same-origin" src={src} onLoad={onLoad} className="min-h-0 flex-1 border-0" />
+      <iframe ref={ref} title="video" sandbox="allow-scripts allow-same-origin" allow="autoplay" src={src} onLoad={onLoad} className="min-h-0 flex-1 border-0" />
       <div className="surface-dark flex items-stretch gap-4 border-t border-white/10 bg-[#232323] px-4 py-3 text-neutral-300 select-none">
         <div className="flex shrink-0 items-center gap-1">
           <IconButton label="Back to start" disabled={!v} onClick={() => cmd({ action: "seek", time: 0 })}>

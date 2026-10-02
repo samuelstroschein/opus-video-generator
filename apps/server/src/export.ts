@@ -8,6 +8,8 @@ import { log } from "./events.js";
 import { rendersDir } from "./pages.js";
 import { readMeta } from "./projects.js";
 import { chromePath, requireFfmpeg } from "./binaries.js";
+import { muxAudio, type Clip } from "./audio.js";
+import { resolve as resolveInProject } from "./files.js";
 
 // Export = open video.html?export=1 in headless Chrome, seek each frame (window.__lva.seekSync), screenshot it,
 // and pipe the frames to ffmpeg. The page is a pure function of T, so any [from, to) range renders independently:
@@ -42,6 +44,22 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
       return { duration: a.duration as number, width: a.width as number, height: a.height as number };
     });
     if (!info.duration) throw new Error("video.html has no scenes (LVA_SCENES is empty)");
+    // The page's sound: every <audio data-start> (see audio.ts). Only files inside the project can be mixed.
+    const declared = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLAudioElement>("audio[data-start]")].map((a) => ({
+        url: a.currentSrc || a.src,
+        start: Number(a.dataset.start) || 0,
+        trim: Number(a.dataset.trim) || 0,
+        duration: Number(a.dataset.duration) || 0,
+        volume: a.dataset.volume === undefined ? 1 : Number(a.dataset.volume),
+      })),
+    );
+    const clips: Clip[] = [];
+    for (const d of declared) {
+      const rel = decodeURIComponent(new URL(d.url).pathname).replace(`/p/${id}/`, "");
+      const file = resolveInProject(id, rel);
+      if (file && fs.existsSync(file)) clips.push({ ...d, file, volume: Math.max(0, Math.min(1, isFinite(d.volume) ? d.volume : 1)) });
+    }
     await page.setViewportSize({ width: info.width, height: info.height });
 
     const start = Math.max(0, from ?? 0);
@@ -52,9 +70,11 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
     const out = path.join(rendersDir(id), file);
     l.emit({ type: "export.start", file, from: start, to: end, fps });
 
+    // With sound: frames go to a silent file first, then the audio is mixed onto it.
+    const silent = clips.length ? out.replace(/\.mp4$/, ".silent.mp4") : out;
     const ff = spawn(
       requireFfmpeg(),
-      ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-c:v", "mjpeg", "-i", "-", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "17", "-preset", "veryfast", "-movflags", "+faststart", out],
+      ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-c:v", "mjpeg", "-i", "-", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "17", "-preset", "veryfast", "-movflags", "+faststart", silent],
       { stdio: ["pipe", "ignore", "pipe"] },
     );
     let ffErr = "";
@@ -72,6 +92,16 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
     ff.stdin.end();
     const code = await ffDone;
     if (code !== 0) throw new Error(`ffmpeg failed (${code}): ${ffErr.trim().slice(0, 400)}`);
+    if (clips.length) {
+      try {
+        await muxAudio(silent, out, clips, { from: start, to: end });
+        fs.rmSync(silent, { force: true });
+      } catch (err) {
+        // No audio in this range, or a file ffmpeg can't read: still deliver the video, silent.
+        console.warn(`export ${id}: ${err instanceof Error ? err.message : err}`);
+        fs.renameSync(silent, out);
+      }
+    }
     l.emit({ type: "export.done", file, seconds: Math.round((Date.now() - t0) / 100) / 10 });
   } finally {
     await browser.close();
@@ -132,7 +162,7 @@ export async function screenshotPage(id: string, artifactOrigin: string, opts: {
 
 const PRIVATE = [/^10\./, /^127\./, /^0\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^::1$/, /^f[cd]/i, /^fe80/i];
 /** Refuse anything that is not a public http(s) host, so the agent cannot be pointed at our own machine or network. */
-async function assertPublicUrl(raw: string): Promise<URL> {
+export async function assertPublicUrl(raw: string): Promise<URL> {
   const u = new URL(raw);
   if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("Only http(s) URLs can be viewed.");
   const host = u.hostname.replace(/^\[|\]$/g, "");

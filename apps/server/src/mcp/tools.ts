@@ -3,7 +3,9 @@ import { z } from "zod";
 import { log, type AskForm, type Scope, type Step } from "../events.js";
 import { screenshotPage, screenshotUrl } from "../export.js";
 import { runReviewer } from "../reviewer.js";
-import { editFile, editFileMany, lastEdit, listFiles, readFile, resolve as resolvePath, writeFile, type WriteResult } from "../files.js";
+import { editFile, editFileMany, lastEdit, listFiles, readFile, resolve as resolvePath, writeBinary, writeFile, type WriteResult } from "../files.js";
+import { downloadToProject } from "../download.js";
+import { analyzeAudio } from "../audio.js";
 import { readUpload } from "../uploads.js";
 import fs from "node:fs";
 import { listSkills, loadSkill } from "../skills.js";
@@ -152,10 +154,54 @@ export function buildServer(ctx: ToolContext): McpServer {
     "write_file",
     {
       description:
-        "Create or overwrite a file. Writable: top-level .html pages, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; contract problems from the loaded skill come back as warnings.",
-      inputSchema: { path: z.string(), content: z.string() },
+        "Create or overwrite a file. Writable: top-level .html pages, scenes/*.jsx, assets/*. JSX is syntax-checked and rejected if it does not compile; contract problems from the loaded skill come back as warnings. For a binary file you generate yourself (a small WAV, an image), pass its bytes as base64 with encoding \"base64\" (assets/ only). To fetch a file from the web, use download_file.",
+      inputSchema: { path: z.string(), content: z.string(), encoding: z.enum(["utf8", "base64"]).optional() },
     },
-    async ({ path, content }) => fmt(writeFile(id, path, content), `Saved ${path}.`),
+    async ({ path, content, encoding }) =>
+      encoding === "base64" ? fmt(writeBinary(id, path, Buffer.from(content, "base64")), `Saved ${path}.`) : fmt(writeFile(id, path, content), `Saved ${path}.`),
+  );
+
+  reg(
+    "download_file",
+    {
+      description:
+        "Download a file from a public URL into the project's assets/: a song, sound effects, a photo, a font, a logo. Any file type, up to 60 MB. Then use it from a page by its relative path (e.g. <audio src=\"assets/audio/whoosh.mp3\" data-start=\"3.2\">). Use only files you may use: the user's own, or ones licensed for reuse (CC0 / royalty-free), and say where each came from.",
+      inputSchema: { url: z.string().url(), path: z.string().describe("Where to save it, under assets/, e.g. assets/audio/song.mp3") },
+    },
+    async ({ url, path }) => {
+      try {
+        const r = await downloadToProject(id, url, path);
+        return r.ok ? text(`Saved ${path} (${Math.round((r.bytes ?? 0) / 1024)} KB${r.type ? `, ${r.type}` : ""}).`) : text(r.error, true);
+      } catch (e) {
+        return text(`Download failed: ${e instanceof Error ? e.message : String(e)}`, true);
+      }
+    },
+  );
+
+  reg(
+    "analyze_audio",
+    {
+      description:
+        "Measure an audio file in the project, since you can't listen to it: its length, tempo (BPM and the first beat), the strongest hits (time and strength, strongest first; the big hit is usually the first), and loudness per second. Use it to put cuts and moments on the music, and to set data-trim so the song's big hit lands where the video needs it.",
+      inputSchema: { path: z.string() },
+    },
+    async ({ path }) => {
+      const abs = resolvePath(id, path);
+      if (!abs || !fs.existsSync(abs)) return text(`No such file: ${path}`, true);
+      try {
+        const a = analyzeAudio(abs);
+        return text(
+          [
+            `${path}: ${a.duration}s`,
+            a.bpm ? `Tempo: about ${a.bpm} BPM, first beat at ${a.firstBeat}s (a beat every ${(60 / a.bpm).toFixed(3)}s)` : "Tempo: not detected",
+            `Strongest hits (s, strength 0-1): ${a.hits.map((h) => `${h.t} (${h.strength})`).join(", ")}`,
+            `Loudness per second (0-1): ${a.energy.join(" ")}`,
+          ].join("\n"),
+        );
+      } catch (e) {
+        return text(e instanceof Error ? e.message : String(e), true);
+      }
+    },
   );
 
   reg(
