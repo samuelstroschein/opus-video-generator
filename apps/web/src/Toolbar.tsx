@@ -205,6 +205,7 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
           disabled={!canExport || !!exporting}
           onClick={(e) => {
             e.stopPropagation(); // stay open: the menu shows the render's progress
+            setError("");
             api.exportVideo(id).catch((err) => setError(say(err)));
           }}
           className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble disabled:opacity-50"
@@ -289,6 +290,7 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
   }, [exporting, renders]);
   const share = (href: string) => {
     window.open(href, "_blank", "noopener,noreferrer"); // first, inside the click, so popup blockers allow it
+    setError("");
     if (latest && !exporting) return download(api.renderUrl(id, latest, true));
     if (!canExport) return;
     waiting.current = latest ?? null;

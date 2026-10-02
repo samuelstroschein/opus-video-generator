@@ -65,7 +65,13 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       if (!Array.isArray(e.replies) || !e.replies.every((r) => typeof r === "string")) throw new Error("bad replies");
       return { ...state, question: { text: typeof e.question === "string" ? e.question : "", replies: e.replies } };
     case "ask":
-      if (!Array.isArray(e.form?.questions)) throw new Error("bad ask");
+      if (
+        !Array.isArray(e.form?.questions) ||
+        !(e.form.questions as { id?: unknown; options?: unknown }[]).every(
+          (q) => q && typeof q.id === "string" && (q.options === undefined || (Array.isArray(q.options) && q.options.every((o: { value?: unknown } | null) => o && typeof o.value === "string"))),
+        )
+      )
+        throw new Error("bad ask");
       return { ...state, ask: e.form };
     case "turn.start":
       return { ...state, running: true, draft: null, progress: null, stepSince: e.ts ?? Date.now(), turnSince: e.ts ?? Date.now() };

@@ -86,6 +86,18 @@ export function ProjectView({ id }: { id: string }) {
     if (current?.kind !== "video") setVideo(null);
   }, [current?.file]);
 
+  // When an answered form goes away, focus would fall to the top of the page: put it in the chat composer instead
+  // (or on the canvas, if the chat is hidden behind its tab on a phone).
+  const asked = useRef(false);
+  useEffect(() => {
+    const was = asked.current;
+    asked.current = !!chat.ask;
+    if (!was || chat.ask || (document.activeElement && document.activeElement !== document.body)) return;
+    const composer = document.querySelector<HTMLElement>("#pane-chat textarea");
+    if (composer?.offsetParent) composer.focus();
+    else document.querySelector<HTMLElement>("#pane-canvas")?.focus();
+  }, [chat.ask]);
+
   const cmd = (c: { action: "play" | "pause" | "seek"; time?: number }) => iframe.current?.contentWindow?.postMessage({ type: "lva.cmd", ...c }, "*");
 
   // The page on screen reloads as the agent changes files (it fixes reviewer findings live), at most once every 2.5 s so a burst of edits is one reload.
@@ -182,7 +194,7 @@ export function ProjectView({ id }: { id: string }) {
         )}
         <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
-      <section id="pane-canvas" role="tabpanel" aria-labelledby="tab-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
+      <section id="pane-canvas" tabIndex={-1} style={{ outline: "none" }} role="tabpanel" aria-labelledby="tab-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
         {/* On phones the chat (where errors show) is hidden behind its tab: repeat the error here. */}
         {error && (
           <div role="alert" className="flex shrink-0 items-start gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-700 md:hidden">

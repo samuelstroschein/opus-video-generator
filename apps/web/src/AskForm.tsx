@@ -4,7 +4,11 @@ import type { AskForm as Form, AskQuestion } from "./api";
 const OTHER = "__other__";
 type Value = string | string[];
 
-const initialValue = (q: AskQuestion): Value => q.default ?? (q.type === "multi" ? [] : "");
+const initialValue = (q: AskQuestion): Value => {
+  const d = q.default as Value | undefined;
+  if (q.type === "multi") return Array.isArray(d) ? d : d ? [d] : [];
+  return Array.isArray(d) ? (d[0] ?? "") : (d ?? "");
+};
 
 /** The agent's ask_questions form, rendered on the canvas. Every answer is pre-filled, so Continue works untouched. */
 export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text: string) => void; busy: boolean }) {
@@ -21,7 +25,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
 
   return (
     <div className="flex h-full items-start justify-center overflow-y-auto bg-paper px-8 pt-12 max-sm:px-3 max-sm:pt-4">
-      <div className="mb-12 w-full max-w-[600px] rounded-2xl border border-line-2 bg-white p-7 max-sm:mb-4 max-sm:p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
+      <div className="mb-12 w-full min-w-0 max-w-[600px] rounded-2xl [overflow-wrap:anywhere] border border-line-2 bg-white p-7 max-sm:mb-4 max-sm:p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
         <h2 tabIndex={-1} className="m-0 text-[22px] font-semibold tracking-[-0.02em] focus-visible:outline-none">{form.title}</h2>
         {form.intro && <p className="mb-0 mt-1.5 text-sm text-mute">{form.intro}</p>}
         <div className="mt-5 divide-y divide-line">
@@ -47,7 +51,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                           key={o.value}
                           aria-pressed={on}
                           onClick={() => (q.type === "multi" ? set(q.id, on ? (values[q.id] as string[]).filter((x) => x !== o.value) : [...(values[q.id] as string[]), o.value]) : set(q.id, o.value))}
-                          className={["rounded-full border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
+                          className={["max-w-full rounded-full border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
                         >
                           {o.label}
                           {o.note && <span className={["ml-1.5 text-xs font-normal", on ? "text-white/60" : "text-faint"].join(" ")}>{o.note}</span>}

@@ -162,7 +162,7 @@ export function ChatPane(props: {
                   <path d="M6.2 6.3a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4M8 11.6v.1" strokeLinecap="round" />
                 </svg>
                 <span className="flex-1">Question</span>
-                <button onClick={() => setSkipped(asking)} aria-label="Dismiss" className="flex h-6 w-6 items-center justify-center rounded-md text-base leading-none hover:bg-bubble hover:text-ink">
+                <button onClick={() => (setSkipped(asking), input.current?.focus())} aria-label="Dismiss" className="flex h-6 w-6 items-center justify-center rounded-md text-base leading-none hover:bg-bubble hover:text-ink">
                   ×
                 </button>
               </div>
@@ -172,7 +172,7 @@ export function ChatPane(props: {
                   <button
                     key={r}
                     onMouseEnter={() => setSel(i)}
-                    onClick={() => void send(r, [])}
+                    onClick={() => (void send(r, []), input.current?.focus())}
                     className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
                   >
                     <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line-3 bg-white font-mono text-xs text-mute">{i + 1}</span>
@@ -210,7 +210,7 @@ export function ChatPane(props: {
                 </button>
               )}
               {asking && !canSend && (
-                <button onClick={() => setSkipped(asking)} className="rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
+                <button onClick={() => (setSkipped(asking), input.current?.focus())} className="rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
                   Skip
                 </button>
               )}
