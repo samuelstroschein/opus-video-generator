@@ -54,8 +54,8 @@
 //     <audio src="assets/audio/whoosh.mp3" data-start="3.2" data-volume="0.6" preload="auto"></audio>
 //   data-start: when it starts in the video (s). data-trim: where in the file to start (s), e.g. so the song's big
 //   hit lands on a cut. data-duration: how long it plays (default: to the end of the file). data-volume: 0..1.
-//   The engine plays them in step with T (play, pause, seek, loop); the exporter mixes the same tags into the MP4
-//   (normalised to -14 LUFS). Never call .play() yourself or use autoplay. analyze_audio tells you a file's length,
+//   The engine plays them in step with T (play, pause, seek, loop; scheduled with Web Audio, so they never drift);
+//   the exporter mixes the same tags into the MP4 (normalised to -14 LUFS). Never call .play() yourself or use autoplay. analyze_audio tells you a file's length,
 //   tempo and hits, so you can place cuts on the music without hearing it.
 //
 // MODES (query string, the engine handles them; never implement them yourself)
@@ -163,6 +163,84 @@
     return { scenes, CUES, duration: start };
   }
 
+  // Sound in the preview: every <audio data-start> is decoded once and scheduled with Web Audio, sample-accurate
+  // against the clock. (Playing the tags themselves drifts, and re-seeking them to catch up cuts the sound.) Mixed
+  // through a limiter, so stacked sounds can't overload. The tags never play; the exporter mixes the same tags.
+  const Sound = (() => {
+    let ctx = null;
+    let out = null;
+    let sources = [];
+    let token = 0; // the latest start(); an older one that finishes decoding later schedules nothing
+    const buffers = new Map();
+    const clips = () =>
+      [...document.querySelectorAll("audio[data-start]")].map((a) => ({
+        src: a.src,
+        start: Number(a.dataset.start) || 0,
+        trim: Number(a.dataset.trim) || 0,
+        duration: Number(a.dataset.duration) || 0,
+        volume: clamp(a.dataset.volume === undefined ? 1 : Number(a.dataset.volume), 0, 1),
+      }));
+    const setup = () => {
+      if (ctx) return true;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      ctx = new AC();
+      out = ctx.createDynamicsCompressor();
+      out.threshold.value = -3;
+      out.knee.value = 0;
+      out.ratio.value = 20;
+      out.attack.value = 0.002;
+      out.release.value = 0.1;
+      out.connect(ctx.destination);
+      return true;
+    };
+    const load = () => {
+      if (!setup()) return;
+      for (const c of clips())
+        if (c.src && !buffers.has(c.src))
+          buffers.set(c.src, fetch(c.src).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).catch(() => null));
+    };
+    const stop = (cancel) => {
+      if (cancel) token++; // Pause: any start() still decoding must not schedule
+      for (const s of sources) {
+        try {
+          s.stop();
+        } catch (e) {}
+      }
+      sources = [];
+    };
+    // Schedule every sound from timeline time T. Resolves with the audio-clock time at which T plays, or null when
+    // sound can't play (no Web Audio, or the browser blocks it): then the picture runs silent on the frame clock.
+    const start = async (T) => {
+      const mine = ++token;
+      stop();
+      if (!setup()) return null;
+      load();
+      if (ctx.state === "suspended") await ctx.resume().catch(() => {});
+      const list = clips();
+      const bufs = await Promise.all(list.map((c) => buffers.get(c.src)));
+      if (ctx.state !== "running" || mine !== token) return null;
+      const at = ctx.currentTime + 0.05;
+      list.forEach((c, i) => {
+        const buf = bufs[i];
+        if (!buf) return;
+        const len = c.duration || buf.duration - c.trim;
+        const local = T - c.start;
+        if (local >= len) return;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const gain = ctx.createGain();
+        gain.gain.value = c.volume;
+        src.connect(gain);
+        gain.connect(out);
+        src.start(at + Math.max(0, -local), c.trim + Math.max(0, local), len - Math.max(0, local));
+        sources.push(src);
+      });
+      return at;
+    };
+    return { load, start, stop, has: () => !!document.querySelector("audio[data-start]"), now: () => (ctx ? ctx.currentTime : 0) };
+  })();
+
   function Composition({ width = 1920, height = 1080, scenes: rawScenes, bg = "#000", children }) {
     const parsed = React.useMemo(() => parseScenes(rawScenes), [rawScenes]);
     const { scenes, CUES, duration } = parsed;
@@ -171,12 +249,14 @@
     const [box, setBox] = useState({ w: innerWidth, h: innerHeight });
     const timeRef = useRef(time);
     const playingRef = useRef(false);
+    const restartRef = useRef(null); // while playing: restart the clock (and the sound) from a new time
     timeRef.current = time;
 
     const seek = (t) => {
       const v = duration ? clamp(t, 0, duration) : 0;
       timeRef.current = v;
       setTime(v);
+      if (playingRef.current) restartRef.current?.(v); // a seek while playing reschedules picture and sound
     };
     const pause = () => {
       playingRef.current = false;
@@ -188,45 +268,50 @@
       setPlaying(true);
     };
 
-    // Playback clock (interactive mode only).
+    // Playback clock (interactive mode only). With sound, time is read from the audio clock the sounds are
+    // scheduled on, so picture and sound can't drift apart; the picture waits until the sound is scheduled.
     useEffect(() => {
       if (!playing || MODE !== "play") return;
-      let last = performance.now();
       let raf;
-      const step = (now) => {
-        const dt = (now - last) / 1000;
-        last = now;
-        let t = timeRef.current + dt;
-        if (t >= duration) t = duration ? t % duration : 0; // loop
-        timeRef.current = t;
-        setTime(t);
+      let live = true;
+      let base = null; // timeline time T at clock time c, on the audio clock or the frame clock
+      const clock = (b) => (b.audio ? Sound.now() : performance.now() / 1000);
+      let gen = 0; // only the latest restart counts (fast scrubbing starts several)
+      const begin = (T) => {
+        const g = ++gen;
+        base = null;
+        if (!Sound.has()) return void (base = { T, c: performance.now() / 1000, audio: false });
+        Sound.start(T).then((at) => {
+          if (live && g === gen) base = at !== null ? { T, c: at, audio: true } : { T, c: performance.now() / 1000, audio: false };
+        });
+      };
+      begin(timeRef.current);
+      restartRef.current = begin;
+      const step = () => {
+        if (base) {
+          let t = base.T + Math.max(0, clock(base) - base.c);
+          if (t >= duration) {
+            t = 0; // loop: picture and sound restart together
+            begin(0);
+          }
+          timeRef.current = t;
+          setTime(t);
+        }
         raf = requestAnimationFrame(step);
       };
       raf = requestAnimationFrame(step);
-      return () => cancelAnimationFrame(raf);
+      return () => {
+        live = false;
+        restartRef.current = null;
+        cancelAnimationFrame(raf);
+        Sound.stop(true);
+      };
     }, [playing, duration]);
 
-    // Sound: every <audio data-start> follows the clock (see SOUND above). The exporter mixes the same tags.
+    // Decode the page's sounds ahead of the first Play, so playback starts without waiting.
     useEffect(() => {
-      if (MODE !== "play") return;
-      for (const a of document.querySelectorAll("audio[data-start]")) {
-        const start = Number(a.dataset.start) || 0;
-        const trim = Number(a.dataset.trim) || 0;
-        const len = Number(a.dataset.duration) || (isFinite(a.duration) ? a.duration - trim : Infinity);
-        a.volume = clamp(a.dataset.volume === undefined ? 1 : Number(a.dataset.volume), 0, 1);
-        const local = time - start;
-        if (!(playing && local >= 0 && local < len)) {
-          if (!a.paused) a.pause();
-          continue;
-        }
-        const want = trim + local;
-        if (a.paused) {
-          a.currentTime = want;
-          a.play().catch(() => {});
-        } else if (Math.abs(a.currentTime - want) > 0.15) a.currentTime = want; // drifted (or looped): resync
-      }
-    }, [time, playing]);
-    useEffect(() => () => document.querySelectorAll("audio[data-start]").forEach((a) => a.pause()), []);
+      if (MODE === "play") Sound.load();
+    }, []);
 
     useEffect(() => {
       const on = () => setBox({ w: innerWidth, h: innerHeight });
