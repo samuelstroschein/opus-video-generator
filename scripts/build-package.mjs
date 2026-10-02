@@ -65,7 +65,9 @@ const pkg = {
   license: rootPkg.license,
 };
 fs.writeFileSync(path.join(out, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
-fs.copyFileSync(path.join(root, "docs", "npm-readme.md"), path.join(out, "README.md"));
+// The npm page shows the repo's README; relative image paths don't resolve there, so point them at GitHub.
+const readme = fs.readFileSync(path.join(root, "README.md"), "utf8").replace(/src="docs\//g, 'src="https://raw.githubusercontent.com/samuelstroschein/opus-video-generator/main/docs/');
+fs.writeFileSync(path.join(out, "README.md"), readme);
 fs.copyFileSync(path.join(root, "LICENSE"), path.join(out, "LICENSE"));
 
 console.log(`\nBuilt ${rel(out)} (opus-video-generator ${pkg.version})`);
