@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "./api";
+import { api, say } from "./api";
 import { AskForm } from "./AskForm";
 import { ChatPane } from "./ChatPane";
 import { AppHeader } from "./Header";
@@ -64,7 +64,7 @@ export function ProjectView({ id }: { id: string }) {
       try {
         await api.send(id, text);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(say(e));
       }
     },
     [id],
@@ -137,26 +137,46 @@ export function ProjectView({ id }: { id: string }) {
         Can't reach the server. Reconnecting… your project is safe and shows up again once it's back.
       </div>
     )}
-    <div className="flex shrink-0 gap-1 border-b border-line bg-white p-1.5 md:hidden" role="tablist" aria-label="View">
+    <div
+      className="flex shrink-0 gap-1 border-b border-line bg-white p-1.5 md:hidden"
+      role="tablist"
+      aria-label="View"
+      onKeyDown={(e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        const next = pane === "chat" ? "canvas" : "chat";
+        setPane(next);
+        e.currentTarget.querySelector<HTMLElement>(`#tab-${next}`)?.focus();
+      }}
+    >
       {(["chat", "canvas"] as const).map((p) => (
         <button
           key={p}
+          id={`tab-${p}`}
           role="tab"
           aria-selected={pane === p}
           aria-controls={`pane-${p}`}
+          tabIndex={pane === p ? 0 : -1}
           onClick={() => setPane(p)}
-          className={["flex-1 rounded-lg py-2 text-[13px] font-medium", pane === p ? "bg-bubble text-ink" : "text-mute"].join(" ")}
+          className={["flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[13px] font-medium", pane === p ? "bg-bubble text-ink" : "text-mute"].join(" ")}
         >
           {p === "chat" ? "Chat" : "Canvas"}
+          {/* The agent's questions live on the canvas: flag them while the chat is showing. */}
+          {p === "canvas" && chat.ask && pane === "chat" && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-label="(questions waiting)" />}
         </button>
       ))}
     </div>
     <main className="grid min-h-0 flex-1 bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
       <h1 className="sr-only">{state?.title ?? "Project"}</h1>
-      <div id="pane-chat" className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
+      <div id="pane-chat" role="tabpanel" aria-labelledby="tab-chat" className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
+        {chat.ask && (
+          <button onClick={() => setPane("canvas")} className="mx-3 mt-3 flex shrink-0 items-center justify-between gap-3 rounded-xl border border-line-3 bg-white px-3.5 py-2.5 text-left text-[13px] font-medium md:hidden">
+            The agent has a few questions for you
+            <span className="shrink-0 text-mute">Answer →</span>
+          </button>
+        )}
         <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
-      <section id="pane-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
+      <section id="pane-canvas" role="tabpanel" aria-labelledby="tab-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
         <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
           <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />

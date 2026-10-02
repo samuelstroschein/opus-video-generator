@@ -49,13 +49,18 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
     };
   }, [open]);
   return (
-    <div ref={ref} className="relative">
+    // Tabbing out of the menu closes it.
+    <div ref={ref} className="relative shrink-0" onBlur={(e) => open && e.relatedTarget && !ref.current?.contains(e.relatedTarget as Node) && setOpen(false)}>
       {button(() => setOpen((o) => !o), open)}
       {open && (
         <div
           ref={panel}
           className={["absolute top-[calc(100%+14px)] z-30 max-w-[calc(100vw-16px)] rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            // A picked item closes the menu; focus goes back to its button, not to the top of the page.
+            ref.current?.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
+            setOpen(false);
+          }}
         >
           {children}
         </div>
@@ -135,13 +140,15 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
           title={p.title}
           aria-current={p.file === active ? "page" : undefined}
           className={[
-            "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium",
+            // Tabs give way before anything else in the bar: a long title truncates instead of pushing Share and Export off.
+            "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium",
+            p.file === active ? "min-w-[34px] max-w-[14rem]" : "shrink-0 lg:min-w-[34px] lg:max-w-[11rem] lg:shrink",
             p.file === active ? "bg-bubble text-ink" : "text-mute hover:bg-bubble/70 hover:text-ink",
           ].join(" ")}
         >
           <PageIcon p={p} />
           {/* Narrow canvas: only the active tab keeps its label; the others show their icon. */}
-          <span className={["whitespace-nowrap", p.file === active ? "" : "max-lg:hidden"].join(" ")}>{tabTitle(p)}</span>
+          <span className={["truncate", p.file === active ? "" : "max-lg:hidden"].join(" ")}>{tabTitle(p)}</span>
           {dot(p.file) && <Dot />}
         </button>
       ))}
@@ -181,7 +188,14 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
       align="right"
       button={(toggle, open) => (
         <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} disabled={!canExport && renders.length === 0} className={["shrink-0 rounded-lg border border-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35 max-sm:px-3", open ? "bg-ink/85" : "bg-ink"].join(" ")}>
-          {exporting ? `Rendering ${pct}%` : "Export"}
+          {exporting ? (
+            <>
+              <span className="max-sm:hidden">Rendering </span>
+              {pct}%
+            </>
+          ) : (
+            "Export"
+          )}
         </button>
       )}
     >

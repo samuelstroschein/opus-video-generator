@@ -65,7 +65,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   const now = live ? pace.progress?.label || active?.detail || activity : undefined;
   return (
     <div className="mx-2 rounded-t-xl border border-b-0 border-line-2 bg-paper">
-      <button onClick={() => setPinned(!open)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
+      <button onClick={() => setPinned(!open)} aria-expanded={open} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
         {live ? <Spinner /> : allDone && <span className="text-[11px] text-ok">✓</span>}
         <span className="min-w-0 flex-1 truncate">{open ? counter : (active?.title ?? (allDone ? "All steps done" : counter))}</span>
         {!open && (

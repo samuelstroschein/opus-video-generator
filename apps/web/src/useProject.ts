@@ -33,6 +33,16 @@ type ServerEvent = { type: string; [k: string]: any };
 
 const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null, queued: [], question: null };
 
+/** An event the chat can't apply (a malformed one) is skipped, rather than taking the whole editor down. */
+function safeReduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
+  try {
+    return reduce(state, e);
+  } catch (err) {
+    console.warn("Skipped an event the chat could not apply", e, err);
+    return state;
+  }
+}
+
 function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
   const items = [...state.items];
   switch (e.type) {
@@ -119,12 +129,14 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
 
 /** Chat state (rebuilt from the replayed event log), project stage state, and a tick that bumps when files change. */
 export function useProject(id: string) {
-  const [chat, dispatch] = useReducer(reduce, initial);
+  const [chat, dispatch] = useReducer(safeReduce, initial);
   const [state, setState] = useState<ProjectState | null>(null);
   /** The project id is unknown (or the API refused it): the view shows a not-found page instead of an empty editor. */
   const [missing, setMissing] = useState(false);
   /** The server can't be reached. The event stream keeps retrying on its own; this clears once it reconnects. */
-  const [offline, setOffline] = useState(false);
+  const [stateDown, setStateDown] = useState(false);
+  const [streamDown, setStreamDown] = useState(false);
+  const offline = stateDown || streamDown;
   const [fileTick, setFileTick] = useState(0);
   /** When each page last changed (scene files count as the video page). Drives the "unseen change" dots on tabs. */
   const [changed, setChanged] = useState<Record<string, number>>({});
@@ -135,7 +147,7 @@ export function useProject(id: string) {
     (files = true) => {
       clearTimeout(refetch.current);
       refetch.current = window.setTimeout(() => {
-        api.get(id).then((s) => (setState(s), setOffline(false))).catch(() => {});
+        api.get(id).then((s) => (setState(s), setStateDown(false))).catch(() => {});
         if (files) setFileTick((t) => t + 1);
       }, 150);
     },
@@ -144,33 +156,68 @@ export function useProject(id: string) {
 
   useEffect(() => {
     dispatch({ type: "reset" });
-    api.get(id).then(setState, (e) => (/not found/i.test(String(e?.message)) ? setMissing(true) : setOffline(true)));
-    const es = new EventSource(`/api/projects/${id}/events`);
-    es.onopen = () => {
-      dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
-      setOffline(false);
+    let alive = true;
+    let es: EventSource | null = null;
+    let retryState = 0;
+    let retryStream = 0;
+    let wait = 1000;
+    // Project state: retried until it loads (unless the project doesn't exist).
+    const load = () =>
+      api.get(id).then(
+        (s) => alive && (setState(s), setStateDown(false)),
+        (e) => {
+          if (!alive) return;
+          if (/not found/i.test(String(e?.message))) return setMissing(true);
+          setStateDown(true);
+          retryState = window.setTimeout(load, 3000);
+        },
+      );
+    void load();
+
+    // The event stream. EventSource retries network drops by itself, but gives up for good on an HTTP error (a 502
+    // from the proxy while the server restarts): then open a new one, backing off up to 10 s.
+    const connect = () => {
+      es = new EventSource(`/api/projects/${id}/events`);
+      es.onopen = () => {
+        dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
+        setStreamDown(false);
+        wait = 1000;
+      };
+      es.onerror = () => {
+        if (!alive || !es) return;
+        if (es.readyState !== EventSource.OPEN) setStreamDown(true);
+        if (es.readyState === EventSource.CLOSED) {
+          retryStream = window.setTimeout(connect, wait);
+          wait = Math.min(wait * 2, 10_000);
+        }
+      };
+      es.onmessage = (m) => {
+        let e: ServerEvent;
+        try {
+          e = JSON.parse(m.data) as ServerEvent;
+        } catch {
+          return; // a malformed event: skip it rather than break the stream handler
+        }
+        if (e.type === "file.changed" && e.path !== "*") {
+          const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
+          if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
+        }
+        if (e.type === "file.changed") refresh();
+        else if (e.type === "canvas") refresh(false);
+        else {
+          dispatch(e);
+          if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh(false);
+        }
+      };
+      es.addEventListener("ready", () => refresh(false)); // the replay is done: fetch state, but nothing changed on disk
     };
-    es.onerror = () => es.readyState !== EventSource.OPEN && setOffline(true);
-    es.onmessage = (m) => {
-      let e: ServerEvent;
-      try {
-        e = JSON.parse(m.data) as ServerEvent;
-      } catch {
-        return; // a malformed event: skip it rather than break the stream handler
-      }
-      if (e.type === "file.changed" && e.path !== "*") {
-        const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
-        if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
-      }
-      if (e.type === "file.changed") refresh();
-      else if (e.type === "canvas") refresh(false);
-      else {
-        dispatch(e);
-        if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh(false);
-      }
+    connect();
+    return () => {
+      alive = false;
+      clearTimeout(retryState);
+      clearTimeout(retryStream);
+      es?.close();
     };
-    es.addEventListener("ready", () => refresh(false)); // the replay is done: fetch state, but nothing changed on disk
-    return () => es.close();
   }, [id, refresh]);
 
   return { chat, state, fileTick, changed, missing, offline };

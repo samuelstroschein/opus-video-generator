@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
-import { api, scopeLabel, type Scope } from "./api";
+import { api, say, scopeLabel, type Scope } from "./api";
 import { Spinner, StepCard } from "./Steps";
 import { lastActivity } from "./useProject";
 import type { Item, useProject } from "./useProject";
@@ -41,10 +41,17 @@ export function ChatPane(props: {
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    // Only the user unpins (scrolling up by wheel, touch or keys); reaching the bottom again re-pins. Scroll events
-    // caused by layout (history replaying, content resizing) never unpin.
+    // Only the user unpins; reaching the bottom again re-pins. Scrolling up by any means (wheel, touch, keys, the
+    // scrollbar) moves scrollTop up while the content keeps its size; layout (history replaying, content or the pane
+    // resizing) never does that, so it never unpins.
     const atBottom = () => el.scrollHeight - el.scrollTop - el.clientHeight < 24;
-    const onScroll = () => atBottom() && (pinned.current = true);
+    let last = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
+    const onScroll = () => {
+      const now = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
+      if (atBottom()) pinned.current = true;
+      else if (now.top < last.top && now.height >= last.height && now.client === last.client) pinned.current = false;
+      last = now;
+    };
     const unpin = () => requestAnimationFrame(() => !atBottom() && (pinned.current = false));
     const pin = () => pinned.current && (el.scrollTop = el.scrollHeight);
     el.addEventListener("scroll", onScroll);
@@ -73,7 +80,7 @@ export function ChatPane(props: {
       if (message === text) setText("");
       if (files === att.files) att.clear(); // a chip or quick reply leaves pending attachments alone
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(say(e));
     }
   }
 
@@ -147,7 +154,8 @@ export function ChatPane(props: {
           ].join(" ")}
         >
           {asking && (
-            <div className="flex flex-col gap-2 px-1 pb-1 pt-0.5">
+            // Short screens (a phone on its side): the question scrolls inside itself so the chat stays on screen.
+            <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
               <div className="flex items-center gap-2 text-[13px] text-mute">
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <circle cx="8" cy="8" r="6.5" />
@@ -168,7 +176,7 @@ export function ChatPane(props: {
                     className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
                   >
                     <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md border border-line-3 bg-white font-mono text-xs text-mute">{i + 1}</span>
-                    <span className="flex-1">{r}</span>
+                    <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{r}</span>
                     <span className={["text-mute", i === sel && !text ? "opacity-100" : "opacity-0 group-hover:opacity-100"].join(" ")}>→</span>
                   </button>
                 ))}
@@ -273,10 +281,10 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
         <span className="min-w-0">Queued · goes out when this run finishes</span>
         {note.qid && !editing && (
           <>
-            <button onClick={() => (setDraft(note.text), setEditing(true))} className="shrink-0 whitespace-nowrap font-medium hover:text-ink">
+            <button onClick={() => (setDraft(note.text), setEditing(true))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Edit
             </button>
-            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="shrink-0 whitespace-nowrap font-medium hover:text-ink">
+            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Remove
             </button>
           </>
@@ -292,7 +300,7 @@ function FormAnswer({ text }: { text: string }) {
   const lines = text.split("\n").slice(1);
   return (
     <div className="max-w-[85%] self-end rounded-[14px] bg-bubble px-[13px] py-[9px]">
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 font-medium">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 font-medium">
         Direction answered <span className="text-[9px] text-faint">{open ? "▾" : "▸"}</span>
       </button>
       {open && <div className="mt-1 whitespace-pre-wrap text-[13px] text-mute">{lines.join("\n")}</div>}
@@ -386,7 +394,7 @@ function ToolGroup({ tools, live, now }: { tools: Tool[]; live: boolean; now?: s
   const took = !live && first && last ? ` · ${dur(last - first)}` : "";
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} className="flex max-w-full items-center gap-1.5 hover:text-mute">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex max-w-full items-center gap-1.5 hover:text-mute">
         <span className={live ? "text-faint" : "text-ok"}>{live ? "◦" : "✓"}</span>
         <span className="min-w-0 truncate">{live ? `${n} so far${now ? ` · ${now}` : ""}` : `${n}${took}`}</span>
         <span className="text-[9px]">{open ? "▾" : "▸"}</span>
@@ -410,7 +418,7 @@ function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
   const label = item.pass ? `Review passed · round ${item.round}` : `Review · round ${item.round} · ${item.fixes.length} fix${item.fixes.length === 1 ? "" : "es"}`;
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-1.5 hover:text-mute">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 hover:text-mute">
         <span className={item.pass ? "text-ok" : "text-[#b7791f]"}>{item.pass ? "✓" : "⚑"}</span>
         <span>{label}</span>
         {item.fixes.length > 0 && <span className="text-[9px]">{open ? "▾" : "▸"}</span>}

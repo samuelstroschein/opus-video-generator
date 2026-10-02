@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api, type Example, type ProjectSummary } from "./api";
+import { Component, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { api, say, type Example, type ProjectSummary } from "./api";
 import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
 import { SpaceBackground } from "./SpaceBackground";
@@ -18,7 +18,31 @@ function useHashRoute() {
 
 export function App() {
   const projectId = useHashRoute();
-  return projectId ? <ProjectView key={projectId} id={projectId} /> : <Home />;
+  return <Recover key={projectId ?? "home"}>{projectId ? <ProjectView key={projectId} id={projectId} /> : <Home />}</Recover>;
+}
+
+/** If something on the page breaks, say so and offer a reload instead of leaving a blank white screen. */
+class Recover extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(e: unknown) {
+    console.error(e);
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-paper px-6 text-center text-ink">
+        <h1 className="m-0 text-xl font-semibold">Something went wrong on this page</h1>
+        <p className="m-0 text-sm text-mute">Your project is saved. Reloading usually fixes it.</p>
+        <div className="mt-2 flex gap-2">
+          <button onClick={() => location.reload()} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">Reload</button>
+          <a href="#/" className="rounded-lg border border-line-3 bg-white px-4 py-2 text-[13px] font-medium">All projects</a>
+        </div>
+      </div>
+    );
+  }
 }
 
 // ───────────────────────── Home ─────────────────────────
@@ -32,8 +56,6 @@ const nextBlank = (text: string, from: number) => blanks(text).find(([s]) => s >
 // Example categories, in the order the tags show (launches first: what this app is for).
 const CATEGORIES = ["Launches", "Explainers", "About AI", "Stories", "Music videos", "Games & worlds", "Art", "History"];
 
-/** An error in words a person can act on (the browser's own "Failed to fetch" says nothing). */
-const say = (e: unknown) => (e instanceof TypeError ? "Can't reach the server. Check that it is running, then try again." : e instanceof Error ? e.message : String(e));
 
 function Home() {
   const [prompt, setPrompt] = useState("");

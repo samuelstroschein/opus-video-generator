@@ -32,6 +32,8 @@ textarea:focus { outline: none; }
 /* ...except on the white surfaces inside it (the player), which go back to ink. A video sits flush with its frame, so its ring goes inside. */
 .landing .surface-light :where(button, a, [tabindex], video):focus-visible { outline-color: rgb(25 24 23 / .6); }
 .landing .surface-light video:focus-visible { outline-color: rgb(255 255 255 / .75); outline-offset: -3px; }
+/* Dark bars in the light editor (the video timeline) need the light ring too. */
+.surface-dark :where(button, a, [tabindex]):focus-visible { outline-color: rgb(255 255 255 / .7); }
 
 /* Honour reduced motion everywhere: no spinners spinning, no zooming cards, no sliding bars. */
 @media (prefers-reduced-motion: reduce) {

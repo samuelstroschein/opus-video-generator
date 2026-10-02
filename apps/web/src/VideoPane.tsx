@@ -58,7 +58,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
   return (
     <div className="flex h-full flex-col bg-black">
       <iframe ref={ref} title="video" sandbox="allow-scripts allow-same-origin" src={src} onLoad={onLoad} className="min-h-0 flex-1 border-0" />
-      <div className="flex items-stretch gap-4 border-t border-white/10 bg-[#232323] px-4 py-3 text-neutral-300 select-none">
+      <div className="surface-dark flex items-stretch gap-4 border-t border-white/10 bg-[#232323] px-4 py-3 text-neutral-300 select-none">
         <div className="flex shrink-0 items-center gap-1">
           <IconButton label="Back to start" disabled={!v} onClick={() => cmd({ action: "seek", time: 0 })}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -106,7 +106,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           onPointerMove={move}
           onPointerUp={up}
           onPointerCancel={up}
-          className="relative min-w-0 flex-1 cursor-pointer touch-none rounded focus-visible:outline-white/60"
+          className="relative min-w-0 flex-1 cursor-pointer touch-none rounded"
         >
           {/* ruler */}
           <div className="relative h-5 text-[10px] text-neutral-400">
@@ -127,9 +127,9 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
                 style={{ left: pct(s.start), width: pct(s.dur) }}
                 className="absolute inset-y-0 p-px"
               >
-                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current?.name === s.name ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-400"].join(" ")}>
+                <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current?.name === s.name ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-300"].join(" ")}>
                   <span className="truncate">
-                    {s.name} <span className="opacity-75">· {s.dur}s</span>
+                    {s.name} <span className={current?.name === s.name ? "text-white/75" : "text-neutral-400"}>· {s.dur}s</span>
                   </span>
                 </div>
               </div>

@@ -56,6 +56,9 @@ function message(body: { text: string; scope?: Scope }, files: File[]): RequestI
   return { method: "POST", body: form };
 }
 
+/** An error in words a person can act on (the browser's own "Failed to fetch" says nothing). */
+export const say = (e: unknown) => (e instanceof TypeError ? "Can't reach the server. Check that it is running, then try again." : e instanceof Error ? e.message : String(e));
+
 export const api = {
   list: () => fetch("/api/projects").then((r) => json<ProjectSummary[]>(r)),
   examples: () => fetch("/api/examples").then((r) => json<Example[]>(r)),
