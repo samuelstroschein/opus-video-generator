@@ -17,37 +17,38 @@ function GitHubMark({ size = 16 }: { size?: number }) {
   );
 }
 
-/** The repo's star count, or null until it is known (or if the repo is not public yet). Cached for the session. */
+/**
+ * The repo's star count, or null until it is known (or if the repo is not public yet). The answer, either way, is
+ * kept for an hour: GitHub allows 60 anonymous lookups an hour, and a failed one shows up in the console.
+ */
+const STARS_KEY = `stars:${GITHUB_REPO}`;
+const STARS_TTL = 60 * 60 * 1000;
+function cachedStars(): { n: number | null } | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(STARS_KEY) ?? "null") as { n: number | null; at: number } | null;
+    return v && Date.now() - v.at < STARS_TTL ? { n: v.n } : null;
+  } catch {
+    return null;
+  }
+}
 function useStars(): number | null {
-  const [stars, setStars] = useState<number | null>(() => {
-    try {
-      const v = sessionStorage.getItem(`stars:${GITHUB_REPO}`);
-      return v === null || v === "none" ? null : Number(v);
-    } catch {
-      return null;
-    }
-  });
+  const [stars, setStars] = useState<number | null>(() => cachedStars()?.n ?? null);
   useEffect(() => {
-    if (stars !== null) return;
-    try {
-      if (sessionStorage.getItem(`stars:${GITHUB_REPO}`) === "none") return; // looked up already: not public yet
-    } catch {}
+    if (cachedStars()) return; // looked up within the hour (found, or not public yet)
+    const keep = (n: number | null) => {
+      try {
+        localStorage.setItem(STARS_KEY, JSON.stringify({ n, at: Date.now() }));
+      } catch {}
+    };
     fetch(`https://api.github.com/repos/${GITHUB_REPO}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { stargazers_count?: number } | null) => {
-        if (typeof d?.stargazers_count !== "number") {
-          try {
-            sessionStorage.setItem(`stars:${GITHUB_REPO}`, "none");
-          } catch {}
-          return;
-        }
-        setStars(d.stargazers_count);
-        try {
-          sessionStorage.setItem(`stars:${GITHUB_REPO}`, String(d.stargazers_count));
-        } catch {}
+        const n = typeof d?.stargazers_count === "number" ? d.stargazers_count : null;
+        keep(n);
+        setStars(n);
       })
       .catch(() => {});
-  }, [stars]);
+  }, []);
   return stars;
 }
 

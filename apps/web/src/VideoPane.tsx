@@ -129,7 +129,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
               >
                 <div className={["flex h-full items-center truncate rounded border px-2 text-[11px]", current?.name === s.name ? "border-neutral-400 bg-white/10 text-white" : "border-neutral-600 bg-white/[0.03] text-neutral-400"].join(" ")}>
                   <span className="truncate">
-                    {s.name} <span className="text-neutral-500">· {s.dur}s</span>
+                    {s.name} <span className="opacity-75">· {s.dur}s</span>
                   </span>
                 </div>
               </div>

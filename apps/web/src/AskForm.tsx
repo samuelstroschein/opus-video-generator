@@ -20,8 +20,8 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
   const submit = () => onSubmit(`Direction:\n${form.questions.map((q) => `- ${q.label} ${answerText(q)}`).join("\n")}`);
 
   return (
-    <div className="flex h-full items-start justify-center overflow-y-auto bg-paper px-8 py-12">
-      <div className="w-full max-w-[600px] rounded-2xl border border-line-2 bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
+    <div className="flex h-full items-start justify-center overflow-y-auto bg-paper px-8 pt-12 max-sm:px-3 max-sm:pt-4">
+      <div className="mb-12 w-full max-w-[600px] rounded-2xl border border-line-2 bg-white p-7 max-sm:mb-4 max-sm:p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
         <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">{form.title}</h2>
         {form.intro && <p className="mb-0 mt-1.5 text-sm text-mute">{form.intro}</p>}
         <div className="mt-5 divide-y divide-line">
@@ -36,7 +36,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                     value={values[q.id] as string}
                     onChange={(e) => set(q.id, e.target.value)}
                     rows={2}
-                    className="w-full resize-none rounded-lg border border-line-3 p-2.5 text-sm outline-none focus:border-mute"
+                    className="w-full resize-none rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base focus:border-mute"
                   />
                 ) : (
                   <>
@@ -56,6 +56,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                     })}
                     {q.allowOther && (
                       <button
+                        aria-pressed={q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER}
                         onClick={() => (q.type === "multi" ? set(q.id, [...(values[q.id] as string[]).filter((x) => x !== OTHER), OTHER]) : set(q.id, OTHER))}
                         className={["rounded-full border border-dashed px-3 py-1 text-[13px] font-medium", (q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER) ? "border-ink bg-ink text-white" : "border-line-3 text-mute hover:bg-bubble"].join(" ")}
                       >
@@ -72,13 +73,13 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                   onChange={(e) => setOther((s) => ({ ...s, [q.id]: e.target.value }))}
                   placeholder="Tell me more"
                   aria-label={`${q.label}: something else`}
-                  className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none focus:border-mute"
+                  className="mt-2 w-full rounded-lg border border-line-3 p-2.5 text-sm outline-none max-sm:text-base focus:border-mute"
                 />
               )}
             </div>
           ))}
         </div>
-        <div className="sticky bottom-0 -mx-7 -mb-7 flex items-center gap-1 rounded-b-2xl border-t border-line bg-white px-7 py-4">
+        <div className="sticky bottom-0 -mx-7 -mb-7 flex flex-wrap items-center gap-1 whitespace-nowrap rounded-b-2xl border-t border-line bg-white px-7 py-4 max-sm:-mx-5 max-sm:-mb-5 max-sm:px-3 max-sm:py-3">
           <button disabled={busy} onClick={() => onSubmit("Direction: Decide for me. Pick sensible values for everything, tell me what you chose, and continue.")} className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink disabled:opacity-40">
             Decide for me
           </button>

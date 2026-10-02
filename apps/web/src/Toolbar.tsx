@@ -1,16 +1,43 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { AudioLines, ChartColumn, ChevronDown, Share2, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
 import { api, type PageInfo } from "./api";
 import { SHARE_TEXT } from "./Header";
 
-/** Small click-outside popover. */
+/**
+ * Small click-outside menu. It stays on screen on narrow windows (shifted back inside the edge), takes focus to its
+ * first item, moves with the arrow keys, and gives focus back to its button on Esc.
+ */
 function Popover({ button, children, align = "left" }: { button: (toggle: () => void, open: boolean) => ReactNode; children: ReactNode; align?: "left" | "right" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const items = () => [...(panel.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? [])];
+  useLayoutEffect(() => {
+    const el = panel.current;
+    if (!open || !el) return;
+    const r = el.getBoundingClientRect();
+    const w = document.documentElement.clientWidth; // not innerWidth: on phones that grows to fit the overflowing menu
+    const dx = r.left < 8 ? 8 - r.left : r.right > w - 8 ? w - 8 - r.right : 0;
+    // Shift with a margin, not a transform: a transformed menu still widens the page by its original position.
+    if (align === "right") el.style.marginRight = dx ? `${-dx}px` : "";
+    else el.style.marginLeft = dx ? `${dx}px` : "";
+    items()[0]?.focus({ preventScroll: true });
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (ref.current?.contains(document.activeElement)) ref.current.querySelector<HTMLElement>("[aria-haspopup]")?.focus();
+        return setOpen(false);
+      }
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const list = items();
+      if (!list.length) return;
+      e.preventDefault();
+      const i = list.indexOf(document.activeElement as HTMLElement);
+      list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length].focus();
+    };
     const blur = () => setOpen(false); // a click into the canvas iframe never reaches this window, but blurs it
     addEventListener("mousedown", on);
     addEventListener("keydown", key);
@@ -26,7 +53,8 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
       {button(() => setOpen((o) => !o), open)}
       {open && (
         <div
-          className={["absolute top-[calc(100%+14px)] z-30 rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
+          ref={panel}
+          className={["absolute top-[calc(100%+14px)] z-30 max-w-[calc(100vw-16px)] rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
           onClick={() => setOpen(false)}
         >
           {children}
@@ -128,10 +156,10 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
             </button>
           )}
         >
-          <div className="flex w-[280px] flex-col gap-px" role="menu">
+          <div className="flex w-[280px] max-w-full flex-col gap-px" role="menu">
             <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium text-faint">More pages · newest first</div>
             {hidden.map((p) => (
-              <button key={p.file} onClick={() => onPick(p.file)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble">
+              <button key={p.file} role="menuitem" onClick={() => onPick(p.file)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble">
                 <PageIcon p={p} />
                 <span className="flex-1 truncate">{tabTitle(p)}</span>
                 <span className="font-mono text-[11px] text-faint">{p.file}</span>
@@ -157,8 +185,9 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
         </button>
       )}
     >
-      <div onClick={(e) => e.stopPropagation()} className="w-72" role="menu">
+      <div onClick={(e) => e.stopPropagation()} className="w-72 max-w-full" role="menu">
         <button
+          role="menuitem"
           disabled={!canExport || !!exporting}
           onClick={() => api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
           className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble disabled:opacity-50"
@@ -179,10 +208,10 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
             <div className="px-2.5 pb-1 text-[11px] font-medium text-faint">Renders</div>
             {renders.slice(0, 5).map((f) => (
               <div key={f} className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[13px] hover:bg-bubble">
-                <a className="truncate font-mono text-[11px]" href={api.renderUrl(id, f)} target="_blank" rel="noreferrer">
+                <a role="menuitem" className="truncate font-mono text-[11px]" href={api.renderUrl(id, f)} target="_blank" rel="noreferrer">
                   {f}
                 </a>
-                <a className="ml-3 shrink-0 text-xs font-medium underline" href={api.renderUrl(id, f, true)}>
+                <a role="menuitem" aria-label={`Download ${f}`} className="ml-3 shrink-0 text-xs font-medium underline" href={api.renderUrl(id, f, true)}>
                   Download
                 </a>
               </div>
@@ -273,7 +302,7 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
         </button>
       )}
     >
-      <div className="flex w-72 flex-col gap-px" role="menu">
+      <div className="flex w-72 max-w-full flex-col gap-px" role="menu">
         {targets.map((t) => (
           <button key={t.label} role="menuitem" onClick={() => share(t.href)} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium hover:bg-bubble">
             {t.icon}

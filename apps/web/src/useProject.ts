@@ -123,6 +123,8 @@ export function useProject(id: string) {
   const [state, setState] = useState<ProjectState | null>(null);
   /** The project id is unknown (or the API refused it): the view shows a not-found page instead of an empty editor. */
   const [missing, setMissing] = useState(false);
+  /** The server can't be reached. The event stream keeps retrying on its own; this clears once it reconnects. */
+  const [offline, setOffline] = useState(false);
   const [fileTick, setFileTick] = useState(0);
   /** When each page last changed (scene files count as the video page). Drives the "unseen change" dots on tabs. */
   const [changed, setChanged] = useState<Record<string, number>>({});
@@ -133,7 +135,7 @@ export function useProject(id: string) {
     (files = true) => {
       clearTimeout(refetch.current);
       refetch.current = window.setTimeout(() => {
-        api.get(id).then(setState).catch(() => {});
+        api.get(id).then((s) => (setState(s), setOffline(false))).catch(() => {});
         if (files) setFileTick((t) => t + 1);
       }, 150);
     },
@@ -142,11 +144,20 @@ export function useProject(id: string) {
 
   useEffect(() => {
     dispatch({ type: "reset" });
-    api.get(id).then(setState, (e) => /not found/i.test(String(e?.message)) && setMissing(true));
+    api.get(id).then(setState, (e) => (/not found/i.test(String(e?.message)) ? setMissing(true) : setOffline(true)));
     const es = new EventSource(`/api/projects/${id}/events`);
-    es.onopen = () => dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
+    es.onopen = () => {
+      dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
+      setOffline(false);
+    };
+    es.onerror = () => es.readyState !== EventSource.OPEN && setOffline(true);
     es.onmessage = (m) => {
-      const e = JSON.parse(m.data) as ServerEvent;
+      let e: ServerEvent;
+      try {
+        e = JSON.parse(m.data) as ServerEvent;
+      } catch {
+        return; // a malformed event: skip it rather than break the stream handler
+      }
       if (e.type === "file.changed" && e.path !== "*") {
         const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
         if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
@@ -162,7 +173,7 @@ export function useProject(id: string) {
     return () => es.close();
   }, [id, refresh]);
 
-  return { chat, state, fileTick, changed, missing };
+  return { chat, state, fileTick, changed, missing, offline };
 }
 
 /** The tool the agent is running right now, as a short label ("Writing scenes/02-gin.jsx"), if one is in flight. */

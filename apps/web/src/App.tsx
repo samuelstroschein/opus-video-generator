@@ -32,6 +32,9 @@ const nextBlank = (text: string, from: number) => blanks(text).find(([s]) => s >
 // Example categories, in the order the tags show (launches first: what this app is for).
 const CATEGORIES = ["Launches", "Explainers", "About AI", "Stories", "Music videos", "Games & worlds", "Art", "History"];
 
+/** An error in words a person can act on (the browser's own "Failed to fetch" says nothing). */
+const say = (e: unknown) => (e instanceof TypeError ? "Can't reach the server. Check that it is running, then try again." : e instanceof Error ? e.message : String(e));
+
 function Home() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,9 +59,20 @@ function Home() {
   const att = useAttachments(setError);
   const box = useRef<HTMLTextAreaElement>(null);
   const mirror = useRef<HTMLDivElement>(null);
+  // Load projects and examples; if the server is down, keep trying quietly and fill in once it is back.
   useEffect(() => {
-    api.list().then(setProjects, () => setOffline(true));
-    api.examples().then(setExamples, () => setOffline(true));
+    let timer = 0;
+    let alive = true;
+    const load = () =>
+      Promise.all([api.list(), api.examples()]).then(
+        ([p, x]) => alive && (setProjects(p), setExamples(x), setOffline(false)),
+        () => alive && (setOffline(true), (timer = window.setTimeout(load, 5000))),
+      );
+    void load();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const select = (range: [number, number] | null) => {
@@ -69,13 +83,22 @@ function Home() {
   };
   const blanksLeft = blanks(prompt).length > 0;
   const [blankHint, setBlankHint] = useState(false);
-  // The box grows with its text (up to a limit), so a long or example prompt is never half hidden.
-  useLayoutEffect(() => {
+  // The box grows with its text (up to a limit), so a long or example prompt is never half hidden. Past the limit it
+  // scrolls (without a scrollbar, which would shift the blank highlights), so a fade at the bottom says there is more.
+  const [more, setMore] = useState(false);
+  const checkMore = (el: HTMLTextAreaElement) => setMore(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  const fit = () => {
     const el = box.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
-  }, [prompt]);
+    checkMore(el);
+  };
+  useLayoutEffect(fit, [prompt]);
+  useEffect(() => {
+    addEventListener("resize", fit); // a narrower window (or a rotated phone) wraps the text onto more lines
+    return () => removeEventListener("resize", fit);
+  }, []);
 
   async function start() {
     if ((!prompt.trim() && !att.files.length) || busy) return;
@@ -89,16 +112,16 @@ function Home() {
       const { id } = await api.create(prompt, att.files);
       location.hash = `#/p/${id}`;
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(say(e));
       setBusy(false);
     }
   }
 
+  /** Don't throw away something the user wrote themselves: ask first. True if it is fine to replace the prompt. */
+  const mayReplace = () => !prompt.trim() || examples.some((e) => e.prompt === prompt) || confirm("Replace your prompt with this example?");
+
   /** "Use": attach the example's reference pack (swapping out any earlier one) and write the prompt with blanks to fill. */
   const use = async (x: Example) => {
-    // Don't throw away something the user wrote themselves.
-    const typed = prompt.trim() && !examples.some((e) => e.prompt === prompt);
-    if (typed && !confirm("Replace your prompt with this example?")) return;
     setError("");
     setBlankHint(false);
     setUsing(x.id);
@@ -109,7 +132,7 @@ function Home() {
       const pack = await api.examplePack(x);
       att.swap((f) => f.name.endsWith("-reference.zip"), [pack]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(say(e));
     } finally {
       setUsing(null);
     }
@@ -123,7 +146,7 @@ function Home() {
       <div className="relative z-30 px-2">
         <AppHeader tone="dark" />
       </div>
-      <div className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[72px] max-sm:pt-10">
+      <main className="mx-auto flex max-w-[1120px] flex-col items-center gap-10 px-6 pb-24 pt-[72px] max-sm:pt-10">
         <h1 className="m-0 text-center text-[56px] font-semibold leading-[1.05] tracking-[-0.035em] text-[#f5f3ef] max-sm:text-4xl">
           Generate videos with{" "}
           <span className="whitespace-nowrap">
@@ -140,7 +163,7 @@ function Home() {
           ].join(" ")}
         >
           <PendingFiles files={att.files} remove={att.remove} glass />
-          <div className="relative">
+          <div className={more ? "relative [mask-image:linear-gradient(to_bottom,black_80%,transparent)]" : "relative"}>
           {/* The blanks stay highlighted: a mirror of the text sits behind the (transparent) textarea, with each [blank] marked. */}
           <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
             {prompt.split(/(\[(?:product URL|what's new|audience)\])/).map((part, i) =>
@@ -156,8 +179,12 @@ function Home() {
           </div>
           <textarea
             ref={box}
-            onScroll={(e) => mirror.current && (mirror.current.scrollTop = e.currentTarget.scrollTop)}
+            onScroll={(e) => {
+              if (mirror.current) mirror.current.scrollTop = e.currentTarget.scrollTop;
+              checkMore(e.currentTarget);
+            }}
             autoFocus
+            aria-label="Describe the video you want"
             value={prompt}
             onChange={(e) => (setPrompt(e.target.value), setBlankHint(false))}
             onKeyDown={(e) => {
@@ -180,18 +207,20 @@ function Home() {
           </div>
           <div className="flex items-center justify-between gap-3">
             <AttachButton onPick={att.add} size="lg" glass />
-            {blankHint && blanksLeft && <span className="flex-1 text-right text-[13px] text-[#f0b49d]">Fill in the highlighted blanks first</span>}
+            <span role="status" className="flex-1 text-right text-[13px] text-[#f0b49d]">
+              {blankHint && blanksLeft ? "Fill in the highlighted blanks first" : ""}
+            </span>
             <button onClick={start} disabled={(!prompt.trim() && !att.files.length) || busy} className="rounded-[10px] bg-white px-[18px] py-2.5 text-sm font-medium text-ink hover:bg-white/90 disabled:bg-white/15 disabled:text-white/50">
               {busy ? "Starting…" : "Generate"}
             </button>
           </div>
         </div>
-        {error && <p className="-mt-6 text-sm text-red-300">{error}</p>}
-        {offline && <p className="-mt-4 text-sm text-white/70">Can't reach the server right now. Your projects and the examples will show when it's back.</p>}
+        {error && <p role="alert" className="-mt-6 text-center text-sm text-red-300">{error}</p>}
+        {offline && <p role="status" className="-mt-4 text-center text-sm text-white/70">Can't reach the server right now. Your projects and the examples will show when it's back.</p>}
 
         {projects.length > 0 && (
-          <section className="mt-6 flex w-full flex-col gap-3">
-            <div className="text-[13px] font-medium text-white/70">Your projects</div>
+          <section aria-labelledby="projects-h" className="mt-6 flex w-full flex-col gap-3">
+            <h2 id="projects-h" className="m-0 text-[13px] font-medium text-white/70">Your projects</h2>
             <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#0b0d18]/60 backdrop-blur-md">
               {projects.slice(0, allProjects ? undefined : 5).map((p) => (
                 <a key={p.id} href={`#/p/${p.id}`} className="group flex items-center gap-4 px-4 py-3 hover:bg-white/[0.06]">
@@ -212,19 +241,20 @@ function Home() {
         )}
 
         {examples.length > 0 && (
-        <section className="mt-6 flex w-full flex-col gap-4">
+        <section aria-labelledby="examples-h" className="mt-6 flex w-full flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <div className="text-[13px] font-medium text-white/70">Examples</div>
-            <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-white/60 hover:text-white">
+            <h2 id="examples-h" className="m-0 text-[13px] font-medium text-white/70">Examples</h2>
+            <a href="https://github.com/athemeroy/awesome-opus-5-5-videos" target="_blank" rel="noreferrer" className="text-xs text-white/75 hover:text-white">
               Most-liked Opus 5.5 videos, via awesome-opus-5-5-videos ↗
             </a>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => (setCats(new Set()), setShown(16))}
+              aria-pressed={cats.size === 0}
               className={["rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", cats.size === 0 ? "border-white bg-white text-ink" : "border-white/20 text-white/75 hover:border-white/40 hover:text-white"].join(" ")}
             >
-              All <span className={cats.size === 0 ? "text-ink/50" : "text-white/40"}>{examples.length}</span>
+              All <span className={cats.size === 0 ? "text-ink/65" : "text-white/60"}>{examples.length}</span>
             </button>
             {CATEGORIES.filter((c) => examples.some((x) => x.category === c)).map((c) => {
               const on = cats.has(c);
@@ -235,14 +265,14 @@ function Home() {
                   aria-pressed={on}
                   className={["rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", on ? "border-white bg-white text-ink" : "border-white/20 text-white/75 hover:border-white/40 hover:text-white"].join(" ")}
                 >
-                  {c} <span className={on ? "text-ink/50" : "text-white/40"}>{examples.filter((x) => x.category === c).length}</span>
+                  {c} <span className={on ? "text-ink/65" : "text-white/60"}>{examples.filter((x) => x.category === c).length}</span>
                 </button>
               );
             })}
           </div>
           <div className="grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.slice(0, shown).map((x) => (
-              <ExampleCard key={x.id} x={x} using={using === x.id} onOpen={() => setPlaying(x)} onUse={() => void use(x)} />
+              <ExampleCard key={x.id} x={x} using={using === x.id} onOpen={() => setPlaying(x)} onUse={() => mayReplace() && void use(x)} />
             ))}
           </div>
           {filtered.length > shown && (
@@ -255,14 +285,15 @@ function Home() {
           )}
         </section>
         )}
-      </div>
+      </main>
       {playing && (
         <Player
           x={playing}
           onClose={() => setPlaying(null)}
           onUse={() => {
-            void use(playing);
+            if (!mayReplace()) return;
             setPlaying(null);
+            void use(playing);
           }}
         />
       )}
@@ -311,7 +342,7 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
           muted
           loop
           playsInline
-          preload={matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "auto"}
+          preload={matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "metadata"}
           onError={(e) => (e.currentTarget.poster = x.img)}
           className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
@@ -325,15 +356,17 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
       </button>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="truncate text-[15px] font-semibold text-white/95">{x.title}</div>
-          <div className="truncate text-[13px] text-white/70">
-            <a href={`https://x.com/${x.by}`} target="_blank" rel="noreferrer" className="hover:text-white hover:underline">
+          <div className="truncate text-[15px] font-semibold text-white/95" title={x.title}>
+            {x.title}
+          </div>
+          <div className="flex min-w-0 items-baseline gap-1 text-[13px] text-white/70">
+            <a href={`https://x.com/${x.by}`} target="_blank" rel="noreferrer" className="truncate hover:text-white hover:underline">
               @{x.by}
-            </a>{" "}
-            · <span className="font-mono text-[11px] text-white/60">{x.likes} likes</span>
+            </a>
+            <span className="shrink-0 whitespace-nowrap font-mono text-[11px] text-white/60">· {x.likes} likes</span>
           </div>
         </div>
-        <button onClick={onUse} disabled={using} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-white/30 bg-[#0b0d18]/40 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-white/15 disabled:opacity-60">
+        <button onClick={onUse} disabled={using} aria-label={`Use the style of ${x.title}`} title="Attach its reference pack and start a prompt in this style" className="flex-none rounded-lg border border-white/40 bg-[#0b0d18]/40 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-white/15 disabled:opacity-60">
           {using ? "…" : "Use"}
         </button>
       </div>
@@ -341,9 +374,13 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
   );
 }
 
-/** The full video in place, with credit, a link to the post and "Use this style". Esc or a click outside closes it. */
+/** The full video in place, with credit, a link to the post and "Use this style". Esc, × or a click outside closes it. */
 function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse: () => void }) {
   const dialog = useRef<HTMLDivElement>(null);
+  // The page re-renders while the player is open (projects arriving, a preview loading): read the latest handler
+  // through a ref so the setup below runs once and doesn't pull focus back to the video each time.
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => {
     // A real dialog: focus moves in, Tab stays inside, Esc closes, and the page behind does not scroll.
     const prev = document.activeElement as HTMLElement | null;
@@ -351,7 +388,7 @@ function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse:
     document.body.style.overflow = "hidden";
     dialog.current?.querySelector<HTMLElement>("video")?.focus();
     const on = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return onClose();
+      if (e.key === "Escape") return close.current();
       if (e.key !== "Tab" || !dialog.current) return;
       const items = [...dialog.current.querySelectorAll<HTMLElement>("video, a[href], button")];
       const i = items.indexOf(document.activeElement as HTMLElement);
@@ -365,27 +402,34 @@ function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse:
       document.body.style.overflow = overflow;
       prev?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div ref={dialog} role="dialog" aria-modal="true" aria-label={`${x.title} by @${x.by}`} onClick={(e) => e.stopPropagation()} className="flex w-full max-w-[min(1100px,calc((100vh-160px)*16/9))] flex-col overflow-hidden rounded-2xl bg-white text-ink shadow-2xl">
-        <video src={x.video} poster={x.poster} controls autoPlay playsInline className="block max-h-[calc(100vh-180px)] w-full bg-black" />
-        <div className="flex items-center gap-4 px-5 py-4">
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm max-sm:p-3">
+      <div ref={dialog} role="dialog" aria-modal="true" aria-label={`${x.title} by @${x.by}`} onClick={(e) => e.stopPropagation()} className="surface-light flex w-full max-w-[min(1100px,calc((100vh-160px)*16/9))] flex-col overflow-hidden rounded-2xl bg-white text-ink shadow-2xl">
+        <video src={x.video} poster={x.poster} controls autoPlay playsInline className="block max-h-[calc(100vh-200px)] w-full bg-black" />
+        <div className="flex items-center gap-4 px-5 py-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-3 max-sm:px-4">
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <div className="truncate text-base font-semibold">{x.title}</div>
+            <div className="truncate text-base font-semibold max-sm:whitespace-normal" title={x.title}>
+              {x.title}
+            </div>
             <div className="truncate text-[13px] text-mute">
               <a href={`https://x.com/${x.by}`} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                 @{x.by}
               </a>{" "}
-              · {x.style} · <span className="font-mono text-[11px] text-faint">{x.likes} likes</span>
+              · {x.style} · <span className="font-mono text-[11px] text-mute">{x.likes} likes</span>
             </div>
           </div>
-          <a href={x.url} target="_blank" rel="noreferrer" className="flex-none rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
-            Watch on X ↗
-          </a>
-          <button onClick={onUse} className="flex-none rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">
-            Use this style
-          </button>
+          <div className="flex flex-none items-center gap-2 max-sm:justify-end">
+            <a href={x.url} target="_blank" rel="noreferrer" className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
+              Watch on X ↗
+            </a>
+            <button onClick={onUse} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">
+              Use this style
+            </button>
+            <button onClick={onClose} aria-label="Close" title="Close (Esc)" className="flex h-9 w-9 items-center justify-center rounded-lg text-xl leading-none text-mute hover:bg-bubble hover:text-ink">
+              ×
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -71,11 +71,17 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
   const file = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
-    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Esc on a menu item: focus goes back to "+", not to the top of the page.
+      if (box.current?.contains(document.activeElement)) button.current?.focus();
+      setOpen(false);
+    };
     const blur = () => setOpen(false); // a click into an iframe blurs the window
     addEventListener("mousedown", on);
     addEventListener("keydown", key);
@@ -100,8 +106,11 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
       {/* webkitdirectory is not in React's input typings */}
       <input ref={folder} type="file" hidden onChange={onChange} {...({ webkitdirectory: "" } as object)} />
       <button
+        ref={button}
         type="button"
         disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         aria-label="Attach"
         title="Attach screenshots, reference videos, brand assets"
@@ -114,14 +123,22 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
         {open ? "×" : "+"}
       </button>
       {open && (
-        <div className={["absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border border-line-2 bg-white p-1.5 text-sm text-ink shadow-[0_12px_32px_rgba(0,0,0,.10)]", size === "lg" ? "top-12" : "bottom-10"].join(" ")}>
-          <button type="button" onClick={() => pick(file.current)} className="rounded-lg px-2.5 py-2 text-left hover:bg-bubble">
+        <div
+          role="menu"
+          className={[
+            "absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border p-1.5 text-sm",
+            // On the dark landing the menu is dark glass like the prompt box; in the editor it is a plain white popover.
+            glass ? "border-white/15 bg-[#14162a]/90 text-white shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur-xl" : "border-line-2 bg-white text-ink shadow-[0_12px_32px_rgba(0,0,0,.10)]",
+            size === "lg" ? "top-12" : "bottom-10",
+          ].join(" ")}
+        >
+          <button type="button" role="menuitem" onClick={() => pick(file.current)} className={["rounded-lg px-2.5 py-2 text-left", glass ? "hover:bg-white/10" : "hover:bg-bubble"].join(" ")}>
             Attach file
           </button>
-          <button type="button" onClick={() => pick(folder.current)} className="rounded-lg px-2.5 py-2 text-left hover:bg-bubble">
+          <button type="button" role="menuitem" onClick={() => pick(folder.current)} className={["rounded-lg px-2.5 py-2 text-left", glass ? "hover:bg-white/10" : "hover:bg-bubble"].join(" ")}>
             Attach folder
           </button>
-          <div className="px-2.5 pb-1 pt-1.5 text-xs text-faint">Screenshots, reference videos, brand assets, zips</div>
+          <div className={["px-2.5 pb-1 pt-1.5 text-xs", glass ? "text-white/60" : "text-faint"].join(" ")}>Screenshots, reference videos, brand assets, zips</div>
         </div>
       )}
     </div>

@@ -37,13 +37,13 @@ function DraftFrame({ id, path, n }: { id: string; path: string; n: number }) {
 }
 
 export function ProjectView({ id }: { id: string }) {
-  const { chat, state, fileTick, changed, missing } = useProject(id);
+  const { chat, state, fileTick, changed, missing, offline } = useProject(id);
   // Below 768px there is room for one column: the user switches between the chat and the canvas.
   const [pane, setPane] = useState<"chat" | "canvas">("chat");
   useEffect(() => {
-    document.title = state?.title ? `${state.title} · Launch Video Agent` : "Launch Video Agent";
+    document.title = missing ? "Not found · Launch Video Agent" : state?.title ? `${state.title} · Launch Video Agent` : "Launch Video Agent";
     return () => void (document.title = "Launch Video Agent");
-  }, [state?.title]);
+  }, [state?.title, missing]);
   const [override, setOverride] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [video, setVideo] = useState<VideoState | null>(null);
@@ -132,12 +132,18 @@ export function ProjectView({ id }: { id: string }) {
   return (
     <div className="flex h-full flex-col">
     <AppHeader tone="light">{state?.title ?? "…"}</AppHeader>
+    {offline && (
+      <div role="status" className="shrink-0 border-b border-line bg-accent-soft px-4 py-2 text-center text-[13px] text-ink">
+        Can't reach the server. Reconnecting… your project is safe and shows up again once it's back.
+      </div>
+    )}
     <div className="flex shrink-0 gap-1 border-b border-line bg-white p-1.5 md:hidden" role="tablist" aria-label="View">
       {(["chat", "canvas"] as const).map((p) => (
         <button
           key={p}
           role="tab"
           aria-selected={pane === p}
+          aria-controls={`pane-${p}`}
           onClick={() => setPane(p)}
           className={["flex-1 rounded-lg py-2 text-[13px] font-medium", pane === p ? "bg-bubble text-ink" : "text-mute"].join(" ")}
         >
@@ -146,10 +152,11 @@ export function ProjectView({ id }: { id: string }) {
       ))}
     </div>
     <main className="grid min-h-0 flex-1 bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
-      <div className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
+      <h1 className="sr-only">{state?.title ?? "Project"}</h1>
+      <div id="pane-chat" className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
         <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
-      <section className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
+      <section id="pane-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
         <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
           <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />

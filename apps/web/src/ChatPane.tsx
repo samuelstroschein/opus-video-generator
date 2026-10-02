@@ -189,7 +189,7 @@ export function ChatPane(props: {
               onKeyDown={onKey}
               rows={asking ? 1 : 2}
               placeholder={placeholder}
-              className="max-h-40 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint"
+              className="max-h-40 flex-1 resize-none bg-transparent px-1 py-0.5 text-sm leading-normal placeholder:text-faint max-sm:text-base"
             />
           </div>
           <div className="flex items-center justify-between">
@@ -255,7 +255,7 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
               if (e.key === "Escape") setEditing(false);
             }}
             rows={Math.min(6, draft.split("\n").length + 1)}
-            className="resize-none bg-transparent px-1 text-sm leading-normal"
+            className="resize-none bg-transparent px-1 text-sm leading-normal max-sm:text-base"
           />
           <div className="flex justify-end gap-1.5">
             <button onClick={() => setEditing(false)} className="rounded-lg px-2.5 py-1 text-xs font-medium text-mute hover:bg-bubble">
@@ -270,13 +270,13 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
         <UserBubble id={id} text={note.text} scope={note.scope} attachments={note.attachments} faded />
       )}
       <div className="flex items-center gap-2 text-[11px] text-faint">
-        <span>Queued · goes out when this run finishes</span>
+        <span className="min-w-0">Queued · goes out when this run finishes</span>
         {note.qid && !editing && (
           <>
-            <button onClick={() => (setDraft(note.text), setEditing(true))} className="font-medium hover:text-ink">
+            <button onClick={() => (setDraft(note.text), setEditing(true))} className="shrink-0 whitespace-nowrap font-medium hover:text-ink">
               Edit
             </button>
-            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="font-medium hover:text-ink">
+            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="shrink-0 whitespace-nowrap font-medium hover:text-ink">
               Remove
             </button>
           </>
