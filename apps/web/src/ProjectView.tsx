@@ -39,6 +39,10 @@ function DraftFrame({ id, path, n }: { id: string; path: string; n: number }) {
 
 export function ProjectView({ id }: { id: string }) {
   const { chat, state, fileTick, changed, missing, offline } = useProject(id);
+  // Back online: a "can't reach the server" error from while it was down no longer applies.
+  useEffect(() => {
+    if (!offline) setError((e) => (e.startsWith("Can't reach the server") ? "" : e));
+  }, [offline]);
   // Below 768px there is room for one column: the user switches between the chat and the canvas.
   const [pane, setPane] = useState<"chat" | "canvas">("chat");
   useEffect(() => {
@@ -147,7 +151,7 @@ export function ProjectView({ id }: { id: string }) {
     <AppHeader tone="light">{state?.title ?? "…"}</AppHeader>
     {offline && (
       <div role="status" className="shrink-0 border-b border-line bg-accent-soft px-4 py-2 text-center text-[13px] text-ink">
-        Can't reach the server. Reconnecting… your project is safe and shows up again once it's back.
+        Can't reach the server. Reconnecting…
       </div>
     )}
     <div

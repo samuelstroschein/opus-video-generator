@@ -90,6 +90,17 @@ export function ChatPane(props: {
   const [skipped, setSkipped] = useState<object | null>(null);
   const [sel, setSel] = useState(0);
   useEffect(() => setSel(0), [chat.question]);
+  // Last resort on a very short screen: if even the shrunk bottom stack doesn't fit, it scrolls inside itself, kept
+  // at its end so the text box and Send stay in view.
+  const bottom = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = bottom.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => (el.scrollTop = el.scrollHeight));
+    ro.observe(el);
+    for (const c of el.children) ro.observe(c);
+    return () => ro.disconnect();
+  }, []);
   // Keep the highlighted answer in view when arrows move it through a question taller than its box.
   const questionBox = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -155,7 +166,7 @@ export function ChatPane(props: {
 
       {/* The bottom stack may shrink: on a short screen the question panel and the open plan give way (and scroll inside
           themselves) so the text box, Send and Skip always stay on screen, whatever else is showing. */}
-      <div className="flex min-h-0 flex-col px-3 pb-3">
+      <div ref={bottom} className="flex min-h-0 flex-col overflow-y-auto px-3 pb-3">
         {error && <p role="alert" className="mx-2 mb-2 shrink-0 text-xs text-red-600">{error}</p>}
         <Safe>
           <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />

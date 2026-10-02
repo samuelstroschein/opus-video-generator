@@ -175,7 +175,8 @@ export function PendingFiles({ files, remove, glass }: { files: File[]; remove: 
   useEffect(() => () => chips.forEach((c) => c.thumb && URL.revokeObjectURL(c.thumb)), [chips]);
   if (!chips.length) return null;
   return (
-    <div className="flex shrink-0 flex-wrap gap-2">
+    // In the chat composer a long list of files scrolls instead of pushing Send off screen.
+    <div className={["flex shrink-0 flex-wrap gap-2", glass ? "" : "max-h-[4.75rem] overflow-y-auto"].join(" ")}>
       {chips.map((c) => (
         <span key={c.key} className={["flex max-w-[min(16rem,100%)] items-center gap-2 rounded-lg border py-1 pl-1 pr-1 text-[13px] font-medium", glass ? "border-white/15 bg-white/10 text-white" : "border-line-2 bg-bubble"].join(" ")}>
           {c.thumb ? <img src={c.thumb} alt="" className="h-7 w-7 rounded-md object-cover" /> : <FileGlyph name={c.name} />}
