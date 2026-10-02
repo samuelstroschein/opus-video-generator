@@ -8,7 +8,7 @@ export function Spinner({ size = 14 }: { size?: number }) {
   return <span className="inline-block shrink-0 rounded-full border-2 border-line-2 border-t-ink" style={{ width: size, height: size, animation: "lva-spin .8s linear infinite" }} />;
 }
 
-function useNow(on: boolean) {
+export function useNow(on: boolean) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!on) return;

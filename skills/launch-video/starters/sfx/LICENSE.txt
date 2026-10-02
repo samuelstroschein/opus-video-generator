@@ -1,0 +1,7 @@
+Sound effects bundled with the launch-video skill. Free to use in any video, commercial included; no credit required.
+
+- appear, bong, chime, click, click-soft, close, error, glitch, open, pluck, pop, select, success, success-long,
+  switch, tick, toggle: from "Interface Sounds" by Kenney (www.kenney.nl), CC0 1.0 (public domain),
+  https://creativecommons.org/publicdomain/zero/1.0/  (converted to MP3, renamed)
+- typing: a run of Kenney's click_005, arranged for this kit (CC0)
+- whoosh, whoosh-long: made for this kit from filtered noise (CC0)

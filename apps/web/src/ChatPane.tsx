@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { AttachButton, PendingFiles, SentFiles, useAttachments } from "./Attach";
 import { api, say, scopeLabel, type Scope } from "./api";
-import { Spinner, StepCard } from "./Steps";
+import { Spinner, StepCard, useNow } from "./Steps";
 import { Safe } from "./Safe";
 import { lastActivity } from "./useProject";
 import type { Item, useProject } from "./useProject";
@@ -159,6 +159,8 @@ export function ChatPane(props: {
     // Don't pull focus out of a menu the user has open (the attach menu); otherwise the question takes the composer.
     if (questionOpen && document.activeElement?.getAttribute("role") !== "menuitem") input.current?.focus();
   }, [questionOpen]);
+  // The step card shows progress (with its spinner) while a step is open; otherwise the chat shows a "Working" row.
+  const working = chat.running && !chat.steps.some((st) => st.status === "active");
   const asking = !chat.running && chat.question && skipped !== chat.question ? chat.question : null;
   const canSend = !!text.trim() || att.files.length > 0;
   const placeholder = att.dragging
@@ -198,12 +200,13 @@ export function ChatPane(props: {
           {groupRows(chat.items).map((row, i, all) =>
             <Safe key={i}>
               {row.kind === "tools" ? (
-                <ToolGroup tools={row.tools} live={chat.running && i === all.length - 1} now={chat.progress?.label || lastActivity(chat.items)} />
+                <ToolGroup tools={row.tools} live={chat.running && i === all.length - 1} now={working ? undefined : chat.progress?.label || lastActivity(chat.items)} />
               ) : (
                 <ChatItem item={row} id={id} />
               )}
             </Safe>,
           )}
+          {working && <WorkingRow since={chat.turnSince} activity={chat.progress?.label || lastActivity(chat.items) || (chat.items.at(-1)?.kind === "assistant" ? "Writing" : "Thinking")} />}
           {chat.queued.map((q, i) => (
             <Safe key={q.qid ?? `q${i}`}>
               <QueuedNote id={id} note={q} onError={setError} onRemoved={() => input.current?.focus()} />
@@ -466,6 +469,23 @@ function Lead({ text }: { text: string }) {
     <span>
       <Inline text={text} />
     </span>
+  );
+}
+
+/**
+ * The one sign that the agent is working when the step card isn't showing it (follow-up edits, or the moment before
+ * the first step): a spinner, what it is doing, and how long it has been at it.
+ */
+function WorkingRow({ since, activity }: { since: number | null; activity: string }) {
+  const now = useNow(true);
+  return (
+    <div role="status" className="flex items-center gap-2 text-[13px] text-mute">
+      <Spinner size={13} />
+      <span className="min-w-0 truncate">
+        <span className="font-medium text-ink">Working</span> · {activity}
+        {since ? <span className="tabular-nums text-faint"> · {dur(now - since)}</span> : null}
+      </span>
+    </div>
   );
 }
 

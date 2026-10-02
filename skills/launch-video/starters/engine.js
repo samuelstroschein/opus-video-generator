@@ -50,8 +50,8 @@
 //   5. Size: design for the width x height you pass (default 1920x1080). The engine scales it to fit.
 //
 // SOUND (declared in HTML, like HyperFrames): put <audio> tags in video.html, OUTSIDE the React tree:
-//     <audio src="assets/audio/song.mp3" data-start="0" data-trim="12.4" data-volume="0.8" preload="auto"></audio>
-//     <audio src="assets/audio/whoosh.mp3" data-start="3.2" data-volume="0.6" preload="auto"></audio>
+//     <audio src="assets/audio/song.mp3" data-start="0" data-trim="12.4" data-volume="0.8"></audio>
+//     <audio src="_lva/sfx/whoosh.mp3" data-start="3.2" data-volume="0.6"></audio>   (the bundled CC0 effects kit)
 //   data-start: when it starts in the video (s). data-trim: where in the file to start (s), e.g. so the song's big
 //   hit lands on a cut. data-duration: how long it plays (default: to the end of the file). data-volume: 0..1.
 //   The engine plays them in step with T (play, pause, seek, loop; scheduled with Web Audio, so they never drift);
