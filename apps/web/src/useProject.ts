@@ -128,13 +128,17 @@ export function useProject(id: string) {
   const [changed, setChanged] = useState<Record<string, number>>({});
   const refetch = useRef<number>(0);
 
-  const refresh = useCallback(() => {
-    clearTimeout(refetch.current);
-    refetch.current = window.setTimeout(() => {
-      api.get(id).then(setState).catch(() => {});
-      setFileTick((t) => t + 1);
-    }, 150);
-  }, [id]);
+  // `files` also bumps the tick that reloads the page on the canvas; only real file changes should do that.
+  const refresh = useCallback(
+    (files = true) => {
+      clearTimeout(refetch.current);
+      refetch.current = window.setTimeout(() => {
+        api.get(id).then(setState).catch(() => {});
+        if (files) setFileTick((t) => t + 1);
+      }, 150);
+    },
+    [id],
+  );
 
   useEffect(() => {
     dispatch({ type: "reset" });
@@ -147,13 +151,14 @@ export function useProject(id: string) {
         const page = /^scenes\//.test(e.path) ? "video.html" : e.path;
         if (/^[\w-]+\.html$/.test(page)) setChanged((c) => ({ ...c, [page]: Date.now() }));
       }
-      if (e.type === "file.changed" || e.type === "canvas") refresh();
+      if (e.type === "file.changed") refresh();
+      else if (e.type === "canvas") refresh(false);
       else {
         dispatch(e);
-        if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh();
+        if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh(false);
       }
     };
-    es.addEventListener("ready", refresh);
+    es.addEventListener("ready", () => refresh(false)); // the replay is done: fetch state, but nothing changed on disk
     return () => es.close();
   }, [id, refresh]);
 

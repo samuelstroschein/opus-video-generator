@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AudioLines, ChartColumn, ChevronDown, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
+import { AudioLines, ChartColumn, ChevronDown, Share2, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
 import { api, type PageInfo } from "./api";
 import { SHARE_TEXT } from "./Header";
 
@@ -99,7 +99,7 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
 
   if (!pages.length) return <span className="px-1 text-[13px] text-faint">Pages appear here as the agent makes them</span>;
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 flex-1 items-center gap-1">
       {visible.map((p) => (
         <button
           key={p.file}
@@ -107,26 +107,28 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
           title={p.title}
           aria-current={p.file === active ? "page" : undefined}
           className={[
-            "flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium",
+            "flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium",
             p.file === active ? "bg-bubble text-ink" : "text-mute hover:bg-bubble/70 hover:text-ink",
           ].join(" ")}
         >
           <PageIcon p={p} />
-          {tabTitle(p)}
+          {/* Narrow canvas: only the active tab keeps its label; the others show their icon. */}
+          <span className={["whitespace-nowrap", p.file === active ? "" : "max-lg:hidden"].join(" ")}>{tabTitle(p)}</span>
           {dot(p.file) && <Dot />}
         </button>
       ))}
       {hidden.length > 0 && (
         <Popover
           button={(toggle, open) => (
-            <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} className={["flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium hover:bg-bubble/70 hover:text-ink", open ? "bg-bubble text-ink" : "text-mute"].join(" ")}>
-              {hidden.length} more
+            <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} aria-label={`${hidden.length} more pages`} className={["flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[13px] font-medium hover:bg-bubble/70 hover:text-ink", open ? "bg-bubble text-ink" : "text-mute"].join(" ")}>
+              <span className="max-sm:hidden">{hidden.length} more</span>
+              <span className="sm:hidden">+{hidden.length}</span>
               {hidden.some((p) => dot(p.file)) && <Dot />}
               <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
             </button>
           )}
         >
-          <div className="flex w-[280px] flex-col gap-px">
+          <div className="flex w-[280px] flex-col gap-px" role="menu">
             <div className="px-2.5 pb-1 pt-1.5 text-[11px] font-medium text-faint">More pages · newest first</div>
             {hidden.map((p) => (
               <button key={p.file} onClick={() => onPick(p.file)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble">
@@ -150,12 +152,12 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
     <Popover
       align="right"
       button={(toggle, open) => (
-        <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} disabled={!canExport && renders.length === 0} className="rounded-lg border border-ink bg-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35">
+        <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} disabled={!canExport && renders.length === 0} className={["shrink-0 rounded-lg border border-ink px-4 py-2 text-[13px] font-medium text-white disabled:opacity-35 max-sm:px-3", open ? "bg-ink/85" : "bg-ink"].join(" ")}>
           {exporting ? `Rendering ${pct}%` : "Export"}
         </button>
       )}
     >
-      <div onClick={(e) => e.stopPropagation()} className="w-72">
+      <div onClick={(e) => e.stopPropagation()} className="w-72" role="menu">
         <button
           disabled={!canExport || !!exporting}
           onClick={() => api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
@@ -235,12 +237,21 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
     download(api.renderUrl(id, renders[0], true));
   }, [renders, id]);
 
+  const requested = useRef(false); // an export this menu started and the server has not reported yet
+  useEffect(() => {
+    if (exporting || renders[0]) requested.current = false;
+  }, [exporting, renders]);
   const share = (href: string) => {
     window.open(href, "_blank", "noopener,noreferrer"); // first, inside the click, so popup blockers allow it
     if (latest && !exporting) return download(api.renderUrl(id, latest, true));
     if (!canExport) return;
     waiting.current = latest ?? null;
-    if (!exporting) api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)));
+    if (exporting || requested.current) return; // already rendering: the download follows when it is done
+    requested.current = true;
+    api.exportVideo(id).catch((e) => {
+      requested.current = false;
+      setError(e instanceof Error ? e.message : String(e));
+    });
   };
 
   const pct = exporting ? Math.round((exporting.frame / exporting.total) * 100) : 0;
@@ -248,8 +259,17 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
     <Popover
       align="right"
       button={(toggle, open) => (
-        <button onClick={toggle} aria-haspopup="menu" aria-expanded={open} className="rounded-lg border border-line-3 bg-white px-4 py-2 text-[13px] font-medium text-ink hover:bg-bubble">
-          Share
+        <button
+          onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label="Share"
+          disabled={!canExport && !latest}
+          title={!canExport && !latest ? "Build the video first" : "Share"}
+          className={["flex shrink-0 items-center gap-1.5 rounded-lg border border-line-3 px-4 py-2 text-[13px] font-medium text-ink hover:bg-bubble disabled:opacity-40 max-sm:px-2.5", open ? "bg-bubble" : "bg-white"].join(" ")}
+        >
+          <Share2 size={14} strokeWidth={1.9} className="sm:hidden" aria-hidden />
+          <span className="max-sm:hidden">Share</span>
         </button>
       )}
     >

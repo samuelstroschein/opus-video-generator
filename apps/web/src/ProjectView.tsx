@@ -76,7 +76,7 @@ export function ProjectView({ id }: { id: string }) {
       if (e.source !== iframe.current?.contentWindow || !e.data) return;
       const d = e.data;
       if (d.type === "lva.send") void send(String(d.text));
-      else if (d.type === "lva.state") (resumeAt.current = d.time), setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
+      else if (d.type === "lva.state") (resumeAt.current = d.time), (wasPlaying.current = d.playing), setVideo({ time: d.time, duration: d.duration, playing: d.playing, scenes: d.scenes });
     };
     addEventListener("message", on);
     return () => removeEventListener("message", on);
@@ -102,12 +102,18 @@ export function ProjectView({ id }: { id: string }) {
 
   // A reloaded video resumes where the viewer was.
   const resumeAt = useRef(0);
+  const wasPlaying = useRef(false);
   useEffect(() => {
     resumeAt.current = 0;
+    wasPlaying.current = false;
   }, [current?.file]);
   const resume = () => {
     const t = resumeAt.current;
-    if (t > 0.05) setTimeout(() => cmd({ action: "seek", time: t }), 400);
+    const play = wasPlaying.current;
+    setTimeout(() => {
+      if (t > 0.05) cmd({ action: "seek", time: t });
+      if (play) cmd({ action: "play" });
+    }, 400);
   };
 
   if (missing) {
@@ -144,9 +150,8 @@ export function ProjectView({ id }: { id: string }) {
         <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
       <section className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
-        <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-4">
+        <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
-          <div className="flex-1" />
           <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />
           <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
         </nav>

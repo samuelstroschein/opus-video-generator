@@ -92,6 +92,10 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           onKeyDown={(e) => {
             // Arrow keys scrub by a second (Shift: five), Home and End jump to the ends.
             if (!v) return;
+            if (e.key === " ") {
+              e.preventDefault();
+              return cmd({ action: v.playing ? "pause" : "play" });
+            }
             const by = e.shiftKey ? 5 : 1;
             const to = e.key === "ArrowRight" ? v.time + by : e.key === "ArrowLeft" ? v.time - by : e.key === "Home" ? 0 : e.key === "End" ? v.duration : null;
             if (to === null) return;
@@ -108,7 +112,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           <div className="relative h-5 text-[10px] text-neutral-400">
             {ticks.map((t) => (
               <div key={t} className="absolute top-0 h-full" style={{ left: pct(t) }}>
-                <span className="absolute left-1 top-0 whitespace-nowrap">{t}s</span>
+                <span className={["absolute top-0 whitespace-nowrap", t === 0 ? "left-2.5" : "left-1"].join(" ")}>{t}s</span>
                 <span className="absolute bottom-0 left-0 h-1.5 w-px bg-neutral-500" />
               </div>
             ))}
