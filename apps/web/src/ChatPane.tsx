@@ -161,8 +161,9 @@ export function ChatPane(props: {
           ].join(" ")}
         >
           {asking && (
-            // Short screens (a phone on its side): the question scrolls inside itself so the chat stays on screen.
-            <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
+            // Short screens (a phone on its side): the question scrolls inside itself, capped to what is left after the header,
+            // tabs and the rest of the composer (~262px), so Send and Skip stay on screen.
+            <div className="flex max-h-[min(45vh,calc(100vh-262px))] flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
               <div className="flex items-center gap-2 text-[13px] text-mute">
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <circle cx="8" cy="8" r="6.5" />

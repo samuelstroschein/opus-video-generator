@@ -98,8 +98,9 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
 /** Shown on the canvas until the agent has something to show. */
 export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
   return (
-    <div className="flex h-full items-center justify-center bg-paper px-8">
-      <div className="w-full min-w-0 max-w-sm [overflow-wrap:anywhere]">
+    // Centred with auto margins, not align-items: on a short screen a long plan scrolls instead of spilling out both ends.
+    <div className="flex h-full overflow-y-auto bg-paper px-8 py-6">
+      <div className="m-auto w-full min-w-0 max-w-sm [overflow-wrap:anywhere]">
         {steps.length === 0 && (
           <div className="flex items-center gap-3 text-sm text-mute">
             {live ? (

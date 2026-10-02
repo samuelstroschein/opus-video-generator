@@ -178,7 +178,7 @@ export function ProjectView({ id }: { id: string }) {
         </button>
       ))}
     </div>
-    <main className="grid min-h-0 flex-1 bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
+    <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] bg-paper md:grid-cols-[320px_minmax(0,1fr)] lg:grid-cols-[400px_minmax(0,1fr)]">
       <h1 className="sr-only">{state?.title ?? "Project"}</h1>
       <div id="pane-chat" role="tabpanel" aria-labelledby="tab-chat" className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
         {chat.ask && (

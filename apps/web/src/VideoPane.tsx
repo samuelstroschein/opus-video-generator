@@ -3,7 +3,10 @@ import { forwardRef, useEffect, useRef, useState, type PointerEvent, type ReactN
 export type VideoState = { time: number; duration: number; playing: boolean; scenes: { name: string; dur: number; start: number; desc: string }[] };
 type Cmd = { action: "play" | "pause" | "seek"; time?: number };
 
-const fmt = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+const fmt = (t: number) => {
+  const d = Math.round(Math.max(0, t) * 10); // round first, so 59.96 reads 1:00.0, not 0:60.0
+  return `${Math.floor(d / 600)}:${((d % 600) / 10).toFixed(1).padStart(4, "0")}`;
+};
 
 /** The smallest ruler step whose labels stay at least 56px apart on a track this wide. */
 function tickStep(duration: number, width: number) {
