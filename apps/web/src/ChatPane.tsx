@@ -88,7 +88,9 @@ export function ChatPane(props: {
     try {
       await api.send(id, message, undefined, files);
       // Send (and Stop) go away once the run starts: keep keyboard focus in the text box rather than losing it.
-      if (document.activeElement?.tagName === "BUTTON") input.current?.focus();
+      // Only if focus is still on the composer's own buttons: never pull it away from wherever the user has gone since.
+      const a = document.activeElement;
+      if (a?.tagName === "BUTTON" && bottom.current?.contains(a)) input.current?.focus();
       if (fromBox) {
         // Only what was sent goes: anything typed or attached while it was on its way stays in the composer.
         setText((t) => (t.startsWith(message) ? t.slice(message.length).trimStart() : t));

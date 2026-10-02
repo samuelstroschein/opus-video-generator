@@ -96,9 +96,9 @@ export function AppHeader({ tone, children }: { tone: "dark" | "light"; children
         tone === "dark" ? "text-white" : "border-b border-line bg-white text-ink",
       ].join(" ")}
     >
-      <a href="#/" className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]" title="All projects" aria-label="Launch Video Agent, all projects">
-        <img src="/claude-icon.png" alt="" className="h-5 w-5" />
-        <span className={children ? "max-sm:hidden" : ""}>Launch Video Agent</span>
+      <a href="#/" className={["flex items-center gap-2 whitespace-nowrap rounded-lg px-1 py-1 text-sm font-semibold tracking-[-0.01em]", children ? "shrink-0" : "min-w-0"].join(" ")} title="All projects" aria-label="Launch Video Agent, all projects">
+        <img src="/claude-icon.png" alt="" className="h-5 w-5 shrink-0" />
+        <span className={children ? "max-sm:hidden" : "min-w-0 truncate max-[359px]:hidden"}>Launch Video Agent</span>
       </a>
       {children && (
         <>

@@ -8,6 +8,32 @@ const MAX_FOLDER_FILES = 600; // files in one attached folder
 /** The folder a file was picked from ("brand/" for brand/logo.svg), or null for a loose file. */
 const folderOf = (f: File) => (f.webkitRelativePath ? f.webkitRelativePath.split("/")[0] : null);
 
+/**
+ * The files in a dropped folder, each carrying its path inside it ("brand/logo.svg") the way "Attach folder" does.
+ * A drop only lists the folder itself as a 0-byte file, so its entries have to be walked.
+ */
+async function folderFiles(dir: FileSystemDirectoryEntry): Promise<File[]> {
+  const out: File[] = [];
+  const walk = async (d: FileSystemDirectoryEntry) => {
+    const reader = d.createReader();
+    for (;;) {
+      const batch = await new Promise<FileSystemEntry[]>((ok, no) => reader.readEntries(ok, no)); // up to 100 per call
+      if (!batch.length) break;
+      for (const e of batch) {
+        if (e.name.startsWith(".")) continue; // .DS_Store and friends
+        if (e.isDirectory) await walk(e as FileSystemDirectoryEntry);
+        else {
+          const f = await new Promise<File>((ok, no) => (e as FileSystemFileEntry).file(ok, no));
+          Object.defineProperty(f, "webkitRelativePath", { value: e.fullPath.replace(/^\//, "") });
+          out.push(f);
+        }
+      }
+    }
+  };
+  await walk(dir);
+  return out;
+}
+
 /** Files waiting to be sent with the next message: pick, drop or paste them, remove any before sending. */
 export function useAttachments(onError: (m: string) => void) {
   const [files, setFiles] = useState<File[]>([]);
@@ -53,7 +79,14 @@ export function useAttachments(onError: (m: string) => void) {
         if (!e.dataTransfer.files.length) return;
         e.preventDefault();
         setDragging(false);
-        add(e.dataTransfer.files);
+        // Entries must be taken during the event; folders are then read in full, loose files go as they are.
+        const entries = Array.from(e.dataTransfer.items, (i) => i.webkitGetAsEntry?.() ?? null);
+        if (!entries.some((x) => x?.isDirectory)) return add(e.dataTransfer.files);
+        const loose = Array.from(e.dataTransfer.files).filter((_, i) => !entries[i]?.isDirectory);
+        void Promise.all(entries.filter((x): x is FileSystemDirectoryEntry => !!x?.isDirectory).map(folderFiles)).then(
+          (dirs) => (dirs.flat().length || loose.length ? add([...loose, ...dirs.flat()]) : onError("That folder is empty")),
+          () => onError("Couldn't read that folder. Try Attach folder instead."),
+        );
       },
       onPaste: (e: ClipboardEvent) => {
         const pasted = Array.from(e.clipboardData.files);
