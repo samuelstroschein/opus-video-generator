@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { AudioLines, ChartColumn, ChevronDown, Share2, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
-import { api, type PageInfo } from "./api";
+import { api, say, type PageInfo } from "./api";
 import { SHARE_TEXT } from "./Header";
 
 /**
@@ -199,11 +199,14 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
         </button>
       )}
     >
-      <div onClick={(e) => e.stopPropagation()} className="w-72 max-w-full" role="menu">
+      <div className="w-72 max-w-full" role="menu">
         <button
           role="menuitem"
           disabled={!canExport || !!exporting}
-          onClick={() => api.exportVideo(id).catch((e) => setError(e instanceof Error ? e.message : String(e)))}
+          onClick={(e) => {
+            e.stopPropagation(); // stay open: the menu shows the render's progress
+            api.exportVideo(id).catch((err) => setError(say(err)));
+          }}
           className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble disabled:opacity-50"
         >
           <span>
@@ -293,7 +296,7 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
     requested.current = true;
     api.exportVideo(id).catch((e) => {
       requested.current = false;
-      setError(e instanceof Error ? e.message : String(e));
+      setError(say(e));
     });
   };
 

@@ -59,13 +59,18 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return { ...state, queued: state.queued.map((q) => (q.qid === e.qid ? { ...q, text: e.text } : q)) };
     case "queued.dropped":
       return { ...state, queued: [] };
+    // Events the chat renders are checked for shape here: a bad one is dropped (see safeReduce), so it can't break
+    // the page on every reload of the replayed log.
     case "replies":
-      return { ...state, question: { text: e.question, replies: e.replies } };
+      if (!Array.isArray(e.replies) || !e.replies.every((r) => typeof r === "string")) throw new Error("bad replies");
+      return { ...state, question: { text: typeof e.question === "string" ? e.question : "", replies: e.replies } };
     case "ask":
+      if (!Array.isArray(e.form?.questions)) throw new Error("bad ask");
       return { ...state, ask: e.form };
     case "turn.start":
       return { ...state, running: true, draft: null, progress: null, stepSince: e.ts ?? Date.now(), turnSince: e.ts ?? Date.now() };
     case "text.delta": {
+      if (typeof e.text !== "string") throw new Error("bad text.delta");
       if (state.ask) return state; // the form speaks for itself: drop any chat text the agent adds after ask_questions
       const last = items.at(-1);
       if (last?.kind === "assistant" && last.id === e.messageId) items[items.length - 1] = { ...last, text: last.text + e.text };

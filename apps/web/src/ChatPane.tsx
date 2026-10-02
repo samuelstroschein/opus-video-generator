@@ -144,7 +144,7 @@ export function ChatPane(props: {
       </div>
 
       <div className="flex shrink-0 flex-col px-3 pb-3">
-        {error && <p className="mx-2 mb-2 text-xs text-red-600">{error}</p>}
+        {error && <p role="alert" className="mx-2 mb-2 text-xs text-red-600">{error}</p>}
         <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
         <div
           {...att.dropProps}
@@ -166,7 +166,7 @@ export function ChatPane(props: {
                   ×
                 </button>
               </div>
-              {asking.text && <div className="text-[15px] font-medium leading-snug">{asking.text}</div>}
+              {asking.text && <div className="text-[15px] font-medium leading-snug [overflow-wrap:anywhere]">{asking.text}</div>}
               <div className="-mx-1 flex flex-col">
                 {asking.replies.map((r, i) => (
                   <button
@@ -183,7 +183,7 @@ export function ChatPane(props: {
               </div>
             </div>
           )}
-          <PendingFiles files={att.files} remove={att.remove} />
+          <PendingFiles files={att.files} remove={(k) => (att.remove(k), input.current?.focus())} />
           <div className={["flex items-start gap-2", asking ? "border-t border-line pt-2" : ""].join(" ")}>
             {asking && (
               <svg className="ml-1 mt-[3px] flex-none text-faint" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
@@ -239,9 +239,15 @@ function UserBubble({ id, text, scope, attachments, faded }: { id: string; text:
 
 /** A note waiting for the run to finish: shown faded, and editable or removable until it goes out. */
 function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof useProject>["chat"]["queued"][number]; onError: (m: string) => void }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingState] = useState(false);
   const [draft, setDraft] = useState(note.text);
-  const act = (p: Promise<unknown>) => p.catch((e) => onError(e instanceof Error ? e.message : String(e)));
+  const editButton = useRef<HTMLButtonElement>(null);
+  // Leaving the editor (Save, Cancel, Esc) puts focus back on Edit rather than the top of the page.
+  const setEditing = (on: boolean) => {
+    setEditingState(on);
+    if (!on) requestAnimationFrame(() => editButton.current?.focus());
+  };
+  const act = (p: Promise<unknown>) => p.catch((e) => onError(say(e)));
   const save = () => {
     if (!note.qid || !draft.trim()) return;
     if (draft.trim() !== note.text) void act(api.editQueued(id, note.qid, draft.trim()));
@@ -250,7 +256,7 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
   return (
     <div className="group flex flex-col items-end gap-1">
       {editing ? (
-        <div className="flex w-[85%] flex-col gap-2 self-end rounded-[14px] border border-line-3 bg-white p-2.5">
+        <div className="flex w-[85%] flex-col gap-2 self-end rounded-[14px] border border-line-3 bg-white p-2.5 focus-within:border-mute">
           <textarea
             autoFocus
             value={draft}
@@ -281,7 +287,7 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
         <span className="min-w-0">Queued · goes out when this run finishes</span>
         {note.qid && !editing && (
           <>
-            <button onClick={() => (setDraft(note.text), setEditing(true))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
+            <button ref={editButton} onClick={() => (setDraft(note.text), setEditing(true))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Edit
             </button>
             <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
@@ -300,7 +306,7 @@ function FormAnswer({ text }: { text: string }) {
   const lines = text.split("\n").slice(1);
   return (
     <div className="max-w-[85%] self-end rounded-[14px] bg-bubble px-[13px] py-[9px]">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 font-medium">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-6 items-center gap-1.5 font-medium">
         Direction answered <span className="text-[9px] text-faint">{open ? "▾" : "▸"}</span>
       </button>
       {open && <div className="mt-1 whitespace-pre-wrap text-[13px] text-mute">{lines.join("\n")}</div>}
@@ -394,7 +400,7 @@ function ToolGroup({ tools, live, now }: { tools: Tool[]; live: boolean; now?: s
   const took = !live && first && last ? ` · ${dur(last - first)}` : "";
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex max-w-full items-center gap-1.5 hover:text-mute">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-my-1 flex min-h-6 max-w-full items-center gap-1.5 py-1 hover:text-mute">
         <span className={live ? "text-faint" : "text-ok"}>{live ? "◦" : "✓"}</span>
         <span className="min-w-0 truncate">{live ? `${n} so far${now ? ` · ${now}` : ""}` : `${n}${took}`}</span>
         <span className="text-[9px]">{open ? "▾" : "▸"}</span>
@@ -418,7 +424,11 @@ function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
   const label = item.pass ? `Review passed · round ${item.round}` : `Review · round ${item.round} · ${item.fixes.length} fix${item.fixes.length === 1 ? "" : "es"}`;
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 hover:text-mute">
+      <button
+        onClick={() => item.fixes.length > 0 && setOpen((o) => !o)}
+        aria-expanded={item.fixes.length > 0 ? open : undefined}
+        className="-my-1 flex min-h-6 items-center gap-1.5 py-1 hover:text-mute"
+      >
         <span className={item.pass ? "text-ok" : "text-[#b7791f]"}>{item.pass ? "✓" : "⚑"}</span>
         <span>{label}</span>
         {item.fixes.length > 0 && <span className="text-[9px]">{open ? "▾" : "▸"}</span>}

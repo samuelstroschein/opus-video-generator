@@ -22,7 +22,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
   return (
     <div className="flex h-full items-start justify-center overflow-y-auto bg-paper px-8 pt-12 max-sm:px-3 max-sm:pt-4">
       <div className="mb-12 w-full max-w-[600px] rounded-2xl border border-line-2 bg-white p-7 max-sm:mb-4 max-sm:p-5 shadow-[0_1px_2px_rgba(0,0,0,.04),0_8px_24px_rgba(0,0,0,.04)]">
-        <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">{form.title}</h2>
+        <h2 tabIndex={-1} className="m-0 text-[22px] font-semibold tracking-[-0.02em] focus-visible:outline-none">{form.title}</h2>
         {form.intro && <p className="mb-0 mt-1.5 text-sm text-mute">{form.intro}</p>}
         <div className="mt-5 divide-y divide-line">
           {form.questions.map((q) => (

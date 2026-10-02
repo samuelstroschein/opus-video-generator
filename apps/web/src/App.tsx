@@ -63,7 +63,9 @@ function Home() {
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [examples, setExamples] = useState<Example[]>([]);
-  const [offline, setOffline] = useState(false);
+  // Which lists couldn't load (each retries on its own), so the notice names only what is missing.
+  const [down, setDown] = useState({ projects: false, examples: false });
+  const offline = down.projects || down.examples;
   const [using, setUsing] = useState<string | null>(null);
   // Example filters: toggle category tags (none selected = all). Four rows at a time.
   const [cats, setCats] = useState<Set<string>>(new Set());
@@ -86,16 +88,16 @@ function Home() {
     // Each list fills in on its own: slow projects never hold back the examples.
     const timers: number[] = [];
     let alive = true;
-    const keepTrying = <T,>(get: () => Promise<T>, done: (v: T) => void) => {
+    const keepTrying = <T,>(what: "projects" | "examples", get: () => Promise<T>, done: (v: T) => void) => {
       const go = () =>
         get().then(
-          (v) => alive && (done(v), setOffline(false)),
-          () => alive && (setOffline(true), timers.push(window.setTimeout(go, 5000))),
+          (v) => alive && (done(v), setDown((d) => ({ ...d, [what]: false }))),
+          () => alive && (setDown((d) => ({ ...d, [what]: true })), timers.push(window.setTimeout(go, 5000))),
         );
       void go();
     };
-    keepTrying(api.list, setProjects);
-    keepTrying(api.examples, setExamples);
+    keepTrying("projects", api.list, setProjects);
+    keepTrying("examples", api.examples, setExamples);
     return () => {
       alive = false;
       timers.forEach(clearTimeout);
@@ -244,7 +246,13 @@ function Home() {
         </div>
         {error && <p role="alert" className="-mt-6 text-center text-sm text-red-300">{error}</p>}
         <p role="status" className={offline ? "-mt-4 text-center text-sm text-white/70" : "sr-only"}>
-          {offline ? "Can't reach the server right now. Your projects and the examples will show when it's back." : ""}
+          {down.projects && down.examples
+            ? "Can't reach the server right now. Your projects and the examples will show when it's back."
+            : down.projects
+              ? "Can't load your projects right now. Trying again…"
+              : down.examples
+                ? "Can't load the examples right now. Trying again…"
+                : ""}
         </p>
 
         {projects.length > 0 && (

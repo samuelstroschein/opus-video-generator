@@ -169,7 +169,13 @@ export function ProjectView({ id }: { id: string }) {
       <h1 className="sr-only">{state?.title ?? "Project"}</h1>
       <div id="pane-chat" role="tabpanel" aria-labelledby="tab-chat" className={["min-h-0 min-w-0", pane === "chat" ? "flex" : "max-md:hidden md:flex", "flex-col"].join(" ")}>
         {chat.ask && (
-          <button onClick={() => setPane("canvas")} className="mx-3 mt-3 flex shrink-0 items-center justify-between gap-3 rounded-xl border border-line-3 bg-white px-3.5 py-2.5 text-left text-[13px] font-medium md:hidden">
+          <button
+            onClick={() => {
+              setPane("canvas");
+              // The button disappears with the chat: take focus to the form instead of the top of the page.
+              requestAnimationFrame(() => document.querySelector<HTMLElement>("#pane-canvas h2")?.focus());
+            }}
+            className="mx-3 mt-3 flex shrink-0 items-center justify-between gap-3 rounded-xl border border-line-3 bg-white px-3.5 py-2.5 text-left text-[13px] font-medium md:hidden">
             The agent has a few questions for you
             <span className="shrink-0 text-mute">Answer →</span>
           </button>
@@ -177,6 +183,15 @@ export function ProjectView({ id }: { id: string }) {
         <ChatPane id={id} chat={chat} error={error} setError={setError} />
       </div>
       <section id="pane-canvas" role="tabpanel" aria-labelledby="tab-canvas" aria-label="Canvas" className={["min-h-0 min-w-0 flex-col", pane === "canvas" ? "flex" : "max-md:hidden md:flex"].join(" ")}>
+        {/* On phones the chat (where errors show) is hidden behind its tab: repeat the error here. */}
+        {error && (
+          <div role="alert" className="flex shrink-0 items-start gap-3 border-b border-red-200 bg-red-50 px-4 py-2 text-[13px] text-red-700 md:hidden">
+            <span className="min-w-0 flex-1">{error}</span>
+            <button onClick={() => setError("")} aria-label="Dismiss" className="-my-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-base leading-none hover:bg-red-100">
+              ×
+            </button>
+          </div>
+        )}
         <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
           <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
           <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />

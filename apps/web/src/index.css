@@ -25,7 +25,7 @@ textarea:focus { outline: none; }
 @keyframes lva-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
 /* Keyboard focus in the ink palette instead of the browser default. */
-:where(button, a, [tabindex]):focus-visible { outline: 2px solid rgb(25 24 23 / .35); outline-offset: 2px; }
+:where(button, a, [tabindex]):focus-visible { outline: 2px solid rgb(25 24 23 / .6); outline-offset: 2px; }
 
 /* On the dark landing the ink focus ring disappears: use a light one there. */
 .landing :where(button, a, [tabindex], video):focus-visible { outline: 2px solid rgb(255 255 255 / 0.75); outline-offset: 2px; }
