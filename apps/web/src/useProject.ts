@@ -34,7 +34,8 @@ type ServerEvent = { type: string; [k: string]: any };
 const initial: ChatState = { items: [], running: false, costUsd: 0, ask: null, steps: [], exporting: null, progress: null, stepSince: null, turnSince: null, draft: null, queued: [], question: null };
 
 /** An event the chat can't apply (a malformed one) is skipped, rather than taking the whole editor down. */
-function safeReduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
+type Action = ServerEvent | { type: "reset" } | { type: "replay"; events: ServerEvent[] };
+function safeReduce(state: ChatState, e: Action): ChatState {
   try {
     return reduce(state, e);
   } catch (err) {
@@ -43,12 +44,15 @@ function safeReduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatS
   }
 }
 
-function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState {
+function reduce(state: ChatState, e: Action): ChatState {
+  if (e.type === "replay") return e.events.reduce(safeReduce, initial);
   const items = [...state.items];
   switch (e.type) {
     case "reset":
       return initial;
     case "user":
+      if (typeof e.text !== "string" || (e.attachments !== undefined && !(Array.isArray(e.attachments) && e.attachments.every((a) => a && typeof a === "object"))))
+        throw new Error("bad user");
       items.push({ kind: "user", text: e.text, scope: e.scope, attachments: e.attachments });
       return { ...state, items, ask: null, queued: [], question: null }; // any reply answers the open form; queued notes are now delivered
     case "queued":
@@ -67,8 +71,14 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
     case "ask":
       if (
         !Array.isArray(e.form?.questions) ||
-        !(e.form.questions as { id?: unknown; options?: unknown }[]).every(
-          (q) => q && typeof q.id === "string" && (q.options === undefined || (Array.isArray(q.options) && q.options.every((o: { value?: unknown } | null) => o && typeof o.value === "string"))),
+        typeof e.form.title !== "string" ||
+        !(e.form.questions as { id?: unknown; label?: unknown; options?: unknown }[]).every(
+          (q) =>
+            q &&
+            typeof q.id === "string" &&
+            typeof q.label === "string" &&
+            (q.options === undefined ||
+              (Array.isArray(q.options) && q.options.every((o: { value?: unknown; label?: unknown } | null) => o && typeof o.value === "string" && typeof o.label === "string"))),
         )
       )
         throw new Error("bad ask");
@@ -84,6 +94,7 @@ function reduce(state: ChatState, e: ServerEvent | { type: "reset" }): ChatState
       return { ...state, items };
     }
     case "steps": {
+      if (!Array.isArray(e.steps) || !(e.steps as { title?: unknown }[]).every((x) => x && typeof x.title === "string")) throw new Error("bad steps");
       // A new active step starts the clock again and drops the previous step's progress.
       const was = state.steps.find((x) => x.status === "active")?.id;
       const now = (e.steps as Step[]).find((x) => x.status === "active")?.id;
@@ -187,10 +198,20 @@ export function useProject(id: string) {
 
     // The event stream. EventSource retries network drops by itself, but gives up for good on an HTTP error (a 502
     // from the proxy while the server restarts): then open a new one, backing off up to 10 s.
+    // The server replays the whole log on every (re)connect. The replay is collected and applied in one step at
+    // "ready", so the chat (and an open form with half-typed answers) never flashes back to empty in between.
+    let replay: ServerEvent[] | null = null;
+    let replayTimer = 0;
+    const flush = () => {
+      clearTimeout(replayTimer);
+      if (replay) dispatch({ type: "replay", events: replay });
+      replay = null;
+    };
     const connect = () => {
       es = new EventSource(`/api/projects/${id}/events`);
       es.onopen = () => {
-        dispatch({ type: "reset" }); // the server replays the whole log on every (re)connect
+        replay = [];
+        replayTimer = window.setTimeout(flush, 5000); // in case "ready" never comes
         setStreamDown(false);
         wait = 1000;
       };
@@ -215,18 +236,23 @@ export function useProject(id: string) {
         }
         if (e.type === "file.changed") refresh();
         else if (e.type === "canvas") refresh(false);
+        else if (replay) replay.push(e);
         else {
           dispatch(e);
           if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh(false);
         }
       };
-      es.addEventListener("ready", () => refresh(false)); // the replay is done: fetch state, but nothing changed on disk
+      es.addEventListener("ready", () => {
+        flush();
+        refresh(false); // the replay is done: fetch state, but nothing changed on disk
+      });
     };
     connect();
     return () => {
       alive = false;
       clearTimeout(retryState);
       clearTimeout(retryStream);
+      clearTimeout(replayTimer);
       es?.close();
     };
   }, [id, refresh]);

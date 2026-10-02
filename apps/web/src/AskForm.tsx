@@ -6,8 +6,10 @@ type Value = string | string[];
 
 const initialValue = (q: AskQuestion): Value => {
   const d = q.default as Value | undefined;
-  if (q.type === "multi") return Array.isArray(d) ? d : d ? [d] : [];
-  return Array.isArray(d) ? (d[0] ?? "") : (d ?? "");
+  const known = (v: string) => !q.options || q.options.some((o) => o.value === v); // a default that isn't an option is ignored
+  if (q.type === "multi") return (Array.isArray(d) ? d : d ? [d] : []).filter(known);
+  const v = Array.isArray(d) ? (d[0] ?? "") : (d ?? "");
+  return q.type === "text" || known(v) ? v : "";
 };
 
 /** The agent's ask_questions form, rendered on the canvas. Every answer is pre-filled, so Continue works untouched. */
@@ -33,7 +35,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
             <div key={q.id} className="py-4">
               <div className="text-sm font-semibold">{q.label}</div>
               {q.hint && <div className="mt-0.5 text-xs text-faint">{q.hint}</div>}
-              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={q.label}>
+              <div className="mt-2 flex flex-wrap gap-2" role={q.type === "text" ? undefined : "group"} aria-label={q.type === "text" ? undefined : q.label}>
                 {q.type === "text" ? (
                   <textarea
                     aria-label={q.label}
@@ -51,7 +53,7 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                           key={o.value}
                           aria-pressed={on}
                           onClick={() => (q.type === "multi" ? set(q.id, on ? (values[q.id] as string[]).filter((x) => x !== o.value) : [...(values[q.id] as string[]), o.value]) : set(q.id, o.value))}
-                          className={["max-w-full rounded-full border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
+                          className={["max-w-full rounded-[14px] border px-3 py-1 text-left text-[13px] font-medium", on ? "border-ink bg-ink text-white" : "border-line-3 bg-white hover:bg-bubble"].join(" ")}
                         >
                           {o.label}
                           {o.note && <span className={["ml-1.5 text-xs font-normal", on ? "text-white/60" : "text-faint"].join(" ")}>{o.note}</span>}
@@ -61,8 +63,12 @@ export function AskForm({ form, onSubmit, busy }: { form: Form; onSubmit: (text:
                     {q.allowOther && (
                       <button
                         aria-pressed={q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER}
-                        onClick={() => (q.type === "multi" ? set(q.id, [...(values[q.id] as string[]).filter((x) => x !== OTHER), OTHER]) : set(q.id, OTHER))}
-                        className={["rounded-full border border-dashed px-3 py-1 text-[13px] font-medium", (q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER) ? "border-ink bg-ink text-white" : "border-line-3 text-mute hover:bg-bubble"].join(" ")}
+                        onClick={() => {
+                          if (q.type !== "multi") return set(q.id, OTHER);
+                          const cur = values[q.id] as string[]; // in a multi question it toggles like the other options
+                          set(q.id, cur.includes(OTHER) ? cur.filter((x) => x !== OTHER) : [...cur, OTHER]);
+                        }}
+                        className={["rounded-[14px] border border-dashed px-3 py-1 text-[13px] font-medium", (q.type === "multi" ? (values[q.id] as string[]).includes(OTHER) : values[q.id] === OTHER) ? "border-ink bg-ink text-white" : "border-line-3 text-mute hover:bg-bubble"].join(" ")}
                       >
                         Something else…
                       </button>
