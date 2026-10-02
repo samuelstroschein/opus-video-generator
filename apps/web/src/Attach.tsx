@@ -5,6 +5,11 @@ const MAX_FILE = 30 * 1024 * 1024;
 const MAX_FILES = 12; // loose files per message
 const MAX_FOLDER_FILES = 600; // files in one attached folder
 
+// Inside an attached folder: dependencies, build output, version control and hidden files are left out, so a whole
+// project folder fits under the limit and only its own files reach the agent.
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", "out", ".next", ".nuxt", ".svelte-kit", ".turbo", ".cache", ".vercel", "coverage", "__pycache__", ".venv", "venv", "target", "Pods", "DerivedData"]);
+const skipped = (relPath: string) => relPath.split("/").some((part) => SKIP_DIRS.has(part) || part.startsWith("."));
+
 /** The folder a file was picked from ("brand/" for brand/logo.svg), or null for a loose file. */
 const folderOf = (f: File) => (f.webkitRelativePath ? f.webkitRelativePath.split("/")[0] : null);
 
@@ -20,7 +25,7 @@ async function folderFiles(dir: FileSystemDirectoryEntry): Promise<File[]> {
       const batch = await new Promise<FileSystemEntry[]>((ok, no) => reader.readEntries(ok, no)); // up to 100 per call
       if (!batch.length) break;
       for (const e of batch) {
-        if (e.name.startsWith(".")) continue; // .DS_Store and friends
+        if (e.name.startsWith(".") || (e.isDirectory && SKIP_DIRS.has(e.name))) continue; // .DS_Store, node_modules and friends
         if (e.isDirectory) await walk(e as FileSystemDirectoryEntry);
         else {
           const f = await new Promise<File>((ok, no) => (e as FileSystemFileEntry).file(ok, no));
@@ -46,6 +51,7 @@ export function useAttachments(onError: (m: string) => void) {
     if (!list) return;
     const next = [...latest.current];
     for (const f of Array.from(list)) {
+      if (f.webkitRelativePath && skipped(f.webkitRelativePath)) continue;
       const loose = next.filter((x) => !folderOf(x)).length;
       const inFolder = folderOf(f) ? next.filter((x) => folderOf(x) === folderOf(f)).length : 0;
       if (f.size > MAX_FILE) onError(`${f.name} is larger than ${MAX_FILE / 1024 / 1024} MB`);
