@@ -40,9 +40,14 @@ textarea:focus { outline: none; }
   [role="tab"][aria-selected="true"], [aria-current="page"], [aria-haspopup][aria-expanded="true"], [aria-pressed="true"], [data-current] {
     outline: 2px dashed CanvasText; outline-offset: -3px;
   }
-  :where(button, a, [tabindex]):focus-visible { outline: 3px solid Highlight; outline-offset: 1px; }
-  /* Things that are only colour (progress bars, dots, the playhead) keep their own colours. */
-  .keep-colors, .keep-colors * { forced-color-adjust: none; }
+  /* Focus always wins over the dashed "selected" outline (the selected tab is also the one that takes focus). */
+  :is(button, a, [tabindex]):focus-visible { outline: 3px solid Highlight !important; outline-offset: 1px !important; }
+  /* Things that are only colour (progress bars, dots, the playhead, the prompt's blanks) are drawn in system
+     colours, so they show on light and dark high-contrast themes alike. */
+  .fc-track, .fc-fill, .fc-mark, .fc-blank { forced-color-adjust: none; }
+  .fc-track { background: Canvas; box-shadow: inset 0 0 0 1px CanvasText; }
+  .fc-fill, .fc-mark { background: Highlight; }
+  .fc-blank { background: transparent; box-shadow: none; outline: 2px solid Highlight; }
 }
 /* Dark bars in the light editor (the video timeline) need the light ring too. */
 .surface-dark :where(button, a, [tabindex]):focus-visible { outline-color: rgb(255 255 255 / .7); }

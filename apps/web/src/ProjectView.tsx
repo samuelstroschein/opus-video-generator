@@ -187,7 +187,7 @@ export function ProjectView({ id }: { id: string }) {
         >
           {p === "chat" ? "Chat" : "Canvas"}
           {/* The agent's questions live on the canvas: flag them while the chat is showing. */}
-          {p === "canvas" && chat.ask && pane === "chat" && <span className="keep-colors h-1.5 w-1.5 rounded-full bg-accent" aria-label="(questions waiting)" />}
+          {p === "canvas" && chat.ask && pane === "chat" && <span className="fc-mark h-1.5 w-1.5 rounded-full bg-accent" aria-label="(questions waiting)" />}
         </button>
       ))}
     </div>

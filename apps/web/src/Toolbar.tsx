@@ -86,7 +86,7 @@ const PageIcon = ({ p }: { p: PageInfo }) => {
   return <I size={15} strokeWidth={1.75} className="shrink-0" aria-hidden />;
 };
 
-const Dot = () => <span className="keep-colors h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />;
+const Dot = () => <span className="fc-mark h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />;
 
 /** "Storyboard: Negroni" → "Storyboard". The video page is always "Video". */
 const tabTitle = (p: PageInfo) => (p.kind === "video" ? "Video" : p.title.split(/\s[·—–-]\s|:\s/)[0].trim() || p.file.replace(/\.html$/, ""));
@@ -229,8 +229,8 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
           <span className="text-faint">{exporting ? `${pct}%` : "→"}</span>
         </button>
         {exporting && (
-          <div className="keep-colors mx-2.5 mb-1 mt-1 h-[3px] overflow-hidden rounded-full bg-line">
-            <div className="h-full bg-ink transition-all" style={{ width: `${pct}%` }} />
+          <div className="fc-track mx-2.5 mb-1 mt-1 h-[3px] overflow-hidden rounded-full bg-line">
+            <div className="fc-fill h-full bg-ink transition-all" style={{ width: `${pct}%` }} />
           </div>
         )}
         {renders.length > 0 && (

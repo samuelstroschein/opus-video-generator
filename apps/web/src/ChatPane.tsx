@@ -75,6 +75,13 @@ export function ChatPane(props: {
 
   // One send at a time: a double click or a second Enter while the first is still on its way does nothing.
   const sending = useRef(false);
+  // After a send removes the sent chips: if focus was on one of them, it fell to the page; put it in the text box.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    if (!document.activeElement || document.activeElement === document.body) input.current?.focus();
+  }, [att.files]);
   const [pending, setPending] = useState(false);
   /** Send the composer (no arguments) or a quick reply (its text, no files). */
   async function send(reply?: string, replyFiles?: File[]) {
@@ -94,10 +101,8 @@ export function ChatPane(props: {
         // Only what was sent goes: anything typed or attached while it was on its way stays in the composer.
         setText((t) => (t.startsWith(message) ? t.slice(message.length).trimStart() : t));
         // If focus was on a sent file's chip, that chip goes away now: keep focus in the composer.
-        const was = document.activeElement;
+        if (bottom.current?.contains(document.activeElement)) refocus.current = true; // checked once the chips are gone
         att.swap((f) => files.includes(f), []);
-        if (was && bottom.current?.contains(was))
-          requestAnimationFrame(() => (!document.activeElement || document.activeElement === document.body) && input.current?.focus());
       }
     } catch (e) {
       setError(say(e));
@@ -327,6 +332,7 @@ function QueuedNote({ id, note, onError, onRemoved }: { id: string; note: Return
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return; // Enter/Esc that confirm or cancel an IME composition
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 save();

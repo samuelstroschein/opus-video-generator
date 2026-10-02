@@ -197,7 +197,7 @@ function Home() {
           <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
             {prompt.split(/(\[(?:product URL|what's new|audience)\])/).map((part, i) =>
               i % 2 ? (
-                <mark key={i} className="rounded-[4px] bg-[#d97757]/30 text-transparent shadow-[0_0_0_2px_rgb(217_119_87/0.3)]">
+                <mark key={i} className="fc-blank rounded-[4px] bg-[#d97757]/30 text-transparent shadow-[0_0_0_2px_rgb(217_119_87/0.3)]">
                   {part}
                 </mark>
               ) : (

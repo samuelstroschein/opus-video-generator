@@ -140,9 +140,9 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           </div>
           {/* playhead */}
           {v && (
-            <div className="keep-colors pointer-events-none absolute inset-y-0" style={{ left: pct(v.time) }}>
-              <div className="absolute -left-[5px] top-0 h-2.5 w-2.5 rounded-full bg-white shadow" />
-              <div className="absolute -left-px top-1 bottom-0 w-0.5 bg-white" />
+            <div className="pointer-events-none absolute inset-y-0" style={{ left: pct(v.time) }}>
+              <div className="fc-mark absolute -left-[5px] top-0 h-2.5 w-2.5 rounded-full bg-white shadow" />
+              <div className="fc-mark absolute -left-px top-1 bottom-0 w-0.5 bg-white" />
             </div>
           )}
         </div>

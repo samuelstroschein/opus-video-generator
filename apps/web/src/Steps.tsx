@@ -32,8 +32,8 @@ function useTimeLeft(p: Progress | null, live: boolean) {
 function Bar({ percent }: { percent: number | null | undefined }) {
   if (percent === null || percent === undefined) return null;
   return (
-    <div className="keep-colors h-[3px] overflow-hidden rounded-full bg-line">
-      <div className="h-full rounded-full bg-ink transition-[width] duration-700 ease-out" style={{ width: `${Math.max(3, percent)}%` }} />
+    <div className="fc-track h-[3px] overflow-hidden rounded-full bg-line">
+      <div className="fc-fill h-full rounded-full bg-ink transition-[width] duration-700 ease-out" style={{ width: `${Math.max(3, percent)}%` }} />
     </div>
   );
 }
