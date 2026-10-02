@@ -86,6 +86,8 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
   useEffect(() => {
     if (!open) return;
     items()[0]?.focus({ preventScroll: true }); // a menu takes focus to its first item; arrows move, Esc goes back
+    // On the landing it drops below "+": on a short screen, bring it into view.
+    if (size === "lg") box.current?.querySelector("[role=menu]")?.scrollIntoView({ block: "nearest" });
     if (size !== "lg") addEventListener("scroll", place, true);
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => {

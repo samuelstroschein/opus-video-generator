@@ -87,6 +87,8 @@ export function ChatPane(props: {
     setError("");
     try {
       await api.send(id, message, undefined, files);
+      // Send (and Stop) go away once the run starts: keep keyboard focus in the text box rather than losing it.
+      if (document.activeElement?.tagName === "BUTTON") input.current?.focus();
       if (fromBox) {
         // Only what was sent goes: anything typed or attached while it was on its way stays in the composer.
         setText((t) => (t.startsWith(message) ? t.slice(message.length).trimStart() : t));
@@ -261,7 +263,7 @@ export function ChatPane(props: {
             <AttachButton onPick={att.add} />
             <div className="flex items-center gap-2">
               {chat.running && (
-                <button onClick={() => api.stop(id).catch((e) => setError(say(e)))} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
+                <button onClick={() => (input.current?.focus(), api.stop(id).catch((e) => setError(say(e))))} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
                   <span className="h-2 w-2 rounded-[1px] bg-ink" />
                   Stop
                 </button>
