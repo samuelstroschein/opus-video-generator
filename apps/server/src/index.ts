@@ -273,7 +273,13 @@ artifacts.get("/p/:id/*", (c) => {
 // The built web app, when installed (npx): served from here, told which port the artifacts are on.
 const WEB_DIR = process.env.OVA_WEB_DIR;
 if (WEB_DIR) {
-  const index = () => fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8").replace("</head>", `<script>window.__OVA__=${JSON.stringify({ artifactPort: ARTIFACT_PORT })}</script></head>`);
+  const index = () => fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8").replace("</head>", `<script>window.__OVA__=${JSON.stringify({
+      artifactPort: ARTIFACT_PORT,
+      // Anonymous usage stats (see apps/web/src/telemetry.ts); the CLI decides, and the user can opt out.
+      telemetry: process.env.OVA_TELEMETRY === "1",
+      installId: process.env.OVA_INSTALL_ID,
+      version: process.env.OVA_VERSION,
+    })}</script></head>`);
   app.get("*", (c) => {
     const rel = decodeURIComponent(c.req.path).replace(/^\/+/, "");
     const abs = path.resolve(WEB_DIR, rel);

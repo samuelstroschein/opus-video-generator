@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { AudioLines, ChartColumn, ChevronDown, Share2, File, FileText, Flag, Image, LayoutGrid, List, Palette, Play, Table, Type, type LucideIcon } from "lucide-react";
 import { api, say, type PageInfo } from "./api";
 import { SHARE_TEXT } from "./Header";
+import { track } from "./telemetry";
 
 /**
  * Small click-outside menu. It stays on screen on narrow windows (shifted back inside the edge), takes focus to its
@@ -241,7 +242,7 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
                 <a role="menuitem" className="truncate font-mono text-[11px]" href={api.renderUrl(id, f)} target="_blank" rel="noreferrer">
                   {f}
                 </a>
-                <a role="menuitem" aria-label={`Download ${f}`} className="ml-3 shrink-0 text-xs font-medium underline" href={api.renderUrl(id, f, true)}>
+                <a role="menuitem" aria-label={`Download ${f}`} onClick={() => track("video_downloaded", { project_id: id })} className="ml-3 shrink-0 text-xs font-medium underline" href={api.renderUrl(id, f, true)}>
                   Download
                 </a>
               </div>
@@ -302,6 +303,7 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
   }, [exporting, renders]);
   const share = (href: string) => {
     window.open(href, "_blank", "noopener,noreferrer"); // first, inside the click, so popup blockers allow it
+    track("video_shared", { project_id: id, platform: href.includes("linkedin") ? "linkedin" : "x", had_mp4: !!latest });
     setError("");
     if (latest && !exporting) return download(api.renderUrl(id, latest, true));
     if (!canExport) return;

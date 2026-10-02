@@ -64,7 +64,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
   // Only while working: what is happening right now. When idle the card is just the step and the counter.
   const now = live ? pace.progress?.label || active?.detail || activity : undefined;
   return (
-    <div className="mx-2 flex min-h-[2.75rem] flex-col rounded-t-xl border border-b-0 border-line-2 bg-paper">
+    <div className="ova-private mx-2 flex min-h-[2.75rem] flex-col rounded-t-xl border border-b-0 border-line-2 bg-paper">
       <button onClick={() => setPinned(!open)} aria-expanded={open} className="ring-inset flex w-full shrink-0 items-center gap-2.5 px-3 py-2.5 text-left text-[13px] font-medium">
         {live ? <Spinner /> : allDone && <span className="text-[11px] text-ok">✓</span>}
         <span className="min-w-0 flex-1 truncate">{open ? counter : (active?.title ?? (allDone ? "All steps done" : counter))}</span>
@@ -99,7 +99,7 @@ export function StepCard({ steps, live, pace, activity, quiet }: { steps: Step[]
 export function ProgressView({ steps, pace, live, activity }: { steps: Step[]; pace: Pace; live: boolean; activity?: string }) {
   return (
     // Centred with auto margins, not align-items: on a short screen a long plan scrolls instead of spilling out both ends.
-    <div className="flex h-full overflow-y-auto bg-paper px-8 py-6">
+    <div className="ova-private flex h-full overflow-y-auto bg-paper px-8 py-6">
       <div className="m-auto w-full min-w-0 max-w-sm [overflow-wrap:anywhere]">
         {steps.length === 0 && (
           <div className="flex items-center gap-3 text-sm text-mute">

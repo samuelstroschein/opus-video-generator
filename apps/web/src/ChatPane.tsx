@@ -187,7 +187,7 @@ export function ChatPane(props: {
     <section className="flex min-h-0 flex-1 flex-col border-r border-line bg-white">
 
       <div ref={scroller} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-3 pt-5 [@media(max-height:420px)]:pt-2">
-        <div ref={content} className="mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
+        <div ref={content} className="ova-private mt-auto flex flex-col gap-4 text-sm leading-[1.55] [overflow-wrap:anywhere]" role="log" aria-live="polite" aria-label="Conversation">
           {groupRows(chat.items).map((row, i, all) =>
             <Safe key={i}>
               {row.kind === "tools" ? (
@@ -222,7 +222,7 @@ export function ChatPane(props: {
           ].join(" ")}
         >
           {asking && (
-            <div ref={questionBox} className="flex max-h-[45vh] min-h-0 flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
+            <div ref={questionBox} className="ova-private flex max-h-[45vh] min-h-0 flex-col gap-2 overflow-y-auto px-1 pb-1 pt-0.5">
               <div className="flex items-center gap-2 text-[13px] text-mute">
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
                   <circle cx="8" cy="8" r="6.5" />

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.49.0",
+    "posthog-js": "^1.435.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

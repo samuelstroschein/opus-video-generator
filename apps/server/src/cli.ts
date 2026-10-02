@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
 import { claudeStatus } from "./claude-status.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +29,7 @@ Usage: npx opus-video-agent [options]
   --port <n>     Port for the app (default 8787; the next free one if taken)
   --data <dir>   Where projects are kept (default ~/.opus-video-agent)
   --no-open      Don't open the browser
+  --no-telemetry Don't send anonymous usage stats (also: OVA_TELEMETRY=0 or DO_NOT_TRACK=1)
   -v, --version  Print the version
 
 Needs Claude Code, signed in: https://claude.com/claude-code`);
@@ -65,6 +67,12 @@ async function main() {
   fs.mkdirSync(dataDir, { recursive: true });
   const [port, artifactPort] = await ports(Number(value("--port") ?? 8787));
 
+  // Anonymous usage stats: a random id for this install (no account, no name), so one person counts once.
+  const telemetry = !flag("--no-telemetry") && process.env.OVA_TELEMETRY !== "0" && !["1", "true"].includes(process.env.DO_NOT_TRACK ?? "");
+  const idFile = path.join(dataDir, "install-id");
+  if (!fs.existsSync(idFile)) fs.writeFileSync(idFile, randomUUID() + "\n");
+  const installId = fs.readFileSync(idFile, "utf8").trim();
+
   Object.assign(process.env, {
     // The package ships skills/ and templates/ next to bin/; from a repo checkout the server finds them itself.
     ...(fs.existsSync(path.join(pkgRoot, "skills")) ? { OVA_ASSET_ROOT: pkgRoot } : {}),
@@ -72,6 +80,9 @@ async function main() {
     PORT: String(port),
     ARTIFACT_PORT: String(artifactPort),
     OVA_QUIET: "1",
+    OVA_TELEMETRY: telemetry ? "1" : "0",
+    OVA_INSTALL_ID: installId,
+    OVA_VERSION: pkg.version,
   });
   // The built web app ships in the package; from a repo checkout (development) the page comes from Vite instead.
   const web = path.join(pkgRoot, "web");
@@ -90,6 +101,7 @@ async function main() {
   ${bold(url)}
   ${dim(`Projects: ${dataDir.replace(os.homedir(), "~")}`)}
   ${claude.message}
+  ${dim(telemetry ? "Anonymous usage stats and session replays help improve this. Opt out: --no-telemetry" : "Usage stats: off")}
 
   ${dim("Press Ctrl+C to stop.")}
 `);

@@ -103,7 +103,7 @@ export function AppHeader({ tone, children }: { tone: "dark" | "light"; children
       {children && (
         <>
           <span className={tone === "dark" ? "text-white/30" : "text-line-3"}>/</span>
-          <div className="min-w-0 flex-1 truncate text-sm font-medium">{children}</div>
+          <div className="ova-private min-w-0 flex-1 truncate text-sm font-medium">{children}</div>
         </>
       )}
       {!children && <div className="flex-1" />}

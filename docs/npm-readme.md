@@ -27,3 +27,7 @@ npx opus-video-agent --port 8787     # app port (the next free one if taken)
 npx opus-video-agent --data ~/videos # where projects are kept
 npx opus-video-agent --no-open       # don't open the browser
 ```
+
+## Usage stats
+
+To learn how many people try it and how far they get, the app sends anonymous usage stats to PostHog: page views, clicks, the steps of making a video (requested, storyboard ready, video ready, exported, shared) and session replays of the app itself. What you write stays private: in replays your typing, the chat, project titles, the agent's questions and file names are masked, clicks carry no text, and your files, pages and videos are never sent. The id is a random number kept in `~/.opus-video-agent/install-id`. Turn it off with `--no-telemetry`, `OVA_TELEMETRY=0` or `DO_NOT_TRACK=1`.

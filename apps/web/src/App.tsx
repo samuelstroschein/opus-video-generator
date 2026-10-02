@@ -4,6 +4,7 @@ import { AttachButton, PendingFiles, useAttachments } from "./Attach";
 import { ProjectView } from "./ProjectView";
 import { SpaceBackground } from "./SpaceBackground";
 import { AppHeader } from "./Header";
+import { track } from "./telemetry";
 
 function useHashRoute() {
   const [hash, setHash] = useState(location.hash);
@@ -142,6 +143,13 @@ function Home() {
     setError("");
     try {
       const { id } = await api.create(prompt, att.files);
+      // Funnel step 1. No prompt text: only its shape.
+      track("video_requested", {
+        project_id: id,
+        from_example: att.files.some((f) => f.name.endsWith("-reference.zip")),
+        attachments: att.files.length,
+        prompt_chars: prompt.length,
+      });
       location.hash = `#/p/${id}`;
     } catch (e) {
       setError(say(e));
@@ -197,7 +205,7 @@ function Home() {
           <PendingFiles files={att.files} remove={(k) => (att.remove(k), box.current?.focus())} glass />
           <div className={more ? "relative [mask-image:linear-gradient(to_bottom,black_80%,transparent)]" : "relative"}>
           {/* The blanks stay highlighted: a mirror of the text sits behind the (transparent) textarea, with each [blank] marked. */}
-          <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
+          <div ref={mirror} aria-hidden className="ova-private pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
             {prompt.split(/(\[(?:product URL|what's new|audience)\])/).map((part, i) =>
               i % 2 ? (
                 <mark key={i} className="fc-blank rounded-[4px] bg-[#d97757]/30 text-transparent shadow-[0_0_0_2px_rgb(217_119_87/0.3)]">
@@ -284,7 +292,7 @@ function Home() {
             <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#0b0d18]/60 backdrop-blur-md">
               {projects.slice(0, allProjects ? undefined : 5).map((p) => (
                 <a key={p.id} href={`#/p/${p.id}`} className="ring-inset group flex items-center gap-4 px-4 py-3 hover:bg-white/[0.06]">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/90">{p.title}</span>
+                  <span className="ova-private min-w-0 flex-1 truncate text-sm font-medium text-white/90">{p.title}</span>
                   <span className="shrink-0 font-mono text-[11px] text-white/60">
                     {new Date(p.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {p.turns} turn{p.turns === 1 ? "" : "s"}
                   </span>

@@ -6,6 +6,7 @@ import { AppHeader } from "./Header";
 import { Safe, keyOf } from "./Safe";
 import { lastActivity, useProject } from "./useProject";
 import { ExportMenu, PageTabs, ShareMenu } from "./Toolbar";
+import { trackOnce } from "./telemetry";
 import { ProgressView } from "./Steps";
 import { VideoPane, type VideoState } from "./VideoPane";
 
@@ -62,6 +63,11 @@ export function ProjectView({ id }: { id: string }) {
   const fallback = !chat.running ? (pages.find((p) => p.kind === "video") ?? pages.find((p) => p.file === "storyboard.html") ?? pages.find((p) => p.file !== "brief.html"))?.file : undefined;
   const file = override ?? state?.canvas ?? fallback ?? null;
   const current = pages.find((p) => p.file === file);
+  // Funnel steps 2 and 3: the first storyboard and the first video of this project.
+  useEffect(() => {
+    if (pages.some((p) => p.icon === "storyboard" || /^storyboards?\.html$/.test(p.file))) trackOnce(id, "storyboard_ready");
+    if (pages.some((p) => p.kind === "video")) trackOnce(id, "video_ready");
+  }, [pages, id]);
 
   // One send at a time (a double click on the form's Continue sends once); the form stays disabled meanwhile.
   const [sending, setSending] = useState(false);

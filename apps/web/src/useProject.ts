@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { api, type Attachment, type AskForm, type ProjectState, type Scope, type Step } from "./api";
+import { track } from "./telemetry";
 
 export type Item =
   | { kind: "user"; text: string; scope?: Scope; attachments?: Attachment[] }
@@ -249,6 +250,8 @@ export function useProject(id: string) {
         else {
           dispatch(e);
           if (e.type === "turn.done" || e.type === "error" || e.type === "export.done") refresh(false);
+          // Funnel step 4: an MP4 was rendered (from Export or from Share). Live events only, never the replayed history.
+          if (e.type === "export.done") track("video_exported", { project_id: id, seconds: e.seconds });
         }
       };
       es.addEventListener("ready", () => {
