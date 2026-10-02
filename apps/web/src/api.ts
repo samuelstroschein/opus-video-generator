@@ -76,7 +76,7 @@ export const api = {
   editQueued: (id: string, qid: string, text: string) =>
     fetch(`/api/projects/${id}/queue/${qid}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }).then((r) => json<{ ok: true }>(r)),
   removeQueued: (id: string, qid: string) => fetch(`/api/projects/${id}/queue/${qid}`, { method: "DELETE" }).then((r) => json<{ ok: true }>(r)),
-  stop: (id: string) => fetch(`/api/projects/${id}/stop`, { method: "POST" }),
+  stop: (id: string) => fetch(`/api/projects/${id}/stop`, { method: "POST" }).then((r) => json<{ ok: true }>(r)),
   // Artifacts live on their own origin (port 8788) so agent-written HTML can't reach the app.
   exportVideo: (id: string) =>
     fetch(`/api/projects/${id}/export`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => json<{ ok: true }>(r)),

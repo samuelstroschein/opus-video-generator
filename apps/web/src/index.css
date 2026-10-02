@@ -32,6 +32,8 @@ textarea:focus { outline: none; }
 /* ...except on the white surfaces inside it (the player), which go back to ink. A video sits flush with its frame, so its ring goes inside. */
 .landing .surface-light :where(button, a, [tabindex], video):focus-visible { outline-color: rgb(25 24 23 / .6); }
 .landing .surface-light video:focus-visible { outline-color: rgb(255 255 255 / .75); outline-offset: -3px; }
+/* Controls inside scrolling areas (question replies, file chips, the plan card) draw their ring inside, where no scroller clips it. */
+[data-reply]:focus-visible, .ring-inset:focus-visible { outline-offset: -2px; }
 /* Dark bars in the light editor (the video timeline) need the light ring too. */
 .surface-dark :where(button, a, [tabindex]):focus-visible { outline-color: rgb(255 255 255 / .7); }
 

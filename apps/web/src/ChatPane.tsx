@@ -96,10 +96,22 @@ export function ChatPane(props: {
   useEffect(() => {
     const el = bottom.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => (el.scrollTop = el.scrollHeight));
-    ro.observe(el);
-    for (const c of el.children) ro.observe(c);
-    return () => ro.disconnect();
+    const pin = () => (el.scrollTop = el.scrollHeight);
+    const ro = new ResizeObserver(pin);
+    // Watch the stack and each piece in it, including pieces that appear later (an error, the plan card).
+    const watch = () => {
+      ro.disconnect();
+      ro.observe(el);
+      for (const c of el.children) ro.observe(c);
+      pin();
+    };
+    const mo = new MutationObserver(watch);
+    mo.observe(el, { childList: true });
+    watch();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
   }, []);
   // Keep the highlighted answer in view when arrows move it through a question taller than its box.
   const questionBox = useRef<HTMLDivElement>(null);
@@ -166,7 +178,7 @@ export function ChatPane(props: {
 
       {/* The bottom stack may shrink: on a short screen the question panel and the open plan give way (and scroll inside
           themselves) so the text box, Send and Skip always stay on screen, whatever else is showing. */}
-      <div ref={bottom} className="flex min-h-0 flex-col overflow-y-auto px-3 pb-3">
+      <div ref={bottom} className="flex min-h-0 flex-col overflow-y-auto px-3 pb-3 pt-1">
         {error && <p role="alert" className="mx-2 mb-2 shrink-0 text-xs text-red-600">{error}</p>}
         <Safe>
           <StepCard steps={chat.steps} live={chat.running} pace={chat} activity={lastActivity(chat.items)} quiet={!!asking} />
@@ -188,7 +200,7 @@ export function ChatPane(props: {
                   <path d="M6.2 6.3a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.4M8 11.6v.1" strokeLinecap="round" />
                 </svg>
                 <span className="flex-1">Question</span>
-                <button onClick={() => (setSkipped(asking), input.current?.focus())} aria-label="Dismiss" className="flex h-6 w-6 items-center justify-center rounded-md text-base leading-none hover:bg-bubble hover:text-ink">
+                <button onClick={() => (setSkipped(asking), input.current?.focus())} aria-label="Dismiss" className="ring-inset flex h-6 w-6 items-center justify-center rounded-md text-base leading-none hover:bg-bubble hover:text-ink">
                   ×
                 </button>
               </div>
@@ -199,6 +211,7 @@ export function ChatPane(props: {
                     key={r}
                     data-reply
                     onMouseEnter={() => setSel(i)}
+                    // The panel scrolls, which would cut an outside focus ring: draw it inside.
                     onClick={() => (void send(r, []), input.current?.focus())}
                     className={["group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left text-sm hover:bg-bubble", i === sel && !text ? "bg-bubble" : ""].join(" ")}
                   >
@@ -231,7 +244,7 @@ export function ChatPane(props: {
             <AttachButton onPick={att.add} />
             <div className="flex items-center gap-2">
               {chat.running && (
-                <button onClick={() => api.stop(id)} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
+                <button onClick={() => api.stop(id).catch((e) => setError(say(e)))} className="flex items-center gap-[7px] rounded-lg border border-line-3 bg-white px-3.5 py-[7px] text-[13px] font-medium hover:bg-bubble">
                   <span className="h-2 w-2 rounded-[1px] bg-ink" />
                   Stop
                 </button>
