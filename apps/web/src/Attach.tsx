@@ -73,10 +73,19 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const items = () => [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
   useEffect(() => {
     if (!open) return;
+    items()[0]?.focus({ preventScroll: true }); // a menu takes focus to its first item; arrows move, Esc goes back
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        const list = items();
+        const i = list.indexOf(document.activeElement as HTMLElement);
+        e.preventDefault();
+        list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length]?.focus();
+        return;
+      }
       if (e.key !== "Escape") return;
       // Esc on a menu item: focus goes back to "+", not to the top of the page.
       if (box.current?.contains(document.activeElement)) button.current?.focus();
@@ -93,6 +102,7 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
     };
   }, [open]);
   const pick = (input: HTMLInputElement | null) => {
+    button.current?.focus(); // the item is about to go away: keep focus on "+", not the top of the page
     setOpen(false);
     input?.click();
   };
@@ -101,7 +111,8 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
     e.target.value = "";
   };
   return (
-    <div ref={box} className="relative">
+    // Tabbing out of the menu closes it.
+    <div ref={box} className="relative" onBlur={(e) => open && !box.current?.contains(e.relatedTarget as Node) && e.relatedTarget && setOpen(false)}>
       <input ref={file} type="file" multiple hidden onChange={onChange} />
       {/* webkitdirectory is not in React's input typings */}
       <input ref={folder} type="file" hidden onChange={onChange} {...({ webkitdirectory: "" } as object)} />

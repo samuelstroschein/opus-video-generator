@@ -61,17 +61,22 @@ function Home() {
   const mirror = useRef<HTMLDivElement>(null);
   // Load projects and examples; if the server is down, keep trying quietly and fill in once it is back.
   useEffect(() => {
-    let timer = 0;
+    // Each list fills in on its own: slow projects never hold back the examples.
+    const timers: number[] = [];
     let alive = true;
-    const load = () =>
-      Promise.all([api.list(), api.examples()]).then(
-        ([p, x]) => alive && (setProjects(p), setExamples(x), setOffline(false)),
-        () => alive && (setOffline(true), (timer = window.setTimeout(load, 5000))),
-      );
-    void load();
+    const keepTrying = <T,>(get: () => Promise<T>, done: (v: T) => void) => {
+      const go = () =>
+        get().then(
+          (v) => alive && (done(v), setOffline(false)),
+          () => alive && (setOffline(true), timers.push(window.setTimeout(go, 5000))),
+        );
+      void go();
+    };
+    keepTrying(api.list, setProjects);
+    keepTrying(api.examples, setExamples);
     return () => {
       alive = false;
-      clearTimeout(timer);
+      timers.forEach(clearTimeout);
     };
   }, []);
 
@@ -159,10 +164,10 @@ function Home() {
           {...att.dropProps}
           className={[
             "relative z-20 flex w-[720px] max-w-full flex-col gap-3 rounded-2xl border bg-white/[0.08] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_48px_rgba(0,0,0,.35)] backdrop-blur-xl backdrop-saturate-150",
-            att.dragging ? "border-white/60" : "border-white/15 focus-within:border-white/30",
+            att.dragging ? "border-white/60" : "border-white/15 focus-within:border-white/45 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_12px_48px_rgba(0,0,0,.35),0_0_0_3px_rgba(255,255,255,.08)]",
           ].join(" ")}
         >
-          <PendingFiles files={att.files} remove={att.remove} glass />
+          <PendingFiles files={att.files} remove={(k) => (att.remove(k), box.current?.focus())} glass />
           <div className={more ? "relative [mask-image:linear-gradient(to_bottom,black_80%,transparent)]" : "relative"}>
           {/* The blanks stay highlighted: a mirror of the text sits behind the (transparent) textarea, with each [blank] marked. */}
           <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-[17px] leading-normal text-transparent">
@@ -216,7 +221,9 @@ function Home() {
           </div>
         </div>
         {error && <p role="alert" className="-mt-6 text-center text-sm text-red-300">{error}</p>}
-        {offline && <p role="status" className="-mt-4 text-center text-sm text-white/70">Can't reach the server right now. Your projects and the examples will show when it's back.</p>}
+        <p role="status" className={offline ? "-mt-4 text-center text-sm text-white/70" : "sr-only"}>
+          {offline ? "Can't reach the server right now. Your projects and the examples will show when it's back." : ""}
+        </p>
 
         {projects.length > 0 && (
           <section aria-labelledby="projects-h" className="mt-6 flex w-full flex-col gap-3">
@@ -304,7 +311,8 @@ function Home() {
 /** An example: its muted preview plays on its own (a fast glimpse of each style); a click opens the player. */
 function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; onOpen: () => void; onUse: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
-  // Play only while on screen, so eight previews don't all decode at once. Start a third in, past most intros.
+  // Nothing downloads until a card is about to scroll into view (only the poster shows before that; browsers buffer
+  // whole files even with preload="metadata"). Play only while on screen, starting a third in, past most intros.
   useEffect(() => {
     const v = video.current;
     if (!v || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -317,7 +325,16 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
     };
     v.addEventListener("loadedmetadata", seek);
     v.addEventListener("canplay", play);
-    const io = new IntersectionObserver(
+    const near = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        near.disconnect();
+        v.preload = "auto";
+        v.src = x.preview;
+      },
+      { rootMargin: "300px 0px" },
+    );
+    const seen = new IntersectionObserver(
       ([e]) => {
         inView = e.isIntersecting;
         if (inView) play();
@@ -325,24 +342,25 @@ function ExampleCard({ x, using, onOpen, onUse }: { x: Example; using: boolean; 
       },
       { threshold: 0.15 },
     );
-    io.observe(v);
+    near.observe(v);
+    seen.observe(v);
     return () => {
-      io.disconnect();
+      near.disconnect();
+      seen.disconnect();
       v.removeEventListener("loadedmetadata", seek);
       v.removeEventListener("canplay", play);
     };
-  }, []);
+  }, [x.preview]);
   return (
     <div className="group flex flex-col gap-3">
       <button onClick={onOpen} aria-label={`Play ${x.title} by @${x.by}`} className="relative block overflow-hidden rounded-[10px] bg-white/5 text-left ring-1 ring-white/10" title="Play">
         <video
           ref={video}
-          src={x.preview}
           poster={x.poster}
           muted
           loop
           playsInline
-          preload={matchMedia("(prefers-reduced-motion: reduce)").matches ? "none" : "metadata"}
+          preload="none"
           onError={(e) => (e.currentTarget.poster = x.img)}
           className="block aspect-[16/10] w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />
@@ -412,18 +430,18 @@ function Player({ x, onClose, onUse }: { x: Example; onClose: () => void; onUse:
             <div className="truncate text-base font-semibold max-sm:whitespace-normal" title={x.title}>
               {x.title}
             </div>
-            <div className="truncate text-[13px] text-mute">
+            <div className="truncate text-[13px] text-mute max-sm:whitespace-normal">
               <a href={`https://x.com/${x.by}`} target="_blank" rel="noreferrer" className="hover:text-ink hover:underline">
                 @{x.by}
               </a>{" "}
-              · {x.style} · <span className="font-mono text-[11px] text-mute">{x.likes} likes</span>
+              · {x.style} · <span className="whitespace-nowrap font-mono text-[11px] text-mute">{x.likes} likes</span>
             </div>
           </div>
           <div className="flex flex-none items-center gap-2 max-sm:justify-end">
-            <a href={x.url} target="_blank" rel="noreferrer" className="rounded-lg px-3 py-2 text-[13px] font-medium text-mute hover:bg-bubble hover:text-ink">
+            <a href={x.url} target="_blank" rel="noreferrer" className="whitespace-nowrap rounded-lg px-3 py-2 text-[13px] max-[359px]:px-2 font-medium text-mute hover:bg-bubble hover:text-ink">
               Watch on X ↗
             </a>
-            <button onClick={onUse} className="rounded-lg bg-ink px-4 py-2 text-[13px] font-medium text-white">
+            <button onClick={onUse} className="whitespace-nowrap rounded-lg bg-ink px-4 py-2 text-[13px] max-[359px]:px-3 font-medium text-white">
               Use this style
             </button>
             <button onClick={onClose} aria-label="Close" title="Close (Esc)" className="flex h-9 w-9 items-center justify-center rounded-lg text-xl leading-none text-mute hover:bg-bubble hover:text-ink">

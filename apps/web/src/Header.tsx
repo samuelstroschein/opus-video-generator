@@ -31,23 +31,28 @@ function cachedStars(): { n: number | null } | null {
     return null;
   }
 }
+let lookup: Promise<number | null> | null = null; // one request at a time, however many headers ask
+function fetchStars(): Promise<number | null> {
+  lookup ??= fetch(`https://api.github.com/repos/${GITHUB_REPO}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: { stargazers_count?: number } | null) => {
+      const n = typeof d?.stargazers_count === "number" ? d.stargazers_count : null;
+      try {
+        localStorage.setItem(STARS_KEY, JSON.stringify({ n, at: Date.now() }));
+      } catch {}
+      return n;
+    })
+    .catch(() => null)
+    .finally(() => setTimeout(() => (lookup = null), 0));
+  return lookup;
+}
 function useStars(): number | null {
   const [stars, setStars] = useState<number | null>(() => cachedStars()?.n ?? null);
   useEffect(() => {
     if (cachedStars()) return; // looked up within the hour (found, or not public yet)
-    const keep = (n: number | null) => {
-      try {
-        localStorage.setItem(STARS_KEY, JSON.stringify({ n, at: Date.now() }));
-      } catch {}
-    };
-    fetch(`https://api.github.com/repos/${GITHUB_REPO}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { stargazers_count?: number } | null) => {
-        const n = typeof d?.stargazers_count === "number" ? d.stargazers_count : null;
-        keep(n);
-        setStars(n);
-      })
-      .catch(() => {});
+    let alive = true;
+    void fetchStars().then((n) => alive && setStars(n));
+    return () => void (alive = false);
   }, []);
   return stars;
 }
