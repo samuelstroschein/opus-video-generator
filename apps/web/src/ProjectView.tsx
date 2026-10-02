@@ -63,6 +63,8 @@ export function ProjectView({ id }: { id: string }) {
   const fallback = !chat.running ? (pages.find((p) => p.kind === "video") ?? pages.find((p) => p.file === "storyboard.html") ?? pages.find((p) => p.file !== "brief.html"))?.file : undefined;
   const file = override ?? state?.canvas ?? fallback ?? null;
   const current = pages.find((p) => p.file === file);
+  // Export and Share render the video on screen; from another page, the main one.
+  const videoPage = current?.kind === "video" ? current : (pages.find((p) => p.file === "video.html") ?? pages.find((p) => p.kind === "video"));
   // Funnel steps 2 and 3: the first storyboard and the first video of this project.
   useEffect(() => {
     if (pages.some((p) => p.icon === "storyboard" || /^storyboards?\.html$/.test(p.file))) trackOnce(id, "storyboard_ready");
@@ -228,8 +230,8 @@ export function ProjectView({ id }: { id: string }) {
         {pages.length > 0 && (
           <nav aria-label="Pages" className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-white px-4 max-sm:px-2">
             <PageTabs projectId={id} pages={pages} active={current?.file} changed={changed} onPick={(f) => setOverride(f)} />
-            <ShareMenu id={id} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />
-            <ExportMenu id={id} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
+            <ShareMenu id={id} video={videoPage} renders={state?.renders ?? []} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} setError={setError} />
+            <ExportMenu id={id} video={videoPage} canExport={pages.some((p) => p.kind === "video")} exporting={chat.exporting} renders={state?.renders ?? []} setError={setError} />
           </nav>
         )}
         <div className="relative min-h-0 flex-1 bg-paper">

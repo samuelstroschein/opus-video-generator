@@ -20,7 +20,8 @@ export const isExporting = (id: string) => running.has(id);
 
 export { chromePath };
 
-export type ExportOptions = { fps?: number; from?: number; to?: number; label?: string };
+/** `page`: which video page to render (a project can have several cuts, e.g. video.html and video-20.html). */
+export type ExportOptions = { fps?: number; from?: number; to?: number; label?: string; page?: string };
 
 /** Starts an export in the background; progress and the result arrive through the project's event log. */
 export function startExport(id: string, artifactOrigin: string, opts: ExportOptions = {}) {
@@ -31,19 +32,19 @@ export function startExport(id: string, artifactOrigin: string, opts: ExportOpti
     .finally(() => running.delete(id));
 }
 
-async function run(id: string, artifactOrigin: string, { fps = 30, from, to, label }: ExportOptions) {
+async function run(id: string, artifactOrigin: string, { fps = 30, from, to, label, page: pageFile = "video.html" }: ExportOptions) {
   const l = log(id);
   fs.mkdirSync(rendersDir(id), { recursive: true });
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
-    await page.goto(`${artifactOrigin}/p/${id}/video.html?export=1`, { waitUntil: "load" });
+    await page.goto(`${artifactOrigin}/p/${id}/${pageFile}?export=1`, { waitUntil: "load" });
     await page.waitForFunction(() => (window as any).__lva?.ready, undefined, { timeout: 60_000 });
     const info = await page.evaluate(() => {
       const a = (window as any).__lva;
       return { duration: a.duration as number, width: a.width as number, height: a.height as number };
     });
-    if (!info.duration) throw new Error("video.html has no scenes (LVA_SCENES is empty)");
+    if (!info.duration) throw new Error(`${pageFile} has no scenes (LVA_SCENES is empty)`);
     // The page's sound: every <audio data-start> (see audio.ts). Only files inside the project can be mixed.
     const declared = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLAudioElement>("audio[data-start]")].map((a) => ({
@@ -66,7 +67,8 @@ async function run(id: string, artifactOrigin: string, { fps = 30, from, to, lab
     const end = Math.min(info.duration, to ?? info.duration);
     const total = Math.max(1, Math.round((end - start) * fps));
     const version = readMeta(id).turns;
-    const file = `${label ?? "launch"}-v${version}-${new Date().toISOString().slice(11, 19).replace(/:/g, "")}.mp4`;
+    // Named after the page: launch-v12-….mp4 for video.html, video-20-v12-….mp4 for video-20.html.
+    const file = `${label ?? (pageFile === "video.html" ? "launch" : pageFile.replace(/\.html$/, ""))}-v${version}-${new Date().toISOString().slice(11, 19).replace(/:/g, "")}.mp4`;
     const out = path.join(rendersDir(id), file);
     l.emit({ type: "export.start", file, from: start, to: end, fps });
 

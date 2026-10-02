@@ -82,8 +82,9 @@ export const api = {
   removeQueued: (id: string, qid: string) => fetch(`/api/projects/${id}/queue/${qid}`, { method: "DELETE" }).then((r) => json<{ ok: true }>(r)),
   stop: (id: string) => fetch(`/api/projects/${id}/stop`, { method: "POST" }).then((r) => json<{ ok: true }>(r)),
   // Artifacts live on their own origin (port 8788) so agent-written HTML can't reach the app.
-  exportVideo: (id: string) =>
-    fetch(`/api/projects/${id}/export`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).then((r) => json<{ ok: true }>(r)),
+  /** Render a video page to MP4 (the one on screen; video.html when none is given). */
+  exportVideo: (id: string, page?: string) =>
+    fetch(`/api/projects/${id}/export`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(page ? { page } : {}) }).then((r) => json<{ ok: true }>(r)),
   renderUrl: (id: string, file: string, download = false) => `/api/projects/${id}/renders/${file}${download ? "?download=1" : ""}`,
   // The installed app tells the page its artifact port (window.__OVA__); in development it is 8788.
   fileUrl: (id: string, file: string, tick: number) => `${location.protocol}//${location.hostname}:${ARTIFACT_PORT}/p/${id}/${file}?t=${tick}`,

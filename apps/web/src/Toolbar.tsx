@@ -89,8 +89,8 @@ const PageIcon = ({ p }: { p: PageInfo }) => {
 
 const Dot = () => <span className="fc-mark h-1.5 w-1.5 shrink-0 rounded-full bg-ink" />;
 
-/** "Storyboard: Negroni" → "Storyboard". The video page is always "Video". */
-const tabTitle = (p: PageInfo) => (p.kind === "video" ? "Video" : p.title.split(/\s[·—–-]\s|:\s/)[0].trim() || p.file.replace(/\.html$/, ""));
+/** "Storyboard: Negroni" → "Storyboard", "Video 16s: Opus launch" → "Video 16s": a page's own title, before the colon. */
+export const tabTitle = (p: PageInfo) => p.title.split(/\s[·—–-]\s|:\s/)[0].trim() || p.file.replace(/\.html$/, "");
 
 const MAX_TABS = 3;
 
@@ -191,8 +191,9 @@ export function PageTabs({ projectId, pages, active, changed, onPick }: { projec
   );
 }
 
-export function ExportMenu(props: { id: string; canExport: boolean; exporting: { frame: number; total: number } | null; renders: string[]; setError: (e: string) => void }) {
-  const { id, canExport, exporting, renders, setError } = props;
+/** `video`: the video page to render, the one on screen (a project can have several cuts). */
+export function ExportMenu(props: { id: string; video?: PageInfo; canExport: boolean; exporting: { frame: number; total: number } | null; renders: string[]; setError: (e: string) => void }) {
+  const { id, video, canExport, exporting, renders, setError } = props;
   const pct = exporting ? Math.round((exporting.frame / exporting.total) * 100) : 0;
   return (
     <Popover
@@ -219,13 +220,13 @@ export function ExportMenu(props: { id: string; canExport: boolean; exporting: {
             e.stopPropagation(); // stay open: the menu shows the render's progress
             if (!canExport || exporting) return;
             setError("");
-            api.exportVideo(id).catch((err) => setError(say(err)));
+            api.exportVideo(id, video?.file).catch((err) => setError(say(err)));
           }}
           className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-[13px] hover:bg-bubble aria-disabled:opacity-50"
         >
           <span>
             Render video
-            <span className="block text-[11px] text-faint">MP4 · 1080p · 30 fps</span>
+            <span className="block text-[11px] text-faint">{video ? `${tabTitle(video)} · ` : ""}MP4 · 1080p · 30 fps</span>
           </span>
           <span className="text-faint">{exporting ? `${pct}%` : "→"}</span>
         </button>
@@ -280,26 +281,29 @@ export function download(url: string) {
  * the same time so it is ready to attach (neither site lets a page attach a file). With no export yet, the click
  * starts one and the MP4 downloads as soon as it is rendered.
  */
-export function ShareMenu(props: { id: string; renders: string[]; canExport: boolean; exporting: { frame: number; total: number } | null; setError: (e: string) => void }) {
-  const { id, renders, canExport, exporting, setError } = props;
+export function ShareMenu(props: { id: string; video?: PageInfo; renders: string[]; canExport: boolean; exporting: { frame: number; total: number } | null; setError: (e: string) => void }) {
+  const { id, video, renders, canExport, exporting, setError } = props;
   const text = encodeURIComponent(SHARE_TEXT);
   const targets = [
     { label: "Share on X", icon: <XMark />, href: `https://x.com/intent/post?text=${text}` },
     { label: "Share on LinkedIn", icon: <LinkedInMark />, href: `https://www.linkedin.com/feed/?shareActive=true&text=${text}` },
   ];
-  const latest = renders[0];
+  // This video's renders, newest first (export names them after the page: launch-… for video.html).
+  const prefix = !video || video.file === "video.html" ? "launch-" : `${video.file.replace(/\.html$/, "")}-`;
+  const mine = renders.filter((r) => r.startsWith(prefix));
+  const latest = mine[0];
 
   // When a share started an export, download the new render the moment it appears.
   const waiting = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    if (waiting.current === undefined || renders[0] === waiting.current || !renders[0]) return;
+    if (waiting.current === undefined || mine[0] === waiting.current || !mine[0]) return;
     waiting.current = undefined;
-    download(api.renderUrl(id, renders[0], true));
+    download(api.renderUrl(id, mine[0], true));
   }, [renders, id]);
 
   const requested = useRef(false); // an export this menu started and the server has not reported yet
   useEffect(() => {
-    if (exporting || renders[0]) requested.current = false;
+    if (exporting || mine[0]) requested.current = false;
   }, [exporting, renders]);
   const share = (href: string) => {
     window.open(href, "_blank", "noopener,noreferrer"); // first, inside the click, so popup blockers allow it
@@ -310,7 +314,7 @@ export function ShareMenu(props: { id: string; renders: string[]; canExport: boo
     waiting.current = latest ?? null;
     if (exporting || requested.current) return; // already rendering: the download follows when it is done
     requested.current = true;
-    api.exportVideo(id).catch((e) => {
+    api.exportVideo(id, video?.file).catch((e) => {
       requested.current = false;
       setError(say(e));
     });

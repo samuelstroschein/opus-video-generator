@@ -197,7 +197,9 @@ const ARTIFACT_PORT = Number(process.env.ARTIFACT_PORT ?? 8788);
 
 app.post("/api/projects/:id/export", async (c) => {
   const id = c.req.param("id");
-  const body = await c.req.json<{ fps?: number; from?: number; to?: number }>().catch(() => ({}));
+  const body = await c.req.json<{ fps?: number; from?: number; to?: number; page?: string }>().catch(() => ({}) as { page?: string });
+  // Only a video page of this project can be rendered.
+  if (body.page && !listPages(id).some((p) => p.file === body.page && p.kind === "video")) return c.json({ error: `${body.page} is not a video page` }, 400);
   try {
     startExport(id, `http://localhost:${ARTIFACT_PORT}`, body);
     return c.json({ ok: true });
