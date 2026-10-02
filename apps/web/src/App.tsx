@@ -260,7 +260,7 @@ function Home() {
             <h2 id="projects-h" className="m-0 text-[13px] font-medium text-white/70">Your projects</h2>
             <div className="flex flex-col divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10 bg-[#0b0d18]/60 backdrop-blur-md">
               {projects.slice(0, allProjects ? undefined : 5).map((p) => (
-                <a key={p.id} href={`#/p/${p.id}`} className="group flex items-center gap-4 px-4 py-3 hover:bg-white/[0.06]">
+                <a key={p.id} href={`#/p/${p.id}`} className="ring-inset group flex items-center gap-4 px-4 py-3 hover:bg-white/[0.06]">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/90">{p.title}</span>
                   <span className="shrink-0 font-mono text-[11px] text-white/60">
                     {new Date(p.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · {p.turns} turn{p.turns === 1 ? "" : "s"}

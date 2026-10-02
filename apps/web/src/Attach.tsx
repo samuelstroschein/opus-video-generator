@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { api, type Attachment } from "./api";
 
 const MAX_FILE = 30 * 1024 * 1024;
@@ -75,16 +75,18 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
   const [open, setOpen] = useState(false);
   // In the editor the menu opens upward from a composer that may sit in a scrolling area: place it against the
   // window (fixed) so no scroller can clip it. On the landing it simply drops below the button.
+  // Placed in the same click that opens it (so the first frame is already in place and can take focus), and again
+  // whenever anything scrolls, so it stays on its button.
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
-  useLayoutEffect(() => {
-    if (!open || size === "lg" || !button.current) return setPos(null);
-    const r = button.current.getBoundingClientRect();
-    setPos({ left: r.left, bottom: document.documentElement.clientHeight - r.top + 8 });
-  }, [open, size]);
+  const place = () => {
+    const r = button.current?.getBoundingClientRect();
+    setPos(size === "lg" || !r ? null : { left: r.left, bottom: document.documentElement.clientHeight - r.top + 8 });
+  };
   const items = () => [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
   useEffect(() => {
     if (!open) return;
     items()[0]?.focus({ preventScroll: true }); // a menu takes focus to its first item; arrows move, Esc goes back
+    if (size !== "lg") addEventListener("scroll", place, true);
     const on = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const key = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -107,6 +109,7 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
       removeEventListener("mousedown", on);
       removeEventListener("keydown", key);
       removeEventListener("blur", blur);
+      removeEventListener("scroll", place, true);
     };
   }, [open]);
   const pick = (input: HTMLInputElement | null) => {
@@ -130,7 +133,10 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) place();
+          setOpen((o) => !o);
+        }}
         aria-label="Attach"
         title="Attach screenshots, reference videos, brand assets"
         className={[
@@ -149,7 +155,7 @@ export function AttachButton({ onPick, disabled, size = "md", glass }: { onPick:
             "absolute left-0 z-30 flex w-60 flex-col gap-0.5 rounded-xl border p-1.5 text-sm",
             // On the dark landing the menu is dark glass like the prompt box; in the editor it is a plain white popover.
             glass ? "border-white/15 bg-[#14162a]/90 text-white shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur-xl" : "border-line-2 bg-white text-ink shadow-[0_12px_32px_rgba(0,0,0,.10)]",
-            size === "lg" ? "top-12" : pos ? "" : "invisible bottom-10", // hidden for the one frame before it is placed
+            size === "lg" ? "top-12" : pos ? "" : "bottom-10",
           ].join(" ")}
         >
           <button type="button" role="menuitem" onClick={() => pick(file.current)} className={["rounded-lg px-2.5 py-2 text-left", glass ? "hover:bg-white/10" : "hover:bg-bubble"].join(" ")}>

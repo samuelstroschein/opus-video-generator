@@ -327,10 +327,10 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
         <span className="min-w-0">Queued · goes out when this run finishes</span>
         {note.qid && !editing && (
           <>
-            <button ref={editButton} onClick={() => (setDraft(note.text), setEditing(true))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
+            <button ref={editButton} onClick={() => (setDraft(note.text), setEditing(true))} className="ring-inset -my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Edit
             </button>
-            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="-my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
+            <button onClick={() => note.qid && void act(api.removeQueued(id, note.qid))} className="ring-inset -my-1 shrink-0 whitespace-nowrap rounded px-1.5 py-1 font-medium hover:bg-bubble hover:text-ink">
               Remove
             </button>
           </>
@@ -346,7 +346,7 @@ function FormAnswer({ text }: { text: string }) {
   const lines = text.split("\n").slice(1);
   return (
     <div className="max-w-[85%] self-end rounded-[14px] bg-bubble px-[13px] py-[9px]">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex min-h-6 items-center gap-1.5 font-medium">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="ring-inset flex min-h-6 items-center gap-1.5 font-medium">
         Direction answered <span className="text-[9px] text-faint">{open ? "▾" : "▸"}</span>
       </button>
       {open && <div className="mt-1 whitespace-pre-wrap text-[13px] text-mute">{lines.join("\n")}</div>}
@@ -440,7 +440,7 @@ function ToolGroup({ tools, live, now }: { tools: Tool[]; live: boolean; now?: s
   const took = !live && first && last ? ` · ${dur(last - first)}` : "";
   return (
     <div className="text-xs text-faint">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-my-1 flex min-h-6 max-w-full items-center gap-1.5 py-1 hover:text-mute">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="ring-inset -my-1 flex min-h-6 max-w-full items-center gap-1.5 py-1 hover:text-mute">
         <span className={live ? "text-faint" : "text-ok"}>{live ? "◦" : "✓"}</span>
         <span className="min-w-0 truncate">{live ? `${n} so far${now ? ` · ${now}` : ""}` : `${n}${took}`}</span>
         <span className="text-[9px]">{open ? "▾" : "▸"}</span>
@@ -467,7 +467,7 @@ function ReviewRow({ item }: { item: Extract<Item, { kind: "review" }> }) {
       <button
         onClick={() => item.fixes.length > 0 && setOpen((o) => !o)}
         aria-expanded={item.fixes.length > 0 ? open : undefined}
-        className="-my-1 flex min-h-6 items-center gap-1.5 py-1 hover:text-mute"
+        className="ring-inset -my-1 flex min-h-6 items-center gap-1.5 py-1 hover:text-mute"
       >
         <span className={item.pass ? "text-ok" : "text-[#b7791f]"}>{item.pass ? "✓" : "⚑"}</span>
         <span>{label}</span>
