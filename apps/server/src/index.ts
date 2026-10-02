@@ -7,7 +7,7 @@ import { log, type Scope } from "./events.js";
 import { createProject, listProjects, projectTitle, readMeta, workspaceDir } from "./projects.js";
 import { editQueued, enqueue, isRunning, startTurn, stopTurn, takeQueued } from "./turns.js";
 import { saveUploads } from "./uploads.js";
-import { DRAFT_FIT, getDraft } from "./drafts.js";
+import { DRAFT_FIT, getDraft, safeDraft } from "./drafts.js";
 import { exampleMedia, examplePack, listExamples, warmExamples } from "./examples.js";
 import { Readable } from "node:stream";
 import { mountMcp } from "./mcp/http.js";
@@ -267,7 +267,7 @@ artifacts.get("/p/:id/*", (c) => {
   const rel = decodeURIComponent(c.req.path.replace(`/p/${id}/`, ""));
   // ?draft=1: the page the agent is writing right now, as far as it has got.
   const draft = c.req.query("draft") ? getDraft(id, rel) : undefined;
-  if (draft !== undefined) return new Response(draft + DRAFT_FIT, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  if (draft !== undefined) return new Response(safeDraft(draft) + DRAFT_FIT, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
   const root = workspaceDir(id);
   const abs = path.resolve(root, rel);
   if (!abs.startsWith(root + path.sep) || abs.includes(`${path.sep}.git${path.sep}`) || !fs.existsSync(abs) || !fs.statSync(abs).isFile()) {

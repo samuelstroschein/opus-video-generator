@@ -41,4 +41,21 @@ function decodeLoose(json: string, start: number): string {
 }
 
 /** Injected after a partial page so it fits the viewport while it grows (the page's own scripts have not arrived yet). */
+/**
+ * A page cut off mid-write, made safe to show: a tag left half-written at the end ("<meta charse") is dropped, and
+ * an unclosed comment, <script>, <style>, <title> or <textarea> is closed. Otherwise whatever follows (our fit
+ * script) lands inside that tag or block and shows up on the page as raw text.
+ */
+export function safeDraft(html: string): string {
+  let s = html;
+  const open = s.lastIndexOf("<");
+  if (open > s.lastIndexOf(">")) s = s.slice(0, open);
+  if (s.lastIndexOf("<!--") > s.lastIndexOf("-->")) s += "-->";
+  for (const tag of ["script", "style", "title", "textarea"]) {
+    const lower = s.toLowerCase();
+    if (lower.lastIndexOf(`<${tag}`) > lower.lastIndexOf(`</${tag}`)) s += `</${tag}>`;
+  }
+  return s;
+}
+
 export const DRAFT_FIT = `<script>(()=>{const w=document.getElementById("versions");if(!w)return;w.style.transformOrigin="0 0";const f=()=>{const z=Math.min((innerWidth-60)/w.offsetWidth,(innerHeight-60)/w.offsetHeight,1.2);w.style.transform="translate("+(innerWidth-w.offsetWidth*z)/2+"px,30px) scale("+z+")"};f();addEventListener("resize",f)})()</script>`;
