@@ -122,7 +122,8 @@ export function ChatPane(props: {
   const input = useRef<HTMLTextAreaElement>(null);
   const questionOpen = !chat.running && !!chat.question && skipped !== chat.question;
   useEffect(() => {
-    if (questionOpen) input.current?.focus();
+    // Don't pull focus out of a menu the user has open (the attach menu); otherwise the question takes the composer.
+    if (questionOpen && document.activeElement?.getAttribute("role") !== "menuitem") input.current?.focus();
   }, [questionOpen]);
   const asking = !chat.running && chat.question && skipped !== chat.question ? chat.question : null;
   const canSend = !!text.trim() || att.files.length > 0;
@@ -343,7 +344,9 @@ function QueuedNote({ id, note, onError }: { id: string; note: ReturnType<typeof
 /** The agent's form answers, folded to one line. */
 function FormAnswer({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const lines = text.split("\n").slice(1);
+  // A full answer lists one line per question; "Decide for me" / "Ask me follow-ups" are a single line after "Direction:".
+  const rest = text.split("\n").slice(1);
+  const lines = rest.length ? rest : [text.replace(/^Direction:\s*/, "")];
   return (
     <div className="max-w-[85%] self-end rounded-[14px] bg-bubble px-[13px] py-[9px]">
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="ring-inset flex min-h-6 items-center gap-1.5 font-medium">
