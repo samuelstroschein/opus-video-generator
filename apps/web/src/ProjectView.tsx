@@ -63,13 +63,22 @@ export function ProjectView({ id }: { id: string }) {
   const file = override ?? state?.canvas ?? fallback ?? null;
   const current = pages.find((p) => p.file === file);
 
+  // One send at a time (a double click on the form's Continue sends once); the form stays disabled meanwhile.
+  const [sending, setSending] = useState(false);
+  const inFlight = useRef(false);
   const send = useCallback(
     async (text: string) => {
+      if (inFlight.current) return;
+      inFlight.current = true;
+      setSending(true);
       setError("");
       try {
         await api.send(id, text);
       } catch (e) {
         setError(say(e));
+      } finally {
+        inFlight.current = false;
+        setSending(false);
       }
     },
     [id],
@@ -217,7 +226,7 @@ export function ProjectView({ id }: { id: string }) {
         <div className="relative min-h-0 flex-1 bg-paper">
           {chat.ask ? (
             <Safe key={keyOf(chat.ask)} fallback={<p className="p-8 text-center text-sm text-mute">This form couldn't be shown. Answer in the chat instead.</p>}>
-              <AskForm form={chat.ask} busy={chat.running} onSubmit={(t) => void send(t)} />
+              <AskForm form={chat.ask} busy={chat.running || sending} onSubmit={(t) => void send(t)} />
             </Safe>
           ) : current ? (
             current.kind === "video" ? (

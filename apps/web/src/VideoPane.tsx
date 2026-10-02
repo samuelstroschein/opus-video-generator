@@ -94,7 +94,7 @@ export const VideoPane = forwardRef<HTMLIFrameElement, { src: string; video: Vid
           aria-valuetext={fmt(v?.time ?? 0)}
           onKeyDown={(e) => {
             // Arrow keys scrub by a second (Shift: five), Home and End jump to the ends.
-            if (!v) return;
+            if (!v || e.metaKey || e.ctrlKey || e.altKey) return; // leave Cmd/Alt+arrows (back, forward) to the browser
             if (e.key === " ") {
               e.preventDefault();
               return cmd({ action: v.playing ? "pause" : "play" });

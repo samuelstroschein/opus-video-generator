@@ -17,6 +17,7 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
     if (!open || !el) return;
     const r = el.getBoundingClientRect();
     const w = document.documentElement.clientWidth; // not innerWidth: on phones that grows to fit the overflowing menu
+    el.style.maxHeight = `${document.documentElement.clientHeight - r.top - 8}px`; // a long menu scrolls on short screens
     const dx = r.left < 8 ? 8 - r.left : r.right > w - 8 ? w - 8 - r.right : 0;
     // Shift with a margin, not a transform: a transformed menu still widens the page by its original position.
     if (align === "right") el.style.marginRight = dx ? `${-dx}px` : "";
@@ -55,7 +56,7 @@ function Popover({ button, children, align = "left" }: { button: (toggle: () => 
       {open && (
         <div
           ref={panel}
-          className={["absolute top-[calc(100%+14px)] z-30 max-w-[calc(100vw-16px)] rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
+          className={["absolute top-[calc(100%+14px)] z-30 max-w-[calc(100vw-16px)] overflow-y-auto rounded-xl border border-line-2 bg-white p-1.5 shadow-[0_12px_32px_rgba(0,0,0,.10)]", align === "right" ? "right-0" : "left-0"].join(" ")}
           onClick={() => {
             // A picked item closes the menu; focus goes back to its button, not to the top of the page.
             ref.current?.querySelector<HTMLElement>("[aria-haspopup]")?.focus();

@@ -73,8 +73,11 @@ export function ChatPane(props: {
     };
   }, []);
 
+  // One send at a time: a double click or a second Enter while the first is still on its way does nothing.
+  const sending = useRef(false);
   async function send(message = text, files = att.files) {
-    if (!message.trim() && !files.length) return;
+    if ((!message.trim() && !files.length) || sending.current) return;
+    sending.current = true;
     setError("");
     try {
       await api.send(id, message, undefined, files);
@@ -82,6 +85,8 @@ export function ChatPane(props: {
       if (files === att.files) att.clear(); // a chip or quick reply leaves pending attachments alone
     } catch (e) {
       setError(say(e));
+    } finally {
+      sending.current = false;
     }
   }
 
@@ -134,7 +139,8 @@ export function ChatPane(props: {
       : "Reply, or tell me what to change…";
   const onKey = (e: KeyboardEvent) => {
     // With a question open and nothing typed: 1–4 picks an answer, arrows move, Enter sends the highlighted one.
-    if (asking && !text) {
+    // Shortcuts with Cmd/Ctrl/Alt (switch browser tab, etc.) belong to the browser.
+    if (asking && !text && !e.metaKey && !e.ctrlKey && !e.altKey) {
       const n = Number(e.key);
       if (n >= 1 && n <= asking.replies.length) {
         e.preventDefault();
@@ -209,7 +215,7 @@ export function ChatPane(props: {
               <div className="-mx-1 flex flex-col">
                 {asking.replies.map((r, i) => (
                   <button
-                    key={r}
+                    key={`${i}:${r}`}
                     data-reply
                     onMouseEnter={() => setSel(i)}
                     // The panel scrolls, which would cut an outside focus ring: draw it inside.

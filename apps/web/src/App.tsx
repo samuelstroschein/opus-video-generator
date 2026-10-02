@@ -314,7 +314,13 @@ function Home() {
           </div>
           {filtered.length > shown && (
             <button
-              onClick={() => setShown((n) => n + 16)}
+              onClick={() => {
+                // The last "Show more" removes itself: move focus to the first newly shown example instead of losing it.
+                const first = shown;
+                setShown((n) => n + 16);
+                if (first + 16 >= filtered.length)
+                  requestAnimationFrame(() => document.querySelectorAll<HTMLElement>('main button[aria-label^="Play "]')[first]?.focus());
+              }}
               className="mt-2 self-center rounded-full border border-white/20 bg-white/[0.06] px-5 py-2 text-[13px] font-medium text-white backdrop-blur-md hover:bg-white/[0.12]"
             >
               Show more · {filtered.length - shown} left
